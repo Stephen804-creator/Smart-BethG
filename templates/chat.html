@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>SmartBethG</title>
+
+    <meta
+        name="application-name"
+        content="SmartBethG"
+    >
+
+    <meta
+        name="description"
+        content="SmartBethG AI workspace"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/main.css') }}"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+    >
+
+</head>
+
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-header">
+
+            <div class="logo">
+
+                <span class="logo-mark">
+                    <i class="fa-solid fa-brain"></i>
+                </span>
+
+                <span>SmartBethG</span>
+
+            </div>
+
+            <button
+                id="sidebarToggle"
+                class="sidebar-toggle"
+                type="button"
+                aria-label="Toggle sidebar"
+            >
+                <i class="fa-solid fa-bars"></i>
+            </button>
+
+        </div>
+
+        <nav>
+
+            <a href="/">
+                <i class="fa-solid fa-house"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="/chat" class="active">
+                <i class="fa-solid fa-robot"></i>
+                <span>AI Assistant</span>
+            </a>
+
+            <a href="/study">
+                <i class="fa-solid fa-book"></i>
+                <span>Study</span>
+            </a>
+
+            <a href="/developer">
+                <i class="fa-solid fa-code"></i>
+                <span>Developer</span>
+            </a>
+
+        </nav>
+
+    </aside>
+
+    <main class="content">
+
+        <header class="topbar">
+
+            <div class="topbar-search">
+
+                <input
+                    type="text"
+                    placeholder="Search or type a command..."
+                    aria-label="Search or type a command"
+                >
+
+            </div>
+
+            <div class="topbar-actions">
+
+                <button
+                    type="button"
+                    aria-label="Notifications"
+                >
+                    <i class="fa-solid fa-bell"></i>
+                </button>
+
+            </div>
+
+        </header>
+
+        <section class="page-content">
+
+            <div class="hero">
+
+                <h1>AI Assistant</h1>
+
+                <p>
+                    Work with SmartBethG through natural language.
+                </p>
+
+            </div>
+
+            <section class="assistant">
+
+                <div class="assistant-header">
+
+                    <h2>SmartBethG</h2>
+
+                    <span class="online">
+                        Available
+                    </span>
+
+                </div>
+
+                <div
+                    id="messages"
+                    class="messages"
+                    aria-live="polite"
+                    aria-label="Chat messages"
+                >
+                </div>
+
+                <div class="assistant-input">
+
+                    <input
+                        type="text"
+                        id="prompt"
+                        placeholder="Describe what you want SmartBethG to do..."
+                        autocomplete="off"
+                        aria-label="Message SmartBethG"
+                    >
+
+                    <button
+                        id="sendMessage"
+                        class="btn btn-primary"
+                        type="button"
+                    >
+                        <i class="fa-solid fa-paper-plane"></i>
+                        Send
+                    </button>
+
+                </div>
+
+            </section>
+
+        </section>
+
+        <footer>
+
+            <p>
+                SmartBethG
+            </p>
+
+        </footer>
+
+    </main>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+
+</body>
+
+</html>

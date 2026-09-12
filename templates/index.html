@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Smart BethG — intelligent workspace for AI assistance, development, automation and productivity."
+    >
+
+    <meta
+        name="theme-color"
+        content="#0b0f14"
+    >
+
+    <title>Smart BethG</title>
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha512-..."
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+    >
+
+    <!-- Application stylesheet -->
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/main.css') }}"
+    >
+
+    <!-- Application JavaScript -->
+    <script
+        src="{{ url_for('static', filename='js/app.js') }}"
+        defer
+    ></script>
+</head>
+
+<body>
+
+    <div class="app">
+
+        <!-- =========================
+             SIDEBAR
+        ========================== -->
+        <aside
+            class="sidebar"
+            aria-label="Main navigation"
+        >
+
+            <div class="sidebar-header">
+
+                <a
+                    href="{{ url_for('main.home') }}"
+                    class="logo"
+                    aria-label="Smart BethG home"
+                >
+                    <span
+                        class="logo-mark"
+                        aria-hidden="true"
+                    >
+                        <i class="fa-solid fa-brain"></i>
+                    </span>
+
+                    <span class="logo-text">
+                        Smart BethG
+                    </span>
+                </a>
+
+                <button
+                    type="button"
+                    id="sidebarToggle"
+                    class="sidebar-toggle"
+                    aria-label="Toggle sidebar"
+                    aria-expanded="true"
+                    aria-controls="mainNavigation"
+                >
+                    <i
+                        class="fa-solid fa-bars"
+                        aria-hidden="true"
+                    ></i>
+                </button>
+
+            </div>
+
+
+            <nav
+                id="mainNavigation"
+                class="sidebar-navigation"
+                aria-label="Main navigation"
+            >
+
+                <ul>
+
+                    <li>
+                        <a href="{{ url_for('main.home') }}">
+                            <i
+                                class="fa-solid fa-house"
+                                aria-hidden="true"
+                            ></i>
+
+                            <span>Home</span>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{{ url_for('main.chat_page') }}">
+                            <i
+                                class="fa-solid fa-comments"
+                                aria-hidden="true"
+                            ></i>
+
+                            <span>Chat</span>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{{ url_for('main.study_dashboard') }}">
+                            <i
+                                class="fa-solid fa-graduation-cap"
+                                aria-hidden="true"
+                            ></i>
+
+                            <span>Study</span>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{{ url_for('main.developer_dashboard') }}">
+                            <i
+                                class="fa-solid fa-code"
+                                aria-hidden="true"
+                            ></i>
+
+                            <span>Developer</span>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{{ url_for('main.social_dashboard') }}">
+                            <i
+                                class="fa-solid fa-share-nodes"
+                                aria-hidden="true"
+                            ></i>
+
+                            <span>Social</span>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{{ url_for('main.automation_dashboard') }}">
+                            <i
+                                class="fa-solid fa-robot"
+                                aria-hidden="true"
+                            ></i>
+
+                            <span>Automation</span>
+                        </a>
+                    </li>
+
+                </ul>
+
+            </nav>
+
+        </aside>
+
+
+        <!-- =========================
+             MAIN CONTENT
+        ========================== -->
+        <main class="content">
+
+            <!-- TOPBAR -->
+            <header class="topbar">
+
+                <div class="topbar-welcome">
+
+                    <p class="eyebrow">
+                        Smart BethG
+                    </p>
+
+                    <h1>
+                        Welcome back
+                    </h1>
+
+                </div>
+
+
+                <!-- GLOBAL SEARCH -->
+                <form
+                    class="topbar-search"
+                    id="globalSearchForm"
+                    role="search"
+                >
+
+                    <label
+                        for="globalSearch"
+                        class="sr-only"
+                    >
+                        Search Smart BethG
+                    </label>
+
+                    <i
+                        class="fa-solid fa-magnifying-glass"
+                        aria-hidden="true"
+                    ></i>
+
+                    <input
+                        type="search"
+                        id="globalSearch"
+                        name="q"
+                        placeholder="Search..."
+                        autocomplete="off"
+                    >
+
+                </form>
+
+
+                <!-- TOPBAR ACTIONS -->
+                <div class="topbar-actions">
+
+                    <button
+                        type="button"
+                        id="notificationsButton"
+                        class="icon-button"
+                        aria-label="Notifications"
+                        aria-haspopup="dialog"
+                        aria-expanded="false"
+                    >
+                        <i
+                            class="fa-solid fa-bell"
+                            aria-hidden="true"
+                        ></i>
+                    </button>
+
+
+                    <button
+                        type="button"
+                        id="settingsButton"
+                        class="icon-button"
+                        aria-label="Settings"
+                        aria-haspopup="dialog"
+                        aria-expanded="false"
+                    >
+                        <i
+                            class="fa-solid fa-gear"
+                            aria-hidden="true"
+                        ></i>
+                    </button>
+
+                </div>
+
+            </header>
+
+
+            <!-- PAGE CONTENT -->
+            <div class="page-content">
+
+                <!-- HERO -->
+                <section
+                    class="hero"
+                    aria-labelledby="heroTitle"
+                >
+
+                    <div class="hero-content">
+
+                        <p class="eyebrow">
+                            AI workspace
+                        </p>
+
+                        <h2 id="heroTitle">
+                            What would you like Smart BethG to help you accomplish?
+                        </h2>
+
+                        <p>
+                            Work with your assistant across development,
+                            learning, automation and other supported tasks.
+                        </p>
+
+                    </div>
+
+                </section>
+
+
+                <!-- QUICK ACTIONS -->
+                {% if quick_actions %}
+
+                <section
+                    class="quick-actions"
+                    aria-labelledby="quickActionsTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                Shortcuts
+                            </p>
+
+                            <h2 id="quickActionsTitle">
+                                Quick actions
+                            </h2>
+                        </div>
+
+                    </div>
+
+
+                    <div class="quick-actions-grid">
+
+                        {% for action in quick_actions %}
+
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            data-action="{{ action.action }}"
+                        >
+                            {% if action.icon %}
+                            <i
+                                class="{{ action.icon }}"
+                                aria-hidden="true"
+                            ></i>
+                            {% endif %}
+
+                            <span>
+                                {{ action.label }}
+                            </span>
+                        </button>
+
+                        {% endfor %}
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- CAPABILITIES -->
+                {% if capabilities %}
+
+                <section
+                    class="capabilities"
+                    aria-labelledby="capabilitiesTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                Available systems
+                            </p>
+
+                            <h2 id="capabilitiesTitle">
+                                Capabilities
+                            </h2>
+                        </div>
+
+                    </div>
+
+
+                    <div class="capability-grid">
+
+                        {% for capability in capabilities %}
+
+                        <article class="capability-card">
+
+                            <div class="card-icon">
+                                {% if capability.icon %}
+                                <i
+                                    class="{{ capability.icon }}"
+                                    aria-hidden="true"
+                                ></i>
+                                {% endif %}
+                            </div>
+
+
+                            <div class="capability-content">
+
+                                <div class="card-heading">
+
+                                    <h3>
+                                        {{ capability.name }}
+                                    </h3>
+
+                                    {% if capability.status %}
+                                    <span
+                                        class="status status-{{ capability.status }}"
+                                    >
+                                        {{ capability.status|capitalize }}
+                                    </span>
+                                    {% endif %}
+
+                                </div>
+
+
+                                {% if capability.description %}
+                                <p>
+                                    {{ capability.description }}
+                                </p>
+                                {% endif %}
+
+
+                                {% if capability.action %}
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    data-action="{{ capability.action }}"
+                                >
+                                    Open
+                                </button>
+                                {% endif %}
+
+                            </div>
+
+                        </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- MISSIONS -->
+                {% if missions %}
+
+                <section
+                    class="work-section"
+                    aria-labelledby="missionsTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                Active work
+                            </p>
+
+                            <h2 id="missionsTitle">
+                                Missions
+                            </h2>
+                        </div>
+
+                    </div>
+
+
+                    <div class="cards">
+
+                        {% for mission in missions %}
+
+                        <article class="mission-card">
+
+                            <div class="mission-header">
+
+                                <div>
+
+                                    <h3>
+                                        {{ mission.name }}
+                                    </h3>
+
+                                    {% if mission.description %}
+                                    <p>
+                                        {{ mission.description }}
+                                    </p>
+                                    {% endif %}
+
+                                </div>
+
+
+                                {% if mission.status %}
+                                <span
+                                    class="status status-{{ mission.status }}"
+                                >
+                                    {{ mission.status|capitalize }}
+                                </span>
+                                {% endif %}
+
+                            </div>
+
+
+                            {% if mission.progress is not none %}
+
+                            <div class="progress">
+
+                                <div
+                                    class="progress-bar"
+                                    role="progressbar"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
+                                    aria-valuenow="{{ mission.progress }}"
+                                    style="width: {{ mission.progress }}%;"
+                                ></div>
+
+                            </div>
+
+                            <p class="progress-text">
+                                {{ mission.progress }}% complete
+                            </p>
+
+                            {% endif %}
+
+
+                            <div class="mission-actions">
+
+                                {% if mission.cancel_action %}
+
+                                <button
+                                    type="button"
+                                    class="btn btn-danger"
+                                    data-action="{{ mission.cancel_action }}"
+                                    data-mission-id="{{ mission.id }}"
+                                >
+                                    Cancel
+                                </button>
+
+                                {% endif %}
+
+
+                                {% if mission.resume_action %}
+
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    data-action="{{ mission.resume_action }}"
+                                    data-mission-id="{{ mission.id }}"
+                                >
+                                    Resume
+                                </button>
+
+                                {% endif %}
+
+                            </div>
+
+                        </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- ARTIFACTS -->
+                {% if artifacts %}
+
+                <section
+                    class="artifacts-section"
+                    aria-labelledby="artifactsTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                Generated work
+                            </p>
+
+                            <h2 id="artifactsTitle">
+                                Artifacts
+                            </h2>
+                        </div>
+
+                    </div>
+
+
+                    <div class="artifact-grid">
+
+                        {% for artifact in artifacts %}
+
+                        <article class="artifact-card">
+
+                            {% if artifact.icon %}
+                            <div class="card-icon">
+                                <i
+                                    class="{{ artifact.icon }}"
+                                    aria-hidden="true"
+                                ></i>
+                            </div>
+                            {% endif %}
+
+
+                            <div class="artifact-content">
+
+                                <h3>
+                                    {{ artifact.name }}
+                                </h3>
+
+                                {% if artifact.description %}
+                                <p>
+                                    {{ artifact.description }}
+                                </p>
+                                {% endif %}
+
+
+                                <div class="artifact-actions">
+
+                                    {% if artifact.view_url %}
+
+                                    <a
+                                        href="{{ artifact.view_url }}"
+                                        class="btn btn-secondary"
+                                    >
+                                        View
+                                    </a>
+
+                                    {% endif %}
+
+
+                                    {% if artifact.download_url %}
+
+                                    <a
+                                        href="{{ artifact.download_url }}"
+                                        class="btn btn-primary"
+                                    >
+                                        Download
+                                    </a>
+
+                                    {% endif %}
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- NOTIFICATIONS -->
+                <section
+                    class="notification-section"
+                    aria-labelledby="notificationsTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                Updates
+                            </p>
+
+                            <h2 id="notificationsTitle">
+                                Notifications
+                            </h2>
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        id="notificationsList"
+                        class="notification-list"
+                        aria-live="polite"
+                    >
+
+                        {% if notifications %}
+
+                            {% for notification in notifications %}
+
+                            <article class="notification-item">
+
+                                <h3>
+                                    {{ notification.title }}
+                                </h3>
+
+                                <p>
+                                    {{ notification.message }}
+                                </p>
+
+                            </article>
+
+                            {% endfor %}
+
+                        {% else %}
+
+                            <p class="empty-state">
+                                No new notifications.
+                            </p>
+
+                        {% endif %}
+
+                    </div>
+
+                </section>
+
+
+                <!-- RECENT ACTIVITY -->
+                <section
+                    class="activity-section"
+                    aria-labelledby="activityTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                History
+                            </p>
+
+                            <h2 id="activityTitle">
+                                Recent activity
+                            </h2>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="activity-list">
+
+                        {% if recent_activity %}
+
+                            {% for activity in recent_activity %}
+
+                            <article class="activity-item">
+
+                                <div class="activity-content">
+
+                                    <h3>
+                                        {{ activity.title }}
+                                    </h3>
+
+                                    <p>
+                                        {{ activity.description }}
+                                    </p>
+
+                                </div>
+
+                                {% if activity.time %}
+                                <time>
+                                    {{ activity.time }}
+                                </time>
+                                {% endif %}
+
+                            </article>
+
+                            {% endfor %}
+
+                        {% else %}
+
+                            <p class="empty-state">
+                                No recent activity.
+                            </p>
+
+                        {% endif %}
+
+                    </div>
+
+                </section>
+
+
+                <!-- SYSTEM STATUS -->
+                <section
+                    class="system-section"
+                    aria-labelledby="systemStatusTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                Infrastructure
+                            </p>
+
+                            <h2 id="systemStatusTitle">
+                                System status
+                            </h2>
+                        </div>
+
+                    </div>
+
+
+                    <div class="system-status">
+
+                        {% if system_status %}
+
+                            {% for item in system_status %}
+
+                            <div class="system-status-item">
+
+                                <span>
+                                    {{ item.name }}
+                                </span>
+
+                                <span
+                                    class="status status-{{ item.status }}"
+                                >
+                                    {{ item.status|capitalize }}
+                                </span>
+
+                            </div>
+
+                            {% endfor %}
+
+                        {% else %}
+
+                            <p class="empty-state">
+                                System status is currently unavailable.
+                            </p>
+
+                        {% endif %}
+
+                    </div>
+
+                </section>
+
+
+                <!-- ERROR STATE -->
+                {% if error_message %}
+
+                <section
+                    class="error-section"
+                    aria-labelledby="errorTitle"
+                >
+
+                    <div
+                        class="error-state"
+                        role="alert"
+                    >
+
+                        <i
+                            class="fa-solid fa-triangle-exclamation"
+                            aria-hidden="true"
+                        ></i>
+
+                        <div>
+
+                            <h2 id="errorTitle">
+                                Something went wrong
+                            </h2>
+
+                            <p>
+                                {{ error_message }}
+                            </p>
+
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                data-action="retry"
+                            >
+                                Try again
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- EMPTY STATE -->
+                {% if not capabilities and not missions and not artifacts %}
+
+                <section class="empty-state-section">
+
+                    <div class="empty-state">
+
+                        <i
+                            class="fa-solid fa-sparkles"
+                            aria-hidden="true"
+                        ></i>
+
+                        <h2>
+                            Your workspace is ready
+                        </h2>
+
+                        <p>
+                            Start a task or ask Smart BethG for help.
+                        </p>
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- =========================
+                     ASSISTANT
+                ========================== -->
+                <section
+                    class="assistant"
+                    aria-labelledby="assistantTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <p class="eyebrow">
+                                Assistant
+                            </p>
+
+                            <h2 id="assistantTitle">
+                                Ask Smart BethG
+                            </h2>
+
+                        </div>
+
+                    </div>
+
+
+                    <form
+                        id="assistantForm"
+                        method="post"
+                        action="{{ url_for('main.chat') }}"
+                    >
+
+                        <div class="assistant-input">
+
+                            <label
+                                for="assistantPrompt"
+                                class="sr-only"
+                            >
+                                Message Smart BethG
+                            </label>
+
+                            <textarea
+                                id="assistantPrompt"
+                                name="prompt"
+                                rows="3"
+                                placeholder="Tell Smart BethG what you want to accomplish..."
+                                required
+                                maxlength="10000"
+                                autocomplete="off"
+                            ></textarea>
+
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                            >
+                                <i
+                                    class="fa-solid fa-paper-plane"
+                                    aria-hidden="true"
+                                ></i>
+
+                                <span>
+                                    Send
+                                </span>
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </section>
+
+            </div>
+
+
+            <!-- FOOTER -->
+            <footer class="footer">
+
+                <p>
+                    Smart BethG
+                    <span aria-hidden="true">•</span>
+                    Version {{ app_version }}
+                </p>
+
+            </footer>
+
+        </main>
+
+    </div>
+
+</body>
+</html>
