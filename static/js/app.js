@@ -1,341 +1,521 @@
-"use strict";
+/* =========================================================
+   SMART BETHG
+   Main Application JavaScript
+   ========================================================= */
 
-/*
- * Smart BethG
- * Global Application Controller
- *
- * Responsibilities:
- * - Application bootstrap
- * - Sidebar state
- * - Navigation state
- * - Global action dispatch
- * - Global search
- * - Topbar events
- * - Assistant form protection
- *
- * This file does NOT:
- * - authenticate users
- * - authorise actions
- * - access databases
- * - store secrets
- * - execute commands
- * - control agents directly
- */
+document.addEventListener("DOMContentLoaded", () => {
 
-(function () {
-    "use strict";
+    const sideMenu =
+        document.getElementById("sideMenu");
 
-    function initializeApplication() {
-        const app = document.querySelector(".app");
+    const menuBackdrop =
+        document.getElementById("menuBackdrop");
 
-        if (!app) {
+    const openMenuButton =
+        document.getElementById("openMenuButton");
+
+    const closeMenuButton =
+        document.getElementById("closeMenuButton");
+
+    const searchButton =
+        document.getElementById("searchButton");
+
+    const searchPanel =
+        document.getElementById("searchPanel");
+
+    const closeSearchButton =
+        document.getElementById("closeSearchButton");
+
+    const notificationButton =
+        document.getElementById("notificationButton");
+
+    const notificationPanel =
+        document.getElementById("notificationPanel");
+
+    const closeNotificationButton =
+        document.getElementById(
+            "closeNotificationButton"
+        );
+
+    const globalSearchInput =
+        document.getElementById(
+            "globalSearchInput"
+        );
+
+
+    /* =====================================================
+       SIDE MENU
+       ===================================================== */
+
+    function openMenu() {
+
+        if (!sideMenu) {
             return;
         }
 
-        initializeSidebar(app);
-        initializeNavigation();
-        initializeActionDispatcher();
-        initializeGlobalSearch();
-        initializeTopbarActions();
-        initializeAssistantForm();
+        sideMenu.classList.add("open");
+
+        menuBackdrop.classList.add(
+            "visible"
+        );
+
+        sideMenu.setAttribute(
+            "aria-hidden",
+            "false"
+        );
     }
 
-    function initializeSidebar(app) {
-        const toggle = document.getElementById("sidebarToggle");
 
-        if (!toggle) {
+    function closeMenu() {
+
+        if (!sideMenu) {
             return;
         }
 
-        const collapsed =
-            app.classList.contains("sidebar-collapsed");
+        sideMenu.classList.remove("open");
 
-        updateSidebarState(toggle, collapsed);
-
-        toggle.addEventListener("click", () => {
-            const isCollapsed =
-                app.classList.toggle("sidebar-collapsed");
-
-            updateSidebarState(toggle, isCollapsed);
-        });
-    }
-
-    function updateSidebarState(toggle, collapsed) {
-        toggle.setAttribute(
-            "aria-expanded",
-            String(!collapsed)
+        menuBackdrop.classList.remove(
+            "visible"
         );
 
-        toggle.setAttribute(
-            "aria-label",
-            collapsed
-                ? "Expand sidebar"
-                : "Collapse sidebar"
+        sideMenu.setAttribute(
+            "aria-hidden",
+            "true"
         );
     }
 
-    function initializeNavigation() {
-        const currentPath =
-            normalizePath(window.location.pathname);
 
-        const links =
-            document.querySelectorAll(
-                ".sidebar-navigation a[href]"
-            );
-
-        links.forEach((link) => {
-            const href =
-                link.getAttribute("href");
-
-            if (!href || href === "#") {
-                return;
-            }
-
-            try {
-                const linkPath =
-                    normalizePath(
-                        new URL(
-                            href,
-                            window.location.origin
-                        ).pathname
-                    );
-
-                const isCurrent =
-                    linkPath === currentPath;
-
-                link.classList.toggle(
-                    "active",
-                    isCurrent
-                );
-
-                if (isCurrent) {
-                    link.setAttribute(
-                        "aria-current",
-                        "page"
-                    );
-                } else {
-                    link.removeAttribute(
-                        "aria-current"
-                    );
-                }
-            } catch (error) {
-                console.warn(
-                    "Invalid navigation URL:",
-                    href,
-                    error
-                );
-            }
-        });
-    }
-
-    function normalizePath(path) {
-        if (!path) {
-            return "/";
-        }
-
-        const normalized =
-            path.replace(/\/+$/, "");
-
-        return normalized || "/";
-    }
-
-    function initializeActionDispatcher() {
-        document.addEventListener(
+    if (openMenuButton) {
+        openMenuButton.addEventListener(
             "click",
-            handleActionClick
+            openMenu
         );
     }
 
-    function handleActionClick(event) {
-        const target =
-            event.target.closest("[data-action]");
 
-        if (!target) {
-            return;
-        }
-
-        if (
-            target.disabled ||
-            target.getAttribute("aria-disabled") === "true"
-        ) {
-            return;
-        }
-
-        const action =
-            target.dataset.action?.trim();
-
-        if (!action) {
-            return;
-        }
-
-        document.dispatchEvent(
-            new CustomEvent(
-                "smartbethg:action",
-                {
-                    detail: {
-                        action,
-                        missionId:
-                            target.dataset.missionId || null,
-                        taskId:
-                            target.dataset.taskId || null
-                    }
-                }
-            )
+    if (closeMenuButton) {
+        closeMenuButton.addEventListener(
+            "click",
+            closeMenu
         );
     }
 
-    function initializeGlobalSearch() {
-        const form =
-            document.getElementById(
-                "globalSearchForm"
-            );
 
-        const input =
-            document.getElementById(
-                "globalSearch"
-            );
+    if (menuBackdrop) {
+        menuBackdrop.addEventListener(
+            "click",
+            closeMenu
+        );
+    }
 
-        if (!form || !input) {
-            return;
-        }
 
-        form.addEventListener(
-            "submit",
-            (event) => {
-                event.preventDefault();
+    /* =====================================================
+       SEARCH PANEL
+       ===================================================== */
 
-                const query =
-                    input.value.trim();
+    function openSearch() {
 
-                if (!query) {
-                    input.focus();
-                    return;
-                }
+        closeMenu();
+        closeNotifications();
 
-                document.dispatchEvent(
-                    new CustomEvent(
-                        "smartbethg:search",
-                        {
-                            detail: {
-                                query
-                            }
-                        }
+        searchPanel.classList.add("open");
+
+        searchPanel.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
+        setTimeout(() => {
+
+            if (globalSearchInput) {
+                globalSearchInput.focus();
+            }
+
+        }, 100);
+    }
+
+
+    function closeSearch() {
+
+        searchPanel.classList.remove(
+            "open"
+        );
+
+        searchPanel.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+    }
+
+
+    if (searchButton) {
+        searchButton.addEventListener(
+            "click",
+            openSearch
+        );
+    }
+
+
+    if (closeSearchButton) {
+        closeSearchButton.addEventListener(
+            "click",
+            closeSearch
+        );
+    }
+
+
+    /* =====================================================
+       NOTIFICATIONS
+       ===================================================== */
+
+    function openNotifications() {
+
+        closeMenu();
+        closeSearch();
+
+        notificationPanel.classList.add(
+            "open"
+        );
+
+        notificationPanel.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+    }
+
+
+    function closeNotifications() {
+
+        notificationPanel.classList.remove(
+            "open"
+        );
+
+        notificationPanel.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+    }
+
+
+    if (notificationButton) {
+        notificationButton.addEventListener(
+            "click",
+            () => {
+
+                if (
+                    notificationPanel.classList.contains(
+                        "open"
                     )
-                );
+                ) {
+                    closeNotifications();
+                } else {
+                    openNotifications();
+                }
+
             }
         );
     }
 
-    function initializeTopbarActions() {
-        const notificationsButton =
-            document.getElementById(
-                "notificationsButton"
-            );
 
-        const settingsButton =
-            document.getElementById(
-                "settingsButton"
-            );
-
-        if (notificationsButton) {
-            notificationsButton.addEventListener(
-                "click",
-                () => {
-                    document.dispatchEvent(
-                        new CustomEvent(
-                            "smartbethg:notifications"
-                        )
-                    );
-                }
-            );
-        }
-
-        if (settingsButton) {
-            settingsButton.addEventListener(
-                "click",
-                () => {
-                    document.dispatchEvent(
-                        new CustomEvent(
-                            "smartbethg:settings"
-                        )
-                    );
-                }
-            );
-        }
+    if (closeNotificationButton) {
+        closeNotificationButton.addEventListener(
+            "click",
+            closeNotifications
+        );
     }
 
-    function initializeAssistantForm() {
-        const form =
-            document.getElementById(
-                "assistantForm"
+
+    /* =====================================================
+       VIEW NAVIGATION
+       ===================================================== */
+
+    function showView(viewName) {
+
+        const views =
+            document.querySelectorAll(
+                "[data-view-content]"
             );
 
-        const input =
-            document.getElementById(
-                "assistantPrompt"
+        const menuItems =
+            document.querySelectorAll(
+                ".menu-item[data-view]"
             );
 
-        if (!form || !input) {
+
+        let foundView = false;
+
+
+        views.forEach((view) => {
+
+            const matches =
+                view.dataset.viewContent ===
+                viewName;
+
+            view.classList.toggle(
+                "active",
+                matches
+            );
+
+            if (matches) {
+                foundView = true;
+            }
+        });
+
+
+        if (!foundView) {
+
+            console.warn(
+                "Smart BethG view not found:",
+                viewName
+            );
+
             return;
         }
 
-        const submitButton =
-            form.querySelector(
-                'button[type="submit"]'
+
+        menuItems.forEach((item) => {
+
+            item.classList.toggle(
+                "active",
+                item.dataset.view ===
+                viewName
             );
 
-        let submitting = false;
+        });
 
-        form.addEventListener(
-            "submit",
-            (event) => {
-                const message =
-                    input.value.trim();
 
-                if (!message) {
-                    event.preventDefault();
-                    input.focus();
-                    return;
-                }
+        closeMenu();
 
-                if (submitting) {
-                    event.preventDefault();
-                    return;
-                }
+        closeSearch();
 
-                submitting = true;
+        closeNotifications();
 
-                if (submitButton) {
-                    submitButton.disabled = true;
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+    }
 
-                    submitButton.setAttribute(
-                        "aria-busy",
-                        "true"
+
+    document
+        .querySelectorAll(
+            ".menu-item[data-view]"
+        )
+        .forEach((item) => {
+
+            item.addEventListener(
+                "click",
+                () => {
+
+                    showView(
+                        item.dataset.view
                     );
 
-                    const label =
-                        submitButton.querySelector(
-                            "span"
+                }
+            );
+
+        });
+
+
+    document
+        .querySelectorAll(
+            "[data-view-target]"
+        )
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    showView(
+                        button.dataset.viewTarget
+                    );
+
+                }
+            );
+
+        });
+
+
+    /* =====================================================
+       SEARCH SUGGESTIONS
+       ===================================================== */
+
+    document
+        .querySelectorAll(
+            ".suggestion-item"
+        )
+        .forEach((item) => {
+
+            item.addEventListener(
+                "click",
+                () => {
+
+                    const command =
+                        item.dataset.command;
+
+                    if (!command) {
+                        return;
+                    }
+
+
+                    closeSearch();
+
+
+                    const commandInput =
+                        document.getElementById(
+                            "commandInput"
                         );
 
-                    if (label) {
-                        label.textContent =
-                            "Sending...";
+
+                    if (commandInput) {
+
+                        commandInput.value =
+                            command;
+
+                        commandInput.focus();
+
                     }
+
                 }
+            );
+
+        });
+
+
+    /* =====================================================
+       GLOBAL SEARCH KEY
+       ===================================================== */
+
+    document.addEventListener(
+        "keydown",
+        (event) => {
+
+            if (
+                event.key === "/" &&
+                document.activeElement.tagName !==
+                    "INPUT" &&
+                document.activeElement.tagName !==
+                    "TEXTAREA"
+            ) {
+
+                event.preventDefault();
+
+                openSearch();
+
+            }
+
+
+            if (event.key === "Escape") {
+
+                closeMenu();
+                closeSearch();
+                closeNotifications();
+
+            }
+
+        }
+    );
+
+
+    /* =====================================================
+       AUTO-RESIZE TEXTAREAS
+       ===================================================== */
+
+    document
+        .querySelectorAll("textarea")
+        .forEach((textarea) => {
+
+            textarea.addEventListener(
+                "input",
+                () => {
+
+                    textarea.style.height =
+                        "auto";
+
+                    textarea.style.height =
+                        Math.min(
+                            textarea.scrollHeight,
+                            180
+                        ) + "px";
+
+                }
+            );
+
+        });
+
+
+    /* =====================================================
+       TEMPORARY COMMAND BEHAVIOUR
+       ===================================================== */
+
+    const commandForm =
+        document.getElementById(
+            "commandForm"
+        );
+
+    const commandInput =
+        document.getElementById(
+            "commandInput"
+        );
+
+
+    if (commandForm && commandInput) {
+
+        commandForm.addEventListener(
+            "submit",
+            (event) => {
+
+                event.preventDefault();
+
+                const value =
+                    commandInput.value.trim();
+
+
+                if (!value) {
+                    return;
+                }
+
+
+                /*
+                 * We deliberately do NOT fake an AI answer here.
+                 *
+                 * The real backend agent runtime will be connected
+                 * in the next backend chunk.
+                 *
+                 * For now, the command moves the user into Chat.
+                 */
+
+                commandInput.value = "";
+
+                showView("chat");
+
+
+                const chatInput =
+                    document.getElementById(
+                        "chatInput"
+                    );
+
+
+                if (chatInput) {
+
+                    chatInput.value =
+                        value;
+
+                    chatInput.focus();
+
+                }
+
             }
         );
+
     }
 
-    if (
-        document.readyState === "loading"
-    ) {
-        document.addEventListener(
-            "DOMContentLoaded",
-            initializeApplication
-        );
-    } else {
-        initializeApplication();
-    }
 
-})();
+    /* =====================================================
+       INITIAL STATE
+       ===================================================== */
+
+    showView("home");
+
+});
