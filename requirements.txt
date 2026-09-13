@@ -1,0 +1,36 @@
+# ============================================================
+# Smart BethG V1
+# Production Python Dependencies
+# ============================================================
+
+# Web API
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.34,<1.0
+
+# Production ASGI server
+gunicorn>=23,<24
+
+# Flask compatibility
+Flask>=3.1,<4.0
+Werkzeug>=3.1,<4.0
+
+# Request/form handling
+python-multipart>=0.0.20,<1.0
+
+# Data validation / API models
+pydantic>=2.10,<3.0
+
+# OAuth / authentication
+Authlib>=1.4,<2.0
+httpx>=0.27,<1.0
+
+# Environment configuration
+python-dotenv>=1.0,<2.0
+
+# AI providers
+openai>=1.68,<2.0
+anthropic>=0.49,<1.0
+google-genai>=1.0,<2.0
+
+# HTTP client
+requests>=2.32,<3.0
