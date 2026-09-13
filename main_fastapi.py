@@ -21,6 +21,7 @@ from routes import (
     audit,
     tools,
     providers,
+    workspace,
 )
 
 
@@ -98,6 +99,7 @@ def create_app() -> FastAPI:
     app.include_router(audit.router)
     app.include_router(tools.router)
     app.include_router(providers.router)
+    app.include_router(workspace.router)
 
     return app
 
