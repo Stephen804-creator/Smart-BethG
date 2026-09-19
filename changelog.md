@@ -106,3 +106,30 @@ from this list alone.
 - I still have not run this against a live server myself (no network in
   my working environment) - this needs to be run by you before you
   trust it.
+
+## 2026-09-19 (session 3 — live deploy fix)
+
+Found from the actual Render deploy log (first real live test).
+
+### Fixed
+- **Crash on every page** (`/`, `/chat`, `/login` all returned 500
+  Internal Server Error): `TemplateResponse()` was called the old way
+  (`TemplateResponse(name, {"request": request, ...})`). The Starlette
+  version this project's `requirements.txt` resolves to on a fresh
+  install now requires `request` as an explicit positional argument:
+  `TemplateResponse(request, name, context)`. All three page routes now
+  go through one `_render()` helper so this can't drift out of sync
+  again in only one of the three places.
+- Removed the now-unused duplicate `CSS/main.css` (byte-identical to
+  `static/css/main.css`, which is the one actually served). Confirmed
+  nothing else in the codebase referenced the old `CSS/` path before
+  deleting it.
+- Added a `/favicon.ico` route (serves the generated app icon) to stop
+  the harmless but noisy 404 the browser's automatic favicon request
+  was producing in the logs.
+
+### Verified
+- Could not reproduce the exact Starlette version locally (no network
+  access in my working environment to `pip install`), so this fix is
+  based on reading the traceback precisely, not re-running it myself.
+  **This needs a real redeploy to confirm.**

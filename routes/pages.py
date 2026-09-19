@@ -15,6 +15,20 @@ def _templates(request: Request):
     return request.app.state.templates
 
 
+def _render(request: Request, name: str, context: dict | None = None):
+    """
+    Starlette's TemplateResponse signature changed: newer versions require
+    `request` as an explicit positional argument rather than only inside
+    the context dict. The old call style (`TemplateResponse(name, {...,
+    "request": request})`) now raises
+    `TypeError: TemplateResponse() missing 1 required positional argument: 'request'`
+    on the Starlette version this project's requirements.txt resolves to.
+    Routing every page render through this one helper means that bug can
+    only exist in one place.
+    """
+    return _templates(request).TemplateResponse(request, name, context or {})
+
+
 def _require_user(request: Request):
     """Return the logged-in user, or None. Callers redirect if None."""
     return get_optional_user(request)
@@ -63,10 +77,10 @@ def home(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=302)
 
-    return _templates(request).TemplateResponse(
-        name="index.html",
-        context={
-            "request": request,
+    return _render(
+        request,
+        "index.html",
+        {
             "app_version": "1.0.0",
             "quick_actions": None,
             "capabilities": _real_capabilities(),
@@ -85,10 +99,7 @@ def chat_page(request: Request):
     user = _require_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
-    return _templates(request).TemplateResponse(
-        name="chat.html",
-        context={"request": request},
-)
+    return _render(request, "chat.html")
 
 
 @router.post("/chat", name="main.chat")
@@ -103,6 +114,13 @@ def chat_quick_submit(request: Request, prompt: str = Form(...)):
         return RedirectResponse("/login", status_code=302)
     query = urlencode({"prompt": prompt})
     return RedirectResponse(f"/chat?{query}", status_code=302)
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Avoids noisy 404s in logs for the browser's automatic favicon request."""
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+    return FileResponse(os.path.join(static_dir, "icons", "icon-192.png"), media_type="image/png")
 
 
 @router.get("/service-worker.js", name="main.service_worker")
@@ -121,7 +139,4 @@ def service_worker():
 def login_page(request: Request):
     if _require_user(request):
         return RedirectResponse("/", status_code=302)
-    return _templates(request).TemplateResponse(
-        name="login.html",
-        context={"request": request},
-    )
+    return _render(request, "login.html")
