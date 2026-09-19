@@ -64,8 +64,8 @@ def home(request: Request):
         return RedirectResponse("/login", status_code=302)
 
     return _templates(request).TemplateResponse(
-        "index.html",
-        {
+        name="index.html",
+        context={
             "request": request,
             "app_version": "1.0.0",
             "quick_actions": None,
@@ -85,7 +85,10 @@ def chat_page(request: Request):
     user = _require_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
-    return _templates(request).TemplateResponse("chat.html", {"request": request})
+    return _templates(request).TemplateResponse(
+        name="chat.html",
+        context={"request": request},
+)
 
 
 @router.post("/chat", name="main.chat")
@@ -118,4 +121,7 @@ def service_worker():
 def login_page(request: Request):
     if _require_user(request):
         return RedirectResponse("/", status_code=302)
-    return _templates(request).TemplateResponse("login.html", {"request": request})
+    return _templates(request).TemplateResponse(
+        name="login.html",
+        context={"request": request},
+    )
