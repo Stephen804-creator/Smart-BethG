@@ -1,268 +1,162 @@
-"use strict";
-
-/*
- * Smart BethG
- * Chat Controller
- *
- * Responsibilities:
- * - Chat input
- * - Chat submission
- * - API communication
- * - Message rendering
- * - Chat loading state
- *
- * This file does NOT:
- * - authenticate users
- * - authorise requests
- * - store API keys
- * - execute commands
- * - make security decisions
- */
-
+// Smart BethG - chat page behaviour.
+// Talks to the real backend at /api/chat (see routes/chat.py). No mock
+// responses live here: if the provider isn't configured or a call fails,
+// the backend says so honestly and this file just displays that.
 (function () {
-    "use strict";
+  const messagesEl = document.getElementById("messages");
+  const promptEl = document.getElementById("prompt");
+  const sendBtn = document.getElementById("sendMessage");
+  const providerSelect = document.getElementById("providerSelect");
+  if (!messagesEl || !promptEl || !sendBtn) return;
 
-    function initializeChat() {
-        const form =
-            document.getElementById(
-                "chatForm"
-            );
+  const STORAGE_KEY = "sbg:conversationId";
+  const PROVIDER_KEY = "sbg:provider";
+  let conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
 
-        const input =
-            document.getElementById(
-                "chatPrompt"
-            );
+  async function loadProviders() {
+    if (!providerSelect) return;
+    try {
+      const res = await fetch("/api/chat/providers", { credentials: "same-origin" });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      const available = data.available || [];
 
-        const messages =
-            document.getElementById(
-                "chatMessages"
-            );
+      if (available.length === 0) {
+        providerSelect.style.display = "none";
+        return;
+      }
+      if (available.length === 1) {
+        providerSelect.style.display = "none";
+      }
 
-        if (!form || !input || !messages) {
-            return;
-        }
+      providerSelect.innerHTML = "";
+      available.forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+        providerSelect.appendChild(opt);
+      });
 
-        let submitting = false;
+      const saved = window.localStorage.getItem(PROVIDER_KEY);
+      providerSelect.value = available.includes(saved) ? saved : (data.default || available[0]);
 
-        form.addEventListener(
-            "submit",
-            async (event) => {
-                event.preventDefault();
-
-                if (submitting) {
-                    return;
-                }
-
-                const prompt =
-                    input.value.trim();
-
-                if (!prompt) {
-                    input.focus();
-                    return;
-                }
-
-                submitting = true;
-
-                appendMessage(
-                    messages,
-                    "user",
-                    prompt
-                );
-
-                input.value = "";
-
-                setChatBusy(
-                    form,
-                    input,
-                    true
-                );
-
-                try {
-                    const response =
-                        await fetch(
-                            "/api/chat",
-                            {
-                                method: "POST",
-
-                                headers: {
-                                    "Content-Type":
-                                        "application/json",
-                                    "Accept":
-                                        "application/json"
-                                },
-
-                                body: JSON.stringify({
-                                    message: prompt
-                                })
-                            }
-                        );
-
-                    if (!response.ok) {
-                        throw new Error(
-                            `Chat request failed with status ${response.status}`
-                        );
-                    }
-
-                    const data =
-                        await response.json();
-
-                    const answer =
-                        typeof data.answer === "string"
-                            ? data.answer.trim()
-                            : "";
-
-                    appendMessage(
-                        messages,
-                        "assistant",
-                        answer ||
-                            "Smart BethG did not return a response."
-                    );
-
-                } catch (error) {
-                    console.error(
-                        "Smart BethG chat error:",
-                        error
-                    );
-
-                    appendMessage(
-                        messages,
-                        "error",
-                        "Smart BethG could not complete the request. Please try again."
-                    );
-                } finally {
-                    submitting = false;
-
-                    setChatBusy(
-                        form,
-                        input,
-                        false
-                    );
-
-                    input.focus();
-                }
-            }
-        );
-
-        input.addEventListener(
-            "keydown",
-            (event) => {
-                if (
-                    event.key === "Enter" &&
-                    !event.shiftKey
-                ) {
-                    event.preventDefault();
-
-                    form.requestSubmit();
-                }
-            }
-        );
+      providerSelect.addEventListener("change", () => {
+        window.localStorage.setItem(PROVIDER_KEY, providerSelect.value);
+      });
+    } catch (err) {
+      // Silent: chat still works with the backend's default provider.
     }
+  }
 
-    function setChatBusy(
-        form,
-        input,
-        busy
-    ) {
-        const button =
-            form.querySelector(
-                'button[type="submit"]'
-            );
+  function renderMessage(role, content) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "message " + (role === "user" ? "message-user" : "message-assistant");
 
-        input.disabled = busy;
+    const meta = document.createElement("div");
+    meta.className = "message-meta";
+    meta.textContent = role === "user" ? "You" : "Smart BethG";
+    wrapper.appendChild(meta);
 
-        if (!button) {
-            return;
-        }
+    const body = document.createElement("div");
+    body.textContent = content;
+    wrapper.appendChild(body);
 
-        button.disabled = busy;
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
 
-        button.setAttribute(
-            "aria-busy",
-            String(busy)
-        );
+  function renderNotice(text) {
+    const notice = document.createElement("div");
+    notice.className = "message message-assistant";
+    notice.style.opacity = "0.7";
+    notice.textContent = text;
+    messagesEl.appendChild(notice);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
 
-        const label =
-            button.querySelector(
-                "[data-submit-label]"
-            );
-
-        if (label) {
-            label.textContent =
-                busy
-                    ? "Thinking..."
-                    : "Send";
-        }
+  async function loadHistory() {
+    if (!conversationId) return;
+    try {
+      const res = await fetch(`/api/chat/${conversationId}`, { credentials: "same-origin" });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      (data.messages || []).forEach((m) => renderMessage(m.role, m.content));
+    } catch (err) {
+      // Silent: an empty history is a fine starting state.
     }
+  }
 
-    function appendMessage(
-        container,
-        role,
-        content
-    ) {
-        const article =
-            document.createElement(
-                "article"
-            );
+  async function sendMessage(text) {
+    renderMessage("user", text);
+    sendBtn.disabled = true;
+    promptEl.disabled = true;
+    renderNotice("Thinking...");
 
-        article.className =
-            `chat-message chat-message-${role}`;
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          conversation_id: conversationId,
+          provider: providerSelect && providerSelect.value ? providerSelect.value : null,
+        }),
+      });
 
-        const meta =
-            document.createElement(
-                "div"
-            );
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
 
-        meta.className =
-            "chat-message-meta";
+      messagesEl.lastChild.remove(); // remove "Thinking..." notice
 
-        meta.textContent =
-            getMessageLabel(role);
+      if (!res.ok) {
+        renderNotice("Something went wrong sending that message. Please try again.");
+        return;
+      }
 
-        const body =
-            document.createElement(
-                "div"
-            );
-
-        body.className =
-            "chat-message-content";
-
-        body.textContent =
-            content;
-
-        article.appendChild(meta);
-        article.appendChild(body);
-
-        container.appendChild(article);
-
-        container.scrollTop =
-            container.scrollHeight;
+      const data = await res.json();
+      conversationId = data.conversation_id;
+      window.localStorage.setItem(STORAGE_KEY, conversationId);
+      renderMessage("assistant", data.reply);
+    } catch (err) {
+      if (messagesEl.lastChild) messagesEl.lastChild.remove();
+      renderNotice("Could not reach Smart BethG. Check your connection and try again.");
+    } finally {
+      sendBtn.disabled = false;
+      promptEl.disabled = false;
+      promptEl.focus();
     }
+  }
 
-    function getMessageLabel(role) {
-        switch (role) {
-            case "user":
-                return "You";
+  function handleSend() {
+    const text = promptEl.value.trim();
+    if (!text) return;
+    promptEl.value = "";
+    sendMessage(text);
+  }
 
-            case "assistant":
-                return "Smart BethG";
-
-            case "error":
-                return "System";
-
-            default:
-                return "Message";
-        }
+  sendBtn.addEventListener("click", handleSend);
+  promptEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
+  });
 
-    if (
-        document.readyState === "loading"
-    ) {
-        document.addEventListener(
-            "DOMContentLoaded",
-            initializeChat
-        );
-    } else {
-        initializeChat();
-    }
+  const params = new URLSearchParams(window.location.search);
+  const prefill = params.get("prompt");
+  if (prefill) promptEl.value = prefill;
 
+  loadProviders();
+  loadHistory();
 })();

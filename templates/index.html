@@ -1,816 +1,904 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en-GB">
 
-{% block title %}
-Smart BethG
-{% endblock %}
+<head>
+    <meta charset="UTF-8">
 
-
-{% block content %}
-
-<div class="app-shell">
-
-    <!-- =====================================================
-         BACKDROP
-         ===================================================== -->
-
-    <div
-        class="menu-backdrop"
-        id="menuBackdrop"
-    ></div>
-
-
-    <!-- =====================================================
-         SIDE MENU
-         ===================================================== -->
-
-    <aside
-        class="side-menu"
-        id="sideMenu"
-        aria-hidden="true"
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
     >
 
-        <div class="side-menu-header">
-
-            <div class="side-brand">
-
-                <div class="brand-mark small">
-                    B
-                </div>
-
-                <div>
-                    <div class="side-brand-name">
-                        Smart BethG
-                    </div>
-
-                    <div class="side-brand-status">
-                        AI Workspace
-                    </div>
-                </div>
-
-            </div>
-
-            <button
-                class="icon-button menu-close"
-                id="closeMenuButton"
-                type="button"
-                aria-label="Close menu"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <div class="menu-section">
-
-            <div class="menu-label">
-                WORKSPACE
-            </div>
-
-            <button
-                class="menu-item active"
-                data-view="home"
-                type="button"
-            >
-                <span class="menu-icon">⌂</span>
-                <span>Home</span>
-            </button>
-
-            <button
-                class="menu-item"
-                data-view="chat"
-                type="button"
-            >
-                <span class="menu-icon">◌</span>
-                <span>Chat</span>
-            </button>
-
-            <button
-                class="menu-item"
-                data-view="study"
-                type="button"
-            >
-                <span class="menu-icon">▣</span>
-                <span>Study</span>
-            </button>
-
-            <button
-                class="menu-item"
-                data-view="developer"
-                type="button"
-            >
-                <span class="menu-icon">&lt;/&gt;</span>
-                <span>Developer</span>
-            </button>
-
-            <button
-                class="menu-item"
-                data-view="social"
-                type="button"
-            >
-                <span class="menu-icon">✦</span>
-                <span>Social</span>
-            </button>
-
-            <button
-                class="menu-item"
-                data-view="automation"
-                type="button"
-            >
-                <span class="menu-icon">↯</span>
-                <span>Automation</span>
-            </button>
-
-        </div>
-
-
-        <div class="menu-divider"></div>
-
-
-        <div class="menu-section">
-
-            <div class="menu-label">
-                SYSTEM
-            </div>
-
-            <button
-                class="menu-item"
-                data-view="agents"
-                type="button"
-            >
-                <span class="menu-icon">◈</span>
-                <span>Agents</span>
-            </button>
-
-            <button
-                class="menu-item"
-                data-view="tasks"
-                type="button"
-            >
-                <span class="menu-icon">✓</span>
-                <span>Tasks</span>
-            </button>
-
-            <button
-                class="menu-item"
-                data-view="providers"
-                type="button"
-            >
-                <span class="menu-icon">◎</span>
-                <span>Providers</span>
-            </button>
-
-            <button
-                class="menu-item"
-                data-view="history"
-                type="button"
-            >
-                <span class="menu-icon">◷</span>
-                <span>History</span>
-            </button>
-
-            <button
-                class="menu-item"
-                data-view="settings"
-                type="button"
-            >
-                <span class="menu-icon">⚙</span>
-                <span>Settings</span>
-            </button>
-
-        </div>
-
-
-        <div class="side-menu-footer">
-
-            <div class="system-indicator">
-                <span class="status-dot"></span>
-
-                <div>
-                    <strong>System online</strong>
-                    <small>Smart BethG Core</small>
-                </div>
-            </div>
-
-        </div>
-
-    </aside>
-
-
-    <!-- =====================================================
-         TOP BAR
-         ===================================================== -->
-
-    <header class="topbar">
-
-        <div class="topbar-left">
-
-            <button
-                class="icon-button"
-                id="openMenuButton"
-                type="button"
-                aria-label="Open Smart BethG menu"
-            >
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-            </button>
-
-
-            <div class="brand">
-
-                <div class="brand-mark">
-                    B
-                </div>
-
-                <div class="brand-text">
-
-                    <div class="brand-name">
-                        Smart BethG
-                    </div>
-
-                    <div class="brand-status">
-                        <span class="status-dot"></span>
-                        Online
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <div class="topbar-actions">
-
-            <button
-                class="icon-button"
-                id="searchButton"
-                type="button"
-                aria-label="Search Smart BethG"
-                title="Search"
-            >
-                ⌕
-            </button>
-
-
-            <button
-                class="icon-button notification-button"
-                id="notificationButton"
-                type="button"
-                aria-label="Notifications"
-                title="Notifications"
-            >
-                ♢
-
-                <span
-                    class="notification-badge"
-                    id="notificationBadge"
-                >
-                    0
-                </span>
-            </button>
-
-
-            <button
-                class="avatar-button"
-                type="button"
-                aria-label="Account"
-            >
-                S
-            </button>
-
-        </div>
-
-    </header>
-
-
-    <!-- =====================================================
-         SEARCH PANEL
-         ===================================================== -->
-
-    <section
-        class="search-panel"
-        id="searchPanel"
-        aria-hidden="true"
+    <meta
+        name="description"
+        content="Smart BethG — intelligent workspace for AI assistance, development, automation and productivity."
     >
 
-        <div class="search-panel-inner">
-
-            <div class="search-panel-header">
-
-                <div>
-                    <div class="panel-title">
-                        Search Smart BethG
-                    </div>
-
-                    <div class="panel-subtitle">
-                        Search your workspace or start a command.
-                    </div>
-                </div>
-
-                <button
-                    class="icon-button"
-                    id="closeSearchButton"
-                    type="button"
-                    aria-label="Close search"
-                >
-                    ×
-                </button>
-
-            </div>
-
-
-            <div class="search-input-wrapper">
-
-                <span class="search-symbol">
-                    ⌕
-                </span>
-
-                <input
-                    id="globalSearchInput"
-                    type="search"
-                    placeholder="Search or type a command..."
-                    autocomplete="off"
-                >
-
-                <span class="search-shortcut">
-                    /
-                </span>
-
-            </div>
-
-
-            <div class="search-suggestions">
-
-                <div class="search-section-label">
-                    SUGGESTIONS
-                </div>
-
-                <button
-                    class="suggestion-item"
-                    data-command="Build a website"
-                    type="button"
-                >
-                    <span>▣</span>
-                    <div>
-                        <strong>Build a website</strong>
-                        <small>Start a software project</small>
-                    </div>
-                </button>
-
-                <button
-                    class="suggestion-item"
-                    data-command="Analyse my codebase"
-                    type="button"
-                >
-                    <span>&lt;/&gt;</span>
-                    <div>
-                        <strong>Analyse my codebase</strong>
-                        <small>Inspect and understand a project</small>
-                    </div>
-                </button>
-
-                <button
-                    class="suggestion-item"
-                    data-command="Study a topic"
-                    type="button"
-                >
-                    <span>▤</span>
-                    <div>
-                        <strong>Study a topic</strong>
-                        <small>Learn something with Smart BethG</small>
-                    </div>
-                </button>
-
-                <button
-                    class="suggestion-item"
-                    data-command="Create content"
-                    type="button"
-                >
-                    <span>✦</span>
-                    <div>
-                        <strong>Create content</strong>
-                        <small>Open the Social workspace</small>
-                    </div>
-                </button>
-
-                <button
-                    class="suggestion-item"
-                    data-command="Automate a task"
-                    type="button"
-                >
-                    <span>↯</span>
-                    <div>
-                        <strong>Automate a task</strong>
-                        <small>Create an automation workflow</small>
-                    </div>
-                </button>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         NOTIFICATIONS PANEL
-         ===================================================== -->
-
-    <section
-        class="notification-panel"
-        id="notificationPanel"
-        aria-hidden="true"
+    <meta
+        name="theme-color"
+        content="#0b0f14"
     >
 
-        <div class="notification-panel-header">
+    <title>Smart BethG</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#08111f">
 
-            <div>
-                <div class="panel-title">
-                    Notifications
-                </div>
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        integrity="sha512-..."
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"
+    >
 
-                <div class="panel-subtitle">
-                    Smart BethG activity
-                </div>
-            </div>
+    <!-- Application stylesheet -->
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/main.css') }}"
+    >
 
-            <button
-                class="icon-button"
-                id="closeNotificationButton"
-                type="button"
-                aria-label="Close notifications"
-            >
-                ×
-            </button>
+    <!-- Application JavaScript -->
+    <script
+        src="{{ url_for('static', filename='js/app.js') }}"
+        defer
+    ></script>
+    <script
+        src="{{ url_for('static', filename='js/register-sw.js') }}"
+        defer
+    ></script>
+</head>
 
-        </div>
+<body>
 
+    <div class="app">
 
-        <div class="empty-notifications">
-
-            <div class="empty-icon">
-                ♢
-            </div>
-
-            <strong>
-                No new notifications
-            </strong>
-
-            <p>
-                Important workspace activity will appear here.
-            </p>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         MAIN WORKSPACE
-         ===================================================== -->
-
-    <main class="main-workspace">
-
-        <!-- HOME VIEW -->
-
-        <section
-            class="workspace-view active"
-            id="view-home"
-            data-view-content="home"
+        <!-- =========================
+             SIDEBAR
+        ========================== -->
+        <aside
+            class="sidebar"
+            aria-label="Main navigation"
         >
 
-            <div class="home-container">
+            <div class="sidebar-header">
 
-                <div class="welcome-block">
+                <a
+                    href="{{ url_for('main.home') }}"
+                    class="logo"
+                    aria-label="Smart BethG home"
+                >
+                    <span
+                        class="logo-mark"
+                        aria-hidden="true"
+                    >
+                        <i class="fa-solid fa-brain"></i>
+                    </span>
 
-                    <div class="eyebrow">
-                        AI WORKSPACE
-                    </div>
+                    <span class="logo-text">
+                        Smart BethG
+                    </span>
+                </a>
 
-                    <h1>
-                        Welcome back.
-                    </h1>
+                <button
+                    type="button"
+                    id="sidebarToggle"
+                    class="sidebar-toggle"
+                    aria-label="Toggle sidebar"
+                    aria-expanded="true"
+                    aria-controls="mainNavigation"
+                >
+                    <i
+                        class="fa-solid fa-bars"
+                        aria-hidden="true"
+                    ></i>
+                </button>
 
-                    <p>
-                        What would you like Smart BethG
-                        to help you accomplish?
+            </div>
+
+
+            <nav
+                id="mainNavigation"
+                class="sidebar-navigation"
+                aria-label="Main navigation"
+            >
+
+                <ul>
+
+                    <li>
+                        <a href="{{ url_for('main.home') }}">
+                            <i
+                                class="fa-solid fa-house"
+                                aria-hidden="true"
+                            ></i>
+
+                            <span>Home</span>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{{ url_for('main.chat_page') }}">
+                            <i
+                                class="fa-solid fa-comments"
+                                aria-hidden="true"
+                            ></i>
+
+                            <span>Chat</span>
+                        </a>
+                    </li>
+
+                    <!--
+                        Study / Developer / Social / Automation are not
+                        linked here yet: their templates exist but are
+                        currently empty (no real capability behind them).
+                        Per the product's own UI rule ("do not expose a
+                        category if the corresponding capability does not
+                        exist yet"), they are left out of navigation until
+                        they have real content, rather than linking to an
+                        empty page.
+                    -->
+
+                </ul>
+
+            </nav>
+
+        </aside>
+
+
+        <!-- =========================
+             MAIN CONTENT
+        ========================== -->
+        <main class="content">
+
+            <!-- TOPBAR -->
+            <header class="topbar">
+
+                <div class="topbar-welcome">
+
+                    <p class="eyebrow">
+                        Smart BethG
                     </p>
 
+                    <h1>
+                        Welcome back
+                    </h1>
+
                 </div>
 
 
-                <!-- MAIN COMMAND BOX -->
+                <!-- GLOBAL SEARCH -->
+                <form
+                    class="topbar-search"
+                    id="globalSearchForm"
+                    role="search"
+                >
 
-                <div class="command-card">
+                    <label
+                        for="globalSearch"
+                        class="sr-only"
+                    >
+                        Search Smart BethG
+                    </label>
 
-                    <div class="command-card-header">
+                    <i
+                        class="fa-solid fa-magnifying-glass"
+                        aria-hidden="true"
+                    ></i>
 
-                        <div>
-                            <strong>
-                                Smart BethG
-                            </strong>
-
-                            <span>
-                                Ready to work
-                            </span>
-                        </div>
-
-                        <div class="model-indicator">
-                            CORE
-                        </div>
-
-                    </div>
-
-
-                    <form
-                        class="command-form"
-                        id="commandForm"
+                    <input
+                        type="search"
+                        id="globalSearch"
+                        name="q"
+                        placeholder="Search..."
+                        autocomplete="off"
                     >
 
-                        <textarea
-                            id="commandInput"
-                            rows="1"
-                            placeholder="Search or type a command..."
-                            autocomplete="off"
-                        ></textarea>
+                </form>
 
 
-                        <button
-                            class="send-button"
-                            type="submit"
-                            aria-label="Send command"
-                        >
-                            <span>→</span>
-                        </button>
+                <!-- TOPBAR ACTIONS -->
+                <div class="topbar-actions">
 
-                    </form>
+                    <button
+                        type="button"
+                        id="notificationsButton"
+                        class="icon-button"
+                        aria-label="Notifications"
+                        aria-haspopup="dialog"
+                        aria-expanded="false"
+                    >
+                        <i
+                            class="fa-solid fa-bell"
+                            aria-hidden="true"
+                        ></i>
+                    </button>
 
 
-                    <div class="command-hint">
-                        Ask Smart BethG to build,
-                        analyse, study, create or automate.
-                    </div>
+                    <button
+                        type="button"
+                        id="settingsButton"
+                        class="icon-button"
+                        aria-label="Settings"
+                        aria-haspopup="dialog"
+                        aria-expanded="false"
+                    >
+                        <i
+                            class="fa-solid fa-gear"
+                            aria-hidden="true"
+                        ></i>
+                    </button>
+
+                    <button
+                        type="button"
+                        id="logoutButton"
+                        class="icon-button"
+                        aria-label="Log out"
+                        title="Log out"
+                    >
+                        <i
+                            class="fa-solid fa-right-from-bracket"
+                            aria-hidden="true"
+                        ></i>
+                    </button>
 
                 </div>
+
+            </header>
+
+
+            <!-- PAGE CONTENT -->
+            <div class="page-content">
+
+                <!-- HERO -->
+                <section
+                    class="hero"
+                    aria-labelledby="heroTitle"
+                >
+
+                    <div class="hero-content">
+
+                        <p class="eyebrow">
+                            AI workspace
+                        </p>
+
+                        <h2 id="heroTitle">
+                            What would you like Smart BethG to help you accomplish?
+                        </h2>
+
+                        <p>
+                            Work with your assistant across development,
+                            learning, automation and other supported tasks.
+                        </p>
+
+                    </div>
+
+                </section>
 
 
                 <!-- QUICK ACTIONS -->
+                {% if quick_actions %}
 
-                <div class="quick-section">
+                <section
+                    class="quick-actions"
+                    aria-labelledby="quickActionsTitle"
+                >
 
                     <div class="section-heading">
 
                         <div>
-                            <span class="section-eyebrow">
-                                GET STARTED
-                            </span>
+                            <p class="eyebrow">
+                                Shortcuts
+                            </p>
 
-                            <h2>
-                                What are you working on?
+                            <h2 id="quickActionsTitle">
+                                Quick actions
                             </h2>
                         </div>
 
                     </div>
 
 
-                    <div class="quick-grid">
+                    <div class="quick-actions-grid">
+
+                        {% for action in quick_actions %}
 
                         <button
-                            class="quick-card"
-                            data-view-target="developer"
                             type="button"
+                            class="btn btn-secondary"
+                            data-action="{{ action.action }}"
                         >
+                            {% if action.icon %}
+                            <i
+                                class="{{ action.icon }}"
+                                aria-hidden="true"
+                            ></i>
+                            {% endif %}
 
-                            <div class="quick-icon developer-icon">
-                                &lt;/&gt;
-                            </div>
-
-                            <div>
-                                <strong>
-                                    Build & develop
-                                </strong>
-
-                                <span>
-                                    Code, projects, debugging and
-                                    software development.
-                                </span>
-                            </div>
-
+                            <span>
+                                {{ action.label }}
+                            </span>
                         </button>
 
-
-                        <button
-                            class="quick-card"
-                            data-view-target="study"
-                            type="button"
-                        >
-
-                            <div class="quick-icon study-icon">
-                                ▤
-                            </div>
-
-                            <div>
-                                <strong>
-                                    Study & learn
-                                </strong>
-
-                                <span>
-                                    Learn topics, analyse materials
-                                    and practise.
-                                </span>
-                            </div>
-
-                        </button>
-
-
-                        <button
-                            class="quick-card"
-                            data-view-target="social"
-                            type="button"
-                        >
-
-                            <div class="quick-icon social-icon">
-                                ✦
-                            </div>
-
-                            <div>
-                                <strong>
-                                    Create content
-                                </strong>
-
-                                <span>
-                                    Ideas, scripts, posts and
-                                    content workflows.
-                                </span>
-                            </div>
-
-                        </button>
-
-
-                        <button
-                            class="quick-card"
-                            data-view-target="automation"
-                            type="button"
-                        >
-
-                            <div class="quick-icon automation-icon">
-                                ↯
-                            </div>
-
-                            <div>
-                                <strong>
-                                    Automate work
-                                </strong>
-
-                                <span>
-                                    Connect tasks and reduce
-                                    repetitive work.
-                                </span>
-                            </div>
-
-                        </button>
+                        {% endfor %}
 
                     </div>
 
-                </div>
+                </section>
+
+                {% endif %}
 
 
-                <!-- SYSTEM OVERVIEW -->
+                <!-- CAPABILITIES -->
+                {% if capabilities %}
 
-                <div class="workspace-overview">
+                <section
+                    class="capabilities"
+                    aria-labelledby="capabilitiesTitle"
+                >
 
-                    <div class="overview-card">
-
-                        <div class="overview-icon">
-                            ◈
-                        </div>
+                    <div class="section-heading">
 
                         <div>
-                            <span>
-                                AGENTS
-                            </span>
+                            <p class="eyebrow">
+                                Available systems
+                            </p>
 
-                            <strong>
-                                Ready
-                            </strong>
-
-                            <small>
-                                Agent system
-                            </small>
+                            <h2 id="capabilitiesTitle">
+                                Capabilities
+                            </h2>
                         </div>
 
                     </div>
 
 
-                    <div class="overview-card">
+                    <div class="capability-grid">
 
-                        <div class="overview-icon">
-                            ◎
-                        </div>
+                        {% for capability in capabilities %}
+
+                        <article class="capability-card">
+
+                            <div class="card-icon">
+                                {% if capability.icon %}
+                                <i
+                                    class="{{ capability.icon }}"
+                                    aria-hidden="true"
+                                ></i>
+                                {% endif %}
+                            </div>
+
+
+                            <div class="capability-content">
+
+                                <div class="card-heading">
+
+                                    <h3>
+                                        {{ capability.name }}
+                                    </h3>
+
+                                    {% if capability.status %}
+                                    <span
+                                        class="status status-{{ capability.status }}"
+                                    >
+                                        {{ capability.status|capitalize }}
+                                    </span>
+                                    {% endif %}
+
+                                </div>
+
+
+                                {% if capability.description %}
+                                <p>
+                                    {{ capability.description }}
+                                </p>
+                                {% endif %}
+
+
+                                {% if capability.action %}
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    data-action="{{ capability.action }}"
+                                >
+                                    Open
+                                </button>
+                                {% endif %}
+
+                            </div>
+
+                        </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- MISSIONS -->
+                {% if missions %}
+
+                <section
+                    class="work-section"
+                    aria-labelledby="missionsTitle"
+                >
+
+                    <div class="section-heading">
 
                         <div>
-                            <span>
-                                PROVIDERS
-                            </span>
+                            <p class="eyebrow">
+                                Active work
+                            </p>
 
-                            <strong>
-                                Ready
-                            </strong>
-
-                            <small>
-                                AI provider layer
-                            </small>
+                            <h2 id="missionsTitle">
+                                Missions
+                            </h2>
                         </div>
 
                     </div>
 
 
-                    <div class="overview-card">
+                    <div class="cards">
 
-                        <div class="overview-icon">
-                            ✓
-                        </div>
+                        {% for mission in missions %}
+
+                        <article class="mission-card">
+
+                            <div class="mission-header">
+
+                                <div>
+
+                                    <h3>
+                                        {{ mission.name }}
+                                    </h3>
+
+                                    {% if mission.description %}
+                                    <p>
+                                        {{ mission.description }}
+                                    </p>
+                                    {% endif %}
+
+                                </div>
+
+
+                                {% if mission.status %}
+                                <span
+                                    class="status status-{{ mission.status }}"
+                                >
+                                    {{ mission.status|capitalize }}
+                                </span>
+                                {% endif %}
+
+                            </div>
+
+
+                            {% if mission.progress is not none %}
+
+                            <div class="progress">
+
+                                <div
+                                    class="progress-bar"
+                                    role="progressbar"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
+                                    aria-valuenow="{{ mission.progress }}"
+                                    style="width: {{ mission.progress }}%;"
+                                ></div>
+
+                            </div>
+
+                            <p class="progress-text">
+                                {{ mission.progress }}% complete
+                            </p>
+
+                            {% endif %}
+
+
+                            <div class="mission-actions">
+
+                                {% if mission.cancel_action %}
+
+                                <button
+                                    type="button"
+                                    class="btn btn-danger"
+                                    data-action="{{ mission.cancel_action }}"
+                                    data-mission-id="{{ mission.id }}"
+                                >
+                                    Cancel
+                                </button>
+
+                                {% endif %}
+
+
+                                {% if mission.resume_action %}
+
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary"
+                                    data-action="{{ mission.resume_action }}"
+                                    data-mission-id="{{ mission.id }}"
+                                >
+                                    Resume
+                                </button>
+
+                                {% endif %}
+
+                            </div>
+
+                        </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- ARTIFACTS -->
+                {% if artifacts %}
+
+                <section
+                    class="artifacts-section"
+                    aria-labelledby="artifactsTitle"
+                >
+
+                    <div class="section-heading">
 
                         <div>
-                            <span>
-                                WORKSPACE
-                            </span>
+                            <p class="eyebrow">
+                                Generated work
+                            </p>
 
-                            <strong>
-                                Online
-                            </strong>
-
-                            <small>
-                                Core application
-                            </small>
+                            <h2 id="artifactsTitle">
+                                Artifacts
+                            </h2>
                         </div>
 
                     </div>
 
-                </div>
 
-            </div>
+                    <div class="artifact-grid">
 
-        </section>
+                        {% for artifact in artifacts %}
+
+                        <article class="artifact-card">
+
+                            {% if artifact.icon %}
+                            <div class="card-icon">
+                                <i
+                                    class="{{ artifact.icon }}"
+                                    aria-hidden="true"
+                                ></i>
+                            </div>
+                            {% endif %}
 
 
-        <!-- CHAT VIEW -->
+                            <div class="artifact-content">
 
-        <section
-            class="workspace-view"
-            id="view-chat"
-            data-view-content="chat"
-        >
+                                <h3>
+                                    {{ artifact.name }}
+                                </h3>
 
-            <div class="generic-workspace">
+                                {% if artifact.description %}
+                                <p>
+                                    {{ artifact.description }}
+                                </p>
+                                {% endif %}
 
-                <div class="workspace-heading">
 
-                    <div>
-                        <span class="section-eyebrow">
-                            WORKSPACE
-                        </span>
+                                <div class="artifact-actions">
 
-                        <h1>
-                            Chat
-                        </h1>
+                                    {% if artifact.view_url %}
 
-                        <p>
-                            Work directly with Smart BethG.
-                        </p>
+                                    <a
+                                        href="{{ artifact.view_url }}"
+                                        class="btn btn-secondary"
+                                    >
+                                        View
+                                    </a>
+
+                                    {% endif %}
+
+
+                                    {% if artifact.download_url %}
+
+                                    <a
+                                        href="{{ artifact.download_url }}"
+                                        class="btn btn-primary"
+                                    >
+                                        Download
+                                    </a>
+
+                                    {% endif %}
+
+                                </div>
+
+                            </div>
+
+                        </article>
+
+                        {% endfor %}
+
                     </div>
 
-                </div>
+                </section>
+
+                {% endif %}
 
 
-                <div class="chat-shell">
+                <!-- NOTIFICATIONS -->
+                <section
+                    class="notification-section"
+                    aria-labelledby="notificationsTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                Updates
+                            </p>
+
+                            <h2 id="notificationsTitle">
+                                Notifications
+                            </h2>
+                        </div>
+
+                    </div>
+
 
                     <div
-                        class="chat-messages"
-                        id="chatMessages"
+                        id="notificationsList"
+                        class="notification-list"
+                        aria-live="polite"
                     >
 
-                        <div class="chat-message assistant">
+                        {% if notifications %}
 
-                            <div class="message-avatar">
-                                B
-                            </div>
+                            {% for notification in notifications %}
 
-                            <div class="message-content">
+                            <article class="notification-item">
 
-                                <div class="message-role">
-                                    Smart BethG
+                                <h3>
+                                    {{ notification.title }}
+                                </h3>
+
+                                <p>
+                                    {{ notification.message }}
+                                </p>
+
+                            </article>
+
+                            {% endfor %}
+
+                        {% else %}
+
+                            <p class="empty-state">
+                                No new notifications.
+                            </p>
+
+                        {% endif %}
+
+                    </div>
+
+                </section>
+
+
+                <!-- RECENT ACTIVITY -->
+                <section
+                    class="activity-section"
+                    aria-labelledby="activityTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                History
+                            </p>
+
+                            <h2 id="activityTitle">
+                                Recent activity
+                            </h2>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="activity-list">
+
+                        {% if recent_activity %}
+
+                            {% for activity in recent_activity %}
+
+                            <article class="activity-item">
+
+                                <div class="activity-content">
+
+                                    <h3>
+                                        {{ activity.title }}
+                                    </h3>
+
+                                    <p>
+                                        {{ activity.description }}
+                                    </p>
+
                                 </div>
 
-                                <div class="message-bubble">
-                                    Your workspace is ready.
-                                    The real agent runtime will
-                                    be connected next.
-                                </div>
+                                {% if activity.time %}
+                                <time>
+                                    {{ activity.time }}
+                                </time>
+                                {% endif %}
+
+                            </article>
+
+                            {% endfor %}
+
+                        {% else %}
+
+                            <p class="empty-state">
+                                No recent activity.
+                            </p>
+
+                        {% endif %}
+
+                    </div>
+
+                </section>
+
+
+                <!-- SYSTEM STATUS -->
+                <section
+                    class="system-section"
+                    aria-labelledby="systemStatusTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+                            <p class="eyebrow">
+                                Infrastructure
+                            </p>
+
+                            <h2 id="systemStatusTitle">
+                                System status
+                            </h2>
+                        </div>
+
+                    </div>
+
+
+                    <div class="system-status">
+
+                        {% if system_status %}
+
+                            {% for item in system_status %}
+
+                            <div class="system-status-item">
+
+                                <span>
+                                    {{ item.name }}
+                                </span>
+
+                                <span
+                                    class="status status-{{ item.status }}"
+                                >
+                                    {{ item.status|capitalize }}
+                                </span>
 
                             </div>
+
+                            {% endfor %}
+
+                        {% else %}
+
+                            <p class="empty-state">
+                                System status is currently unavailable.
+                            </p>
+
+                        {% endif %}
+
+                    </div>
+
+                </section>
+
+
+                <!-- ERROR STATE -->
+                {% if error_message %}
+
+                <section
+                    class="error-section"
+                    aria-labelledby="errorTitle"
+                >
+
+                    <div
+                        class="error-state"
+                        role="alert"
+                    >
+
+                        <i
+                            class="fa-solid fa-triangle-exclamation"
+                            aria-hidden="true"
+                        ></i>
+
+                        <div>
+
+                            <h2 id="errorTitle">
+                                Something went wrong
+                            </h2>
+
+                            <p>
+                                {{ error_message }}
+                            </p>
+
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                data-action="retry"
+                            >
+                                Try again
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- EMPTY STATE -->
+                {% if not capabilities and not missions and not artifacts %}
+
+                <section class="empty-state-section">
+
+                    <div class="empty-state">
+
+                        <i
+                            class="fa-solid fa-sparkles"
+                            aria-hidden="true"
+                        ></i>
+
+                        <h2>
+                            Your workspace is ready
+                        </h2>
+
+                        <p>
+                            Start a task or ask Smart BethG for help.
+                        </p>
+
+                    </div>
+
+                </section>
+
+                {% endif %}
+
+
+                <!-- =========================
+                     ASSISTANT
+                ========================== -->
+                <section
+                    class="assistant"
+                    aria-labelledby="assistantTitle"
+                >
+
+                    <div class="section-heading">
+
+                        <div>
+
+                            <p class="eyebrow">
+                                Assistant
+                            </p>
+
+                            <h2 id="assistantTitle">
+                                Ask Smart BethG
+                            </h2>
 
                         </div>
 
@@ -818,415 +906,68 @@ Smart BethG
 
 
                     <form
-                        class="chat-input-area"
-                        id="chatForm"
+                        id="assistantForm"
+                        method="post"
+                        action="{{ url_for('main.chat') }}"
                     >
 
-                        <textarea
-                            id="chatInput"
-                            rows="1"
-                            placeholder="Message Smart BethG..."
-                        ></textarea>
+                        <div class="assistant-input">
 
-                        <button
-                            class="send-button"
-                            type="submit"
-                        >
-                            →
-                        </button>
+                            <label
+                                for="assistantPrompt"
+                                class="sr-only"
+                            >
+                                Message Smart BethG
+                            </label>
+
+                            <textarea
+                                id="assistantPrompt"
+                                name="prompt"
+                                rows="3"
+                                placeholder="Tell Smart BethG what you want to accomplish..."
+                                required
+                                maxlength="10000"
+                                autocomplete="off"
+                            ></textarea>
+
+
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                            >
+                                <i
+                                    class="fa-solid fa-paper-plane"
+                                    aria-hidden="true"
+                                ></i>
+
+                                <span>
+                                    Send
+                                </span>
+                            </button>
+
+                        </div>
 
                     </form>
 
-                </div>
+                </section>
 
             </div>
 
-        </section>
 
+            <!-- FOOTER -->
+            <footer class="footer">
 
-        <!-- STUDY VIEW -->
+                <p>
+                    Smart BethG
+                    <span aria-hidden="true">•</span>
+                    Version {{ app_version }}
+                </p>
 
-        <section
-            class="workspace-view"
-            id="view-study"
-            data-view-content="study"
-        >
+            </footer>
 
-            <div class="generic-workspace">
+        </main>
 
-                <div class="workspace-heading">
+    </div>
 
-                    <span class="section-eyebrow">
-                        LEARNING
-                    </span>
-
-                    <h1>
-                        Study
-                    </h1>
-
-                    <p>
-                        Your learning environment will live here.
-                    </p>
-
-                </div>
-
-                <div class="feature-placeholder">
-                    <div class="placeholder-icon">
-                        ▤
-                    </div>
-
-                    <h2>
-                        Study workspace
-                    </h2>
-
-                    <p>
-                        This area is intentionally separated
-                        from Home. The study engine will be
-                        connected here.
-                    </p>
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- DEVELOPER VIEW -->
-
-        <section
-            class="workspace-view"
-            id="view-developer"
-            data-view-content="developer"
-        >
-
-            <div class="generic-workspace">
-
-                <div class="workspace-heading">
-
-                    <span class="section-eyebrow">
-                        DEVELOPMENT
-                    </span>
-
-                    <h1>
-                        Developer
-                    </h1>
-
-                    <p>
-                        Codebase analysis, development,
-                        debugging and software work.
-                    </p>
-
-                </div>
-
-                <div class="feature-placeholder">
-
-                    <div class="placeholder-icon">
-                        &lt;/&gt;
-                    </div>
-
-                    <h2>
-                        Developer workspace
-                    </h2>
-
-                    <p>
-                        The codebase scanner, repository tools,
-                        browser research and development agent
-                        will connect here.
-                    </p>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- SOCIAL VIEW -->
-
-        <section
-            class="workspace-view"
-            id="view-social"
-            data-view-content="social"
-        >
-
-            <div class="generic-workspace">
-
-                <div class="workspace-heading">
-
-                    <span class="section-eyebrow">
-                        CONTENT
-                    </span>
-
-                    <h1>
-                        Social
-                    </h1>
-
-                    <p>
-                        Create, organise and automate content.
-                    </p>
-
-                </div>
-
-                <div class="feature-placeholder">
-
-                    <div class="placeholder-icon">
-                        ✦
-                    </div>
-
-                    <h2>
-                        Social workspace
-                    </h2>
-
-                    <p>
-                        Content ideas, scripts, media workflows
-                        and automation will connect here.
-                    </p>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- AUTOMATION VIEW -->
-
-        <section
-            class="workspace-view"
-            id="view-automation"
-            data-view-content="automation"
-        >
-
-            <div class="generic-workspace">
-
-                <div class="workspace-heading">
-
-                    <span class="section-eyebrow">
-                        AUTOMATION
-                    </span>
-
-                    <h1>
-                        Automation
-                    </h1>
-
-                    <p>
-                        Build workflows that allow Smart BethG
-                        to perform multi-step work.
-                    </p>
-
-                </div>
-
-                <div class="feature-placeholder">
-
-                    <div class="placeholder-icon">
-                        ↯
-                    </div>
-
-                    <h2>
-                        Automation workspace
-                    </h2>
-
-                    <p>
-                        Workflow creation and task execution
-                        will connect here.
-                    </p>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- SYSTEM VIEWS -->
-
-        <section
-            class="workspace-view"
-            id="view-agents"
-            data-view-content="agents"
-        >
-
-            <div class="generic-workspace">
-
-                <div class="workspace-heading">
-
-                    <span class="section-eyebrow">
-                        SYSTEM
-                    </span>
-
-                    <h1>
-                        Agents
-                    </h1>
-
-                    <p>
-                        Smart BethG agent management.
-                    </p>
-
-                </div>
-
-                <div class="feature-placeholder">
-                    Agent management will connect here.
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <section
-            class="workspace-view"
-            id="view-tasks"
-            data-view-content="tasks"
-        >
-
-            <div class="generic-workspace">
-
-                <div class="workspace-heading">
-
-                    <span class="section-eyebrow">
-                        SYSTEM
-                    </span>
-
-                    <h1>
-                        Tasks
-                    </h1>
-
-                    <p>
-                        Active and completed work.
-                    </p>
-
-                </div>
-
-                <div class="feature-placeholder">
-                    Task management will connect here.
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <section
-            class="workspace-view"
-            id="view-providers"
-            data-view-content="providers"
-        >
-
-            <div class="generic-workspace">
-
-                <div class="workspace-heading">
-
-                    <span class="section-eyebrow">
-                        SYSTEM
-                    </span>
-
-                    <h1>
-                        Providers
-                    </h1>
-
-                    <p>
-                        AI models and service providers.
-                    </p>
-
-                </div>
-
-                <div class="feature-placeholder">
-                    Provider management will connect here.
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <section
-            class="workspace-view"
-            id="view-history"
-            data-view-content="history"
-        >
-
-            <div class="generic-workspace">
-
-                <div class="workspace-heading">
-
-                    <span class="section-eyebrow">
-                        SYSTEM
-                    </span>
-
-                    <h1>
-                        History
-                    </h1>
-
-                    <p>
-                        Previous Smart BethG activity.
-                    </p>
-
-                </div>
-
-                <div class="feature-placeholder">
-                    Activity history will connect here.
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <section
-            class="workspace-view"
-            id="view-settings"
-            data-view-content="settings"
-        >
-
-            <div class="generic-workspace">
-
-                <div class="workspace-heading">
-
-                    <span class="section-eyebrow">
-                        SYSTEM
-                    </span>
-
-                    <h1>
-                        Settings
-                    </h1>
-
-                    <p>
-                        Configure Smart BethG.
-                    </p>
-
-                </div>
-
-                <div class="feature-placeholder">
-                    Settings will connect here.
-                </div>
-
-            </div>
-
-        </section>
-
-    </main>
-
-
-    <!-- =====================================================
-         FOOTER
-         ===================================================== -->
-
-    <footer class="app-footer">
-
-        <span>
-            Smart BethG
-        </span>
-
-        <span class="footer-separator">
-            •
-        </span>
-
-        <span>
-            Version {{ app_version }}
-        </span>
-
-    </footer>
-
-</div>
-
-{% endblock %}
+</body>
+</html>

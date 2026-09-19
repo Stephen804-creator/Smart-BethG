@@ -7,6 +7,10 @@
 fastapi>=0.115,<1.0
 uvicorn[standard]>=0.34,<1.0
 
+# Templates and signed session cookies (SessionMiddleware)
+jinja2>=3.1,<4.0
+itsdangerous>=2.2,<3.0
+
 # Production ASGI server
 gunicorn>=23,<24
 

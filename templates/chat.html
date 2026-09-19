@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>SmartBethG</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#08111f">
 
     <meta
         name="application-name"
@@ -71,15 +73,12 @@
                 <span>AI Assistant</span>
             </a>
 
-            <a href="/study">
-                <i class="fa-solid fa-book"></i>
-                <span>Study</span>
-            </a>
-
-            <a href="/developer">
-                <i class="fa-solid fa-code"></i>
-                <span>Developer</span>
-            </a>
+            <!--
+                Study and Developer are intentionally not linked yet:
+                their templates are currently empty (no real capability
+                behind them). See index.html for the same rule applied
+                to the home navigation.
+            -->
 
         </nav>
 
@@ -106,6 +105,15 @@
                     aria-label="Notifications"
                 >
                     <i class="fa-solid fa-bell"></i>
+                </button>
+
+                <button
+                    type="button"
+                    id="logoutButton"
+                    aria-label="Log out"
+                    title="Log out"
+                >
+                    <i class="fa-solid fa-right-from-bracket"></i>
                 </button>
 
             </div>
@@ -146,6 +154,13 @@
 
                 <div class="assistant-input">
 
+                    <select
+                        id="providerSelect"
+                        aria-label="AI provider"
+                        style="flex: 0 0 130px; margin-right: 8px;"
+                    >
+                    </select>
+
                     <input
                         type="text"
                         id="prompt"
@@ -183,6 +198,7 @@
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+<script src="{{ url_for('static', filename='js/register-sw.js') }}"></script>
 
 </body>
 
