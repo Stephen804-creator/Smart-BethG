@@ -29,7 +29,7 @@ The agent researches/uses approved references, prepares a calendar, generates pl
 - Connector catalog and an explicit publisher interface.
 - A separate durable worker claims due PostgreSQL jobs with leases, verifies campaign/post/account state, records confirmed success, blocks missing connectors, and marks unknown provider outcomes indeterminate rather than blindly retrying.
 - Artifact service supports text, Markdown, JSON, Python, JavaScript, HTML, CSV, and YAML text outputs, verifies SHA-256 on reads, and can use local storage or an S3-compatible object store through configuration.
-- Real publishing adapters and OAuth account-connection flows are not included yet. The catalog deliberately reports them as planned. It would be misleading and unsafe to claim a post will publish until the provider adapter, OAuth, permissions, and durable worker have been implemented and tested.
+- Real publishing adapters and OAuth account-connection flows are not included yet. The catalog deliberately reports them as planned. It would be misleading and unsafe to claim a post will publish until the provider adapter, OAuth, permissions, and full worker deployment have been implemented and tested.
 
 ## Connector delivery sequence
 
