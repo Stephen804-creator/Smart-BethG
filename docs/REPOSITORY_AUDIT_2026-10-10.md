@@ -1,7 +1,8 @@
 # Smart BethG Whole-Repository Audit
 
 **Audit started:** 2026-10-10 UTC  
-**Status:** In progress — this is a living findings register, not a final sign-off.  
+**Last updated:** 2026-10-10 19:20 UTC  
+**Status:** In progress — this is a living findings register, not a final sign-off. Historical findings below have been updated where the review branch now contains verified fixes; remaining items are explicitly open.  
 **Scope:** Initial source scan of 143 Python files, 7 HTML files, 6 JavaScript files, 1 CSS file, configuration, tests, and documentation (178 tracked files at the initial tree count for this audit pass). Subsequent commits add further files. The exact reviewed revision is recorded by Git commit history on `update/corrected-zip-2026-10-10`.
 
 ## Executive assessment
@@ -54,7 +55,7 @@ The most important distinction is between **code implemented**, **tests passing*
 
 **Changes started:** Added a PostgreSQL connection adapter, PostgreSQL schema compatibility, database-backed shared rate-limit events, a disposable PostgreSQL CI service, PostgreSQL smoke tests, and a fail-closed SQLite-to-PostgreSQL migration utility.
 
-**Verification status:** The first PostgreSQL integration job passed its user/conversation/approval/rate-limiter smoke tests on an earlier commit. The latest code still needs a green CI run. The adapter translates the existing SQLite-oriented SQL/schema and is a migration boundary; all repository queries have not yet been proven against PostgreSQL. Add a versioned migration framework and broader PostgreSQL regression coverage before production data is trusted.
+**Verification status (2026-10-10):** PostgreSQL integration CI has passed user/conversation/approval/usage-budget/rate-limiter smoke tests. A new concurrent rate-limit test has been added and its latest CI run is still pending. The adapter translates a subset of SQLite-oriented SQL/schema and remains a migration boundary; all repository queries have not been proven against PostgreSQL. Add a versioned migration framework and broader PostgreSQL regression coverage before production data is trusted.
 
 ### P1.2 Single and multiple instances
 **Decision:** Use the same shared PostgreSQL database and database-backed limiter in both modes.
@@ -62,9 +63,9 @@ The most important distinction is between **code implemented**, **tests passing*
 **Open limitation:** Uploaded files, generated artifacts, and tool workspaces still use filesystem paths. Multiple app replicas must see the same durable/shared storage path, or a shared storage/workspace service must be implemented. A shared database alone does not make local files shared. Durable mission/workflow jobs and idempotent worker behavior are also required before scaling workers.
 
 ### P1.3 Token budgets and spending controls
-**Finding:** Usage totals are recorded, but complete atomic per-user token/cost budgets and a global spending circuit breaker are not yet verified as enforcement before provider calls.
+**Updated status (2026-10-10):** Per-user and global daily token/cost/request budgets now reserve usage in the database before provider calls and reconcile actual usage. Unit tests cover per-user enforcement, a global ceiling shared across users, reservation/reconciliation, and conservative pricing for unknown models. PostgreSQL integration CI also covers a usage-budget reservation/reconciliation round trip.
 
-**Required:** Reserve estimated usage before a paid provider call, enforce per-user limits plus a global ceiling atomically in PostgreSQL, reconcile actual usage, and test concurrent requests. UI counters are not enforcement. Do not describe token budgets as complete until these tests pass.
+**Still required:** add concurrency/race tests for simultaneous reservations against the same user/global budget, validate actual provider usage reconciliation on all provider paths, and ensure failure/cancellation paths release or reconcile reservations. UI counters are not enforcement.
 
 ### P1.4 Uploads, files, and storage
 **Changes started:** Upload endpoint now reads at most the configured maximum plus one byte before rejecting an oversized upload. Filenames are sanitized and file records are user-scoped.
@@ -96,9 +97,10 @@ The most important distinction is between **code implemented**, **tests passing*
 **Still required:** Verify every versioned route, error shape, CORS preflight, session/CSRF behavior, and unauthorized response in HTTP tests. CORS is not authentication and is not a CSRF defense.
 
 ### P1.9 Rate limits and abuse controls
-**Changes started:** Login, registration, OAuth callback, and other authentication attempts use database-backed counters. PostgreSQL advisory locks serialize updates for the same hashed key across replicas.
+**Updated status (2026-10-10):** Authentication rate-limit counters use shared database rows and PostgreSQL transaction-scoped advisory locks; raw limiter keys are hashed before persistence. A PostgreSQL concurrency test was added to prove only the configured number of simultaneous attempts succeed; its latest CI result is pending.
 
-**Still required:** Add limits for chat/provider calls, uploads, searches, tools, file extraction, and costly automation. Confirm trusted-proxy behavior so all users behind a reverse proxy are not accidentally treated as one IP, and do not trust arbitrary forwarded headers. Add per-user and global provider-spend limits.
+**Still required:** Add suitable per-user and global limits for chat/provider calls, uploads, searches, tools, file extraction, and costly automation. Confirm trusted-proxy behavior so all users behind a reverse proxy are not accidentally treated as one IP, and do not trust arbitrary forwarded headers.**
+
 
 ### P1.10 Error handling and logging
 **Finding:** The global error handler returns generic unexpected errors, but individual services may still return provider exceptions or filesystem/parser errors to users. Logs can contain provider errors, URLs, or user content. Audit event data and file-based logs need a documented retention/redaction policy.
@@ -107,8 +109,8 @@ The most important distinction is between **code implemented**, **tests passing*
 
 ## P2 — Product capabilities and maintainability
 
-### P2.1 Schema-backed capabilities are not yet complete
-The repository contains intended schema for missions, mission runs, workflows, artifacts, social content, projects, research, evidence, and files. Several corresponding model classes are empty placeholders, and some features do not yet have a complete authenticated API/service/UI/test vertical slice.
+### P2.1 Schema-backed capabilities are partially implemented; end-to-end completion remains open
+The branch now includes authenticated routes and services/tests for projects, artifacts, missions/runs, workflows, social-content drafts, research, evidence, files, memory, and knowledge. These are more than schema-only placeholders, but several capabilities still lack complete user-facing flows, durable worker execution, external publishing integrations, or full operational semantics. A route or table is not evidence that the complete product feature is ready.
 
 **Required implementation order:**
 1. Projects and owner-scoped workspaces/files/artifacts.
@@ -128,15 +130,15 @@ Knowledge/memory management, notification workflows, password reset, account del
 ### P2.4 Documentation and release operations
 **Changes started:** Added provider-neutral setup/deployment guidance, active architecture decisions, a decision log, legal-policy drafts, and a database migration guide.
 
-**Still required:** Independent legal review, dependency scanning, secret scanning, backups/restore drills, deployment rollback, uptime monitoring, browser QA, load tests, and a documented incident-response procedure.
+**Updated status (2026-10-10):** Dependency vulnerability scanning and Gitleaks secret scanning are now CI jobs; the latest completed scans passed after upgrading vulnerable `pypdf` and `pytest` version ranges. **Still required:** independent legal review, backups/restore drills, deployment rollback, uptime monitoring, browser QA, load tests, and a documented incident-response procedure.
 
 ## Current verification matrix
 
 | Area | Current state | What would prove completion |
 |---|---|---|
-| Python unit suite | Latest run pending/needs recheck after recent changes | Latest CI job green with test count and no skips hiding required tests |
-| PostgreSQL | Smoke tests passed on an earlier commit; new code needs rerun | Latest PostgreSQL CI green plus broad repository query coverage |
-| Approval resume | Implemented on branch; full verification pending | End-to-end test proves exact saved action executes once and only once |
+| Python unit suite | 290 tests passed on the completed approval-recovery baseline; current run after the newest concurrency test is pending | Latest CI job green with test count and no skips hiding required tests |
+| PostgreSQL | Smoke tests passed; latest run after the concurrency test is pending | Latest PostgreSQL CI green plus broad repository query coverage |
+| Approval resume | End-to-end Git operation and approval-decision recovery tests passed on the completed baseline | Keep regression coverage green and add expiry/rejection/concurrent-click/crash-reconciliation cases |
 | Workspace isolation | Code/test changes added; full route audit pending | Owner-isolation tests across all resource APIs |
 | CORS | Wired; test coverage added | Latest HTTP tests green with allowed and denied origins |
 | Network SSRF | Initial private-IP/redirect/size guards added | Adversarial redirect/DNS tests and independent review |
@@ -145,7 +147,7 @@ Knowledge/memory management, notification workflows, password reset, account del
 | Persistent storage | Not verified against a live host | Write/restart/redeploy test and shared-volume test for multiple replicas |
 | Backups | Not verified | Independent backup restored into a separate environment |
 | Terms/Privacy | Drafts exist; not approved/published | Legal review, data-flow mapping, user consent/deletion features |
-| Dependency/secret scans | Not yet added to CI | CI jobs with reviewed/remediated findings |
+| Dependency/secret scans | CI jobs added; latest completed dependency audit and Gitleaks scan passed | Keep scans required on the current PR head and review future findings |
 | Public launch | **Not approved** | All P0/P1 release gates signed off |
 
 ## Audit process and next actions
