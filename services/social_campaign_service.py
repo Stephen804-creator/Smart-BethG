@@ -255,7 +255,7 @@ class SocialCampaignService:
         local_time = cadence.get("local_time", "09:00")
         if not isinstance(interval_days, int) or isinstance(interval_days, bool) or not 1 <= interval_days <= 30:
             raise ValueError("cadence.interval_days must be an integer from 1 to 30.")
-        if not isinstance(local_time, str) or not re.fullmatch(r"(?:[01]\\d|2[0-3]):[0-5]\\d", local_time):
+        if not isinstance(local_time, str) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", local_time):
             raise ValueError("cadence.local_time must use 24-hour HH:MM format.")
         zone = ZoneInfo(campaign["timezone"])
         start_local = datetime.fromisoformat(campaign["start_at"]).astimezone(zone)
@@ -277,7 +277,7 @@ class SocialCampaignService:
         references = campaign.get("reference_urls") or []
         for offset in range(0, count, batch_size):
             batch_slots = slots[offset:offset + batch_size]
-            target_lines = "\\n".join(
+            target_lines = "\n".join(
                 f"{i + 1}. platform={slot['platform']}; scheduled_at={slot['scheduled_at']}"
                 for i, slot in enumerate(batch_slots)
             )
@@ -304,7 +304,7 @@ class SocialCampaignService:
                 raise ValueError(result["error"])
             raw = result["text"].strip()
             if raw.startswith("```"):
-                raw = re.sub(r"^\\```(?:json)?\\s*|\\s*\\```$", "", raw, flags=re.I)
+                raw = re.sub(r"^\x60\x60\x60(?:json)?\s*|\s*\x60\x60\x60$", "", raw, flags=re.I)
             start_index, end_index = raw.find("["), raw.rfind("]")
             if start_index < 0 or end_index <= start_index:
                 raise ValueError("The AI response was not a valid JSON array. No posts were saved; try again.")
