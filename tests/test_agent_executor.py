@@ -33,7 +33,7 @@ class TestAgentExecutor(SmartBethGTestCase):
         self.assertIn("isn't connected", outcome["result"]["reply"])
 
     def test_git_read_intent_executes_real_tool(self):
-        workspace_root = resolve_workspace_root("default")
+        workspace_root = resolve_workspace_root(1, "default")
         subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
 
         req = AgentRequest(text="what's the git status?", user=self.user, workspace="default")
@@ -43,7 +43,7 @@ class TestAgentExecutor(SmartBethGTestCase):
         self.assertTrue(outcome["result"]["tool_result"]["success"])
 
     def test_git_read_intent_on_non_repo_reports_failure_honestly(self):
-        resolve_workspace_root("default")
+        resolve_workspace_root(1, "default")
         req = AgentRequest(text="check repo status", user=self.user, workspace="default")
         outcome = self.executor.run(req)
         self.assertEqual(outcome["intent"], "git.read")
@@ -57,7 +57,7 @@ class TestAgentExecutor(SmartBethGTestCase):
         both the user's text and a synthesized summary of what actually
         happened show up in history, same as a normal exchange.
         """
-        workspace_root = resolve_workspace_root("default")
+        workspace_root = resolve_workspace_root(1, "default")
         subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
 
         req = AgentRequest(text="git status", user=self.user, workspace="default")
@@ -146,7 +146,7 @@ class TestAgentExecutor(SmartBethGTestCase):
         self.assertIn("I prefer Python", combined)
 
     def test_filesystem_read_with_clear_path_executes_for_real(self):
-        workspace_root = resolve_workspace_root("default")
+        workspace_root = resolve_workspace_root(1, "default")
         with open(f"{workspace_root}/notes.txt", "w") as f:
             f.write("hello from a real file")
 
@@ -291,7 +291,7 @@ class TestCodeIntelligence(SmartBethGTestCase):
         return outcome, fake_provider
 
     def test_code_explain_injects_real_file_contents_into_the_ai_call(self):
-        root = resolve_workspace_root("default")
+        root = resolve_workspace_root(1, "default")
         with open(f"{root}/calc.py", "w") as f:
             f.write("def add(a, b):\n    return a + b\n")
 
@@ -304,7 +304,7 @@ class TestCodeIntelligence(SmartBethGTestCase):
         self.assertIn("Explain what the code above does", combined)
 
     def test_code_review_injects_contents_and_review_instruction(self):
-        root = resolve_workspace_root("default")
+        root = resolve_workspace_root(1, "default")
         with open(f"{root}/risky.py", "w") as f:
             f.write("def divide(a, b):\n    return a / b\n")
 
@@ -323,7 +323,7 @@ class TestCodeIntelligence(SmartBethGTestCase):
         never be asked to "explain" a file whose contents were never
         actually retrieved.
         """
-        resolve_workspace_root("default")
+        resolve_workspace_root(1, "default")
         outcome, provider = self._run_with_capturing_provider('explain the file "does_not_exist.py"')
         self.assertEqual(outcome["status"], "failed")
         self.assertFalse(hasattr(provider, "last_messages"))
@@ -336,7 +336,7 @@ class TestCodeIntelligence(SmartBethGTestCase):
 
     def test_code_review_path_traversal_is_still_blocked(self):
         """The chained read goes through the same workspace-confined tool."""
-        resolve_workspace_root("default")
+        resolve_workspace_root(1, "default")
         outcome, provider = self._run_with_capturing_provider('review the file "../../etc/passwd"')
         self.assertEqual(outcome["status"], "failed")
         self.assertFalse(hasattr(provider, "last_messages"))
