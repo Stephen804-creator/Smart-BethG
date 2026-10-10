@@ -434,19 +434,18 @@ class SocialCampaignService:
                         raise ValueError(f"No active {platform} account is connected.")
                     connections[platform] = account["id"]
 
-                if campaign["autonomy_mode"] == "auto_publish_after_campaign_approval":
-                    conn.execute(
-                        "UPDATE social_content SET status='approved', updated_at=CURRENT_TIMESTAMP "
-                        "WHERE user_id=? AND campaign_id=? AND status='draft'",
-                        (user_id, campaign_id),
-                    )
                 for platform, connection_id in connections.items():
                     if campaign["autonomy_mode"] == "auto_publish_after_campaign_approval":
+                        # Campaign-level authorization approves the generated
+                        # plan once. A post that was edited later is reset to
+                        # awaiting_approval and must never be silently
+                        # re-approved by pausing/resuming the campaign.
                         conn.execute(
                             "UPDATE social_publish_jobs SET status='queued', connection_id=?, error_code=NULL, "
                             "error_message=NULL, updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND campaign_id=? "
-                            "AND platform=? AND status IN ('awaiting_approval','awaiting_connection')",
-                            (connection_id, user_id, campaign_id, platform),
+                            "AND platform=? AND status='awaiting_connection' "
+                            "AND content_id IN (SELECT id FROM social_content WHERE user_id=? AND campaign_id=? AND status='approved')",
+                            (connection_id, user_id, campaign_id, platform, user_id, campaign_id),
                         )
                     else:
                         conn.execute(
