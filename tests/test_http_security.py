@@ -21,7 +21,7 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
                 json={"username": "closed-registration-test", "password": "not-a-real-password"},
             )
         self.assertEqual(response.status_code, 403)
-        self.assertIn("closed", response.json()["detail"].lower())
+        self.assertIn("closed", response.json()["error"]["message"].lower())
 
     def test_cors_preflight_accepts_only_configured_origin(self):
         with patch.object(config, "ALLOWED_ORIGINS", ["https://allowed.example"]):
