@@ -29,7 +29,7 @@ Campaign reference URLs are stored and supplied to the generation prompt, but th
 
 S3-compatible storage is optional and provider-neutral. Existing local files are not automatically copied when the backend setting changes; follow the storage migration runbook and test restoration before switching a production dataset.
 
-The UI can create a campaign, ask the configured AI provider for a 30-post plan, review posts, inspect connector readiness, and export the calendar artifact. The actual publishing controls are intentionally blocked while integrations are unconfigured.
+The UI can create a campaign, ask the configured AI provider for a 30-post plan, review posts, connect and activate a Facebook Page when Meta OAuth is configured, inspect connector readiness, and export the calendar artifact. Actual publishing is intentionally blocked until the operator configures and approves the Meta app, enables the adapter, activates a Page, and runs the worker.
 
 ## Verification required before merge
 
