@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import Response
 
 import config
@@ -36,17 +36,31 @@ async def upload_file(
         record = service.save_upload(user["id"], file.filename, content, file.content_type)
     except ValueError as exc:
         raise HTTPException(status_code=413, detail=str(exc))
+    if record:
+        record.pop("path", None)
     return record
 
 
 @router.get("")
 def list_files(user=Depends(get_current_user), service: FileService = Depends(get_file_service)):
-    return {"files": service.list_files(user["id"])}
+    records = service.list_files(user["id"])
+    for record in records:
+        record.pop("path", None)
+    return {"files": records}
 
 
 @router.get("/search")
-def search_files(q: str, user=Depends(get_current_user), service: FileService = Depends(get_file_service)):
-    return {"files": service.search(user["id"], q)}
+def search_files(q: str = Query(min_length=1, max_length=1000), user=Depends(get_current_user), service: FileService = Depends(get_file_service)):
+    if not check_rate_limit(
+        f"file-search-user:{user['id']}",
+        max_attempts=config.FILE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS,
+        window_seconds=config.FILE_SEARCH_RATE_LIMIT_WINDOW_SECONDS,
+    ):
+        raise HTTPException(status_code=429, detail="File search rate limit reached. Please wait.")
+    records = service.search(user["id"], q)
+    for record in records:
+        record.pop("path", None)
+    return {"files": records}
 
 
 @router.get("/{file_id}/download")
@@ -56,13 +70,22 @@ def download_file(file_id: int, user=Depends(get_current_user), service: FileSer
         raise HTTPException(status_code=404, detail="File not found.")
     return Response(
         content=content,
-        media_type=record.get("file_type") or "application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{record["filename"]}"'},
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{record["filename"]}"',
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
 @router.get("/{file_id}/text")
 def extract_text(file_id: int, user=Depends(get_current_user), service: FileService = Depends(get_file_service)):
+    if not check_rate_limit(
+        f"file-extract-user:{user['id']}",
+        max_attempts=config.FILE_EXTRACT_RATE_LIMIT_MAX_ATTEMPTS,
+        window_seconds=config.FILE_EXTRACT_RATE_LIMIT_WINDOW_SECONDS,
+    ):
+        raise HTTPException(status_code=429, detail="File extraction rate limit reached. Please wait.")
     text, error = service.extract_text(user["id"], file_id)
     if error and text is None:
         raise HTTPException(status_code=422, detail=error)
@@ -89,6 +112,12 @@ def ingest_file(
     meant to become persistent knowledge the AI draws on for every
     future chat.
     """
+    if not check_rate_limit(
+        f"file-ingest-user:{user['id']}",
+        max_attempts=config.FILE_INGEST_RATE_LIMIT_MAX_ATTEMPTS,
+        window_seconds=config.FILE_INGEST_RATE_LIMIT_WINDOW_SECONDS,
+    ):
+        raise HTTPException(status_code=429, detail="File ingestion rate limit reached. Please wait.")
     from services.knowledge_service import KnowledgeService
     knowledge_service = KnowledgeService(file_service=service)
     try:
