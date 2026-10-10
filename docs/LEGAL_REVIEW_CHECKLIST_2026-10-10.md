@@ -13,6 +13,8 @@ Smart BethG's Terms of Service and Privacy Policy drafts are starting points for
 - [ ] Use the exact legal name, contact address, support email, and privacy contact that users can actually reach.
 - [ ] Do not claim the product is operated by a company until that entity exists and the details are accurate.
 
+**Separate the company-registration question from the legal-policy question.** If you choose to register a business name or incorporate a company in Nigeria, the Corporate Affairs Commission (CAC) is the official business registry. CAC registration does not approve your Terms of Service or Privacy Policy, and legal-policy review does not itself register your business. See the [CAC overview](https://www.cac.gov.ng/about), [business-name registration](https://www.cac.gov.ng/services/business-name), and [company-registration process](https://www.cac.gov.ng/services/company-registration).
+
 ### 2. Prepare a data map with the developer
 Document every category of personal data, where it comes from, where it is stored, who can access it, how long it is retained, and where it is sent. Include accounts, session/version data, prompts, conversations, uploads, generated files, memory, knowledge chunks, projects, missions, audit/security logs, provider usage, backups, and third-party AI/search providers. Identify data that is sent to a third-party provider to answer a prompt.
 
@@ -27,7 +29,7 @@ Request a written review covering:
 Ask the lawyer to identify any facts that the operator must decide rather than inventing them in legal language. Agree the review scope and fee before work begins.
 
 ### 4. Check whether a licensed Data Protection Compliance Organisation (DPCO) is needed
-The Nigeria Data Protection Commission (NDPC) is the regulator, not a general document-approval service that stamps every website's Terms and Privacy Policy. The NDPC publishes the Nigeria Data Protection Act, guidance, registration information, and lists of licensed DPCOs. Ask qualified counsel or a licensed DPCO whether Smart BethG's scale and processing activities require DPCO support, audit, registration, or other formal compliance steps. Do not assume every early-stage app automatically requires the same registration; verify the applicable category and current rules.
+The Nigeria Data Protection Commission (NDPC) is the regulator, not a general document-approval service that stamps every website's Terms and Privacy Policy. The NDPC publishes the Nigeria Data Protection Act, guidance, registration information, and lists of licensed DPCOs. Its current guidance identifies categories of data controllers/processors of major importance, including certain data-volume and ICT-service criteria; whether Smart BethG falls into a category depends on its actual processing and must be checked against current NDPC guidance. Ask qualified counsel or a licensed DPCO whether Smart BethG's scale and processing activities require DPCO support, audit, registration, or other formal compliance steps. Do not assume every early-stage app automatically requires the same registration; verify the applicable category and current rules.
 
 Official starting points:
 - NDPC official website: https://ndpc.gov.ng/
