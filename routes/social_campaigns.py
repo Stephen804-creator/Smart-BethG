@@ -6,7 +6,9 @@ connected account and a reviewed, configured platform adapter.
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.dependencies import get_current_user
+import json
+
+from api.dependencies import get_current_user, get_artifact_service
 from services.social_campaign_service import SocialCampaignService
 
 router = APIRouter(prefix="/social-campaigns", tags=["social-campaigns"])
@@ -122,6 +124,44 @@ def add_planned_posts(campaign_id: int, payload: PlannedPostsBatch, user=Depends
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found.")
     return campaign
+
+
+@router.post("/{campaign_id}/export-artifact")
+def export_campaign_artifact(
+    campaign_id: int,
+    user=Depends(get_current_user),
+    artifacts=Depends(get_artifact_service),
+):
+    campaign = SocialCampaignService().get(user["id"], campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found.")
+    export_data = {
+        "schema_version": 1,
+        "exported_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        "campaign": {
+            "id": campaign["id"],
+            "name": campaign["name"],
+            "objective": campaign["objective"],
+            "audience": campaign["audience"],
+            "tone": campaign["tone"],
+            "platforms": campaign["platforms"],
+            "timezone": campaign["timezone"],
+            "start_at": campaign["start_at"],
+            "end_at": campaign["end_at"],
+            "cadence": campaign["cadence"],
+            "status": campaign["status"],
+        },
+        "posts": campaign["posts"],
+    }
+    try:
+        artifact = artifacts.create(
+            user["id"], campaign["name"] + " - content calendar",
+            json.dumps(export_data, ensure_ascii=False, indent=2), "json",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    artifact.pop("path", None)
+    return {"artifact": artifact, "message": "Content calendar artifact saved. No social post was published."}
 
 
 @router.post("/{campaign_id}/status")
