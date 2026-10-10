@@ -50,7 +50,7 @@ class TestArtifactService(SmartBethGTestCase):
             self.service.read_content(self.owner["id"], artifact["id"])
 
     def test_binary_artifact_round_trip_and_owner_isolation(self):
-        payload = b"\\x89PNG\\r\\n\\x1a\\n" + b"sample-image-data"
+        payload = bytes([137]) + b"PNG" + bytes([13, 10, 26, 10]) + b"sample-image-data"
         artifact = self.service.create_bytes(
             self.owner["id"], "generated-preview.png", payload, "image/png"
         )
@@ -78,7 +78,7 @@ class TestArtifactService(SmartBethGTestCase):
 
     def test_binary_artifact_cannot_be_read_as_utf8_text(self):
         artifact = self.service.create_bytes(
-            self.owner["id"], "image.png", b"\\x89PNG\\x00", "image/png"
+            self.owner["id"], "image.png", bytes([137]) + b"PNG" + bytes([0]), "image/png"
         )
         with self.assertRaisesRegex(ValueError, "download"):
             self.service.read_content(self.owner["id"], artifact["id"])
