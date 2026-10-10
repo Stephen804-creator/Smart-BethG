@@ -159,3 +159,13 @@ These results validate the named code revision and checks above. A documentation
 ## Current release decision
 
 **Do not merge for unrestricted public launch yet.** The review branch has a green automated baseline, but the P0/P1 items above remain genuine launch gates. In particular, do not enable public arbitrary tool execution until an isolated production job runner and independent adversarial review exist; do not enable multiple replicas until uploads, artifacts, and workspaces use shared durable storage; and do not migrate real data until the versioned migration strategy and restore rehearsal are complete.
+
+
+## Audit update — 2026-10-10 19:44 UTC
+
+**13. Copied signed session cookies could remain valid after logout (addressed on review branch; CI pending).**  
+The application used signed client-side session cookies. Clearing the browser cookie at logout did not invalidate another copy of that cookie before its expiration. Added a server-side `users.session_version` field with an additive schema migration. Password login and Google OAuth bind the cookie to the current version; authenticated and optional-user dependencies reject stale versions; logout increments the stored version, invalidating all previously issued sessions for that account. Internal session version is removed before authenticated user objects are returned to normal API handlers.
+
+**Behavioral choice:** logging out revokes every active session for that user, not just the current browser. This is intentionally safer for a public-launch target, though it means users on other devices must sign in again.
+
+**Verification required:** the new regression tests cover stale-cookie rejection, a current valid session, and unknown-user revocation. Do not call this closed until the CI run for the latest branch head passes. Password recovery, explicit “log out all devices,” and admin-triggered session revocation UX remain future account-management work.
