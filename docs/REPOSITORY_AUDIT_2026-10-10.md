@@ -1,7 +1,7 @@
 # Smart BethG Whole-Repository Audit
 
 **Audit started:** 2026-10-10 UTC  
-**Last updated:** 2026-10-10 19:21 UTC  
+**Last updated:** 2026-10-10 19:23 UTC  
 **Status:** In progress — this is a living findings register, not a final sign-off. Historical findings below have been updated where the review branch now contains verified fixes; remaining items are explicitly open.  
 **Scope:** Initial source scan of 143 Python files, 7 HTML files, 6 JavaScript files, 1 CSS file, configuration, tests, and documentation (178 tracked files at the initial tree count for this audit pass). Subsequent commits add further files. The exact reviewed revision is recorded by Git commit history on `update/corrected-zip-2026-10-10`.
 
@@ -136,8 +136,8 @@ Knowledge/memory management, notification workflows, password reset, account del
 
 | Area | Current state | What would prove completion |
 |---|---|---|
-| Python unit suite | 292 tests passed, including approval-decision recovery; a newer CI run is underway after workflow action upgrades | Latest CI job green with test count and no skips hiding required tests |
-| PostgreSQL | Smoke tests passed, including concurrent rate-limit enforcement; a newer CI run is underway after workflow action upgrades | latest completed PostgreSQL integration green; broader repository query coverage still required |
+| Python unit suite | 294 tests passed, including approval-decision recovery, rejection, and expiry; the current application-code CI run is green | Latest CI job green with test count and no skips hiding required tests |
+| PostgreSQL | Smoke tests passed, including concurrent rate-limit enforcement; the current application-code CI run is green | current completed PostgreSQL integration green; broader repository query coverage still required |
 | Approval resume | End-to-end Git operation and approval-decision recovery tests passed on the completed baseline | Keep regression coverage green and add expiry/rejection/concurrent-click/crash-reconciliation cases |
 | Workspace isolation | Code/test changes added; full route audit pending | Owner-isolation tests across all resource APIs |
 | CORS | Wired; test coverage added | Latest HTTP tests green with allowed and denied origins |
