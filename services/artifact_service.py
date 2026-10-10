@@ -14,6 +14,7 @@ from services.artifact_storage import get_artifact_storage
 
 class ArtifactService:
     MAX_CONTENT_BYTES = 1024 * 1024
+    MAX_BINARY_BYTES = 25 * 1024 * 1024
     TYPES = {
         "text": (".txt", "text/plain; charset=utf-8"),
         "markdown": (".md", "text/markdown; charset=utf-8"),
@@ -23,6 +24,17 @@ class ArtifactService:
         "html": (".html", "text/html; charset=utf-8"),
         "csv": (".csv", "text/csv; charset=utf-8"),
         "yaml": (".yaml", "text/plain; charset=utf-8"),
+    }
+    BINARY_TYPES = {
+        "image/png": (".png", "image/png"),
+        "image/jpeg": (".jpg", "image/jpeg"),
+        "image/webp": (".webp", "image/webp"),
+        "application/pdf": (".pdf", "application/pdf"),
+        "video/mp4": (".mp4", "video/mp4"),
+        "audio/mpeg": (".mp3", "audio/mpeg"),
+        "audio/wav": (".wav", "audio/wav"),
+        "application/zip": (".zip", "application/zip"),
+        "application/octet-stream": (".bin", "application/octet-stream"),
     }
 
     def create(self, user_id, name, content, artifact_type="text", mission_id=None):
@@ -72,6 +84,90 @@ class ArtifactService:
             conn.close()
         return self.get(user_id, artifact_id)
 
+    def create_bytes(self, user_id, name, content, content_type, mission_id=None):
+        """Store a bounded binary output (image, audio, video, PDF, or archive)."""
+        name = (name or "").strip()
+        if not name or len(name) > 160:
+            raise ValueError("Artifact name must be between 1 and 160 characters.")
+        if not isinstance(content, (bytes, bytearray, memoryview)):
+            raise ValueError("Binary artifact content must be bytes.")
+        encoded = bytes(content)
+        if not encoded:
+            raise ValueError("Binary artifact content cannot be empty.")
+        if len(encoded) > self.MAX_BINARY_BYTES:
+            raise ValueError("Binary artifact exceeds the 25 MiB limit.")
+        supplied_type = (content_type or "application/octet-stream").split(";", 1)[0].strip().lower()
+        extension, safe_type = self.BINARY_TYPES.get(
+            supplied_type, self.BINARY_TYPES["application/octet-stream"]
+        )
+        if mission_id is not None and not self._owns_mission(user_id, mission_id):
+            raise ValueError("Mission not found for this user.")
+
+        safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)[:120] or "artifact"
+        if not safe_name.lower().endswith(extension):
+            safe_name += extension
+        key = f"{user_id}/{uuid.uuid4().hex}_{safe_name}"
+        digest = hashlib.sha256(encoded).hexdigest()
+        storage = get_artifact_storage()
+        storage.put(key, encoded)
+
+        conn = get_connection()
+        try:
+            cursor = conn.execute(
+                "INSERT INTO artifacts(mission_id, user_id, name, artifact_type, path, content_type, "
+                "size_bytes, checksum_sha256, status, updated_at) "
+                "VALUES (?, ?, ?, 'binary', ?, ?, ?, ?, 'ready', CURRENT_TIMESTAMP)",
+                (mission_id, user_id, safe_name, key, safe_type, len(encoded), digest),
+            )
+            artifact_id = cursor.lastrowid
+            conn.commit()
+        except Exception:
+            try:
+                storage.delete(key)
+            except Exception:
+                pass
+            raise
+        finally:
+            conn.close()
+        return self.get(user_id, artifact_id)
+
+    def read_bytes(self, user_id, artifact_id):
+        """Return verified bytes for download without assuming UTF-8 text."""
+        record = self.get(user_id, artifact_id)
+        if not record:
+            return None, None
+        encoded = self._read_encoded(user_id, record)
+        if encoded is None:
+            return None, record
+        return encoded, record
+
+    def _read_encoded(self, user_id, record):
+        key = record.get("path")
+        if not isinstance(key, str) or ".." in key.split("/"):
+            return None
+        if os.path.isabs(key):
+            root = Path(config.STORAGE_DIRS["artifacts"], str(user_id)).resolve()
+            legacy_path = Path(key).resolve()
+            if os.getenv("SMART_BETHG_OBJECT_STORAGE_BACKEND", "local").lower() != "local" or root not in legacy_path.parents:
+                return None
+            if not legacy_path.is_file():
+                return None
+            encoded = legacy_path.read_bytes()
+        else:
+            if not key.startswith(f"{user_id}/"):
+                return None
+            try:
+                encoded = get_artifact_storage().get(key)
+            except FileNotFoundError:
+                return None
+        limit = self.MAX_BINARY_BYTES if record.get("artifact_type") == "binary" else self.MAX_CONTENT_BYTES
+        if len(encoded) > limit:
+            raise ValueError("Stored artifact exceeds the configured read limit.")
+        digest = hashlib.sha256(encoded).hexdigest()
+        if not record.get("checksum_sha256") or digest != record["checksum_sha256"]:
+            raise ValueError("Stored artifact failed its integrity check.")
+        return encoded
+
     def list_for_user(self, user_id):
         conn = get_connection()
         try:
@@ -102,32 +198,11 @@ class ArtifactService:
         record = self.get(user_id, artifact_id)
         if not record:
             return None, None
-        key = record["path"]
-        if not isinstance(key, str) or ".." in key.split("/"):
+        if record.get("artifact_type") == "binary":
+            raise ValueError("Binary artifacts must be downloaded using the download endpoint.")
+        encoded = self._read_encoded(user_id, record)
+        if encoded is None:
             return None, record
-        if os.path.isabs(key):
-            # Backward compatibility for artifacts written before the storage
-            # abstraction. Legacy paths must remain inside the owner's folder.
-            root = Path(config.STORAGE_DIRS["artifacts"], str(user_id)).resolve()
-            legacy_path = Path(key).resolve()
-            if os.getenv("SMART_BETHG_OBJECT_STORAGE_BACKEND", "local").lower() != "local" or root not in legacy_path.parents:
-                return None, record
-            if not legacy_path.is_file():
-                return None, record
-            encoded = legacy_path.read_bytes()
-        else:
-            if not key.startswith(f"{user_id}/"):
-                return None, record
-            storage = get_artifact_storage()
-            try:
-                encoded = storage.get(key)
-            except FileNotFoundError:
-                return None, record
-        if len(encoded) > self.MAX_CONTENT_BYTES:
-            raise ValueError("Stored artifact exceeds the configured read limit.")
-        digest = hashlib.sha256(encoded).hexdigest()
-        if not record.get("checksum_sha256") or digest != record["checksum_sha256"]:
-            raise ValueError("Stored artifact failed its integrity check.")
         try:
             return encoded.decode("utf-8"), record
         except UnicodeDecodeError as exc:
