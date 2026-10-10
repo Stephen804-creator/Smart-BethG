@@ -146,6 +146,15 @@ class TestToolServiceExecution(SmartBethGTestCase):
         result = self.service.execute(self.admin, "git.write", workspace="proj7", message="test commit")
         self.assertEqual(result["status"], "approval_required")
 
+    def test_approval_uses_the_same_canonical_workspace_as_the_filesystem(self):
+        result = self.service.execute(
+            self.admin, "git.write", workspace="../../etc", message="canonical workspace"
+        )
+        self.assertEqual(result["status"], "approval_required")
+        record = self.service.approvals.get_for_user(result["approval_id"], self.admin["id"])
+        self.assertEqual(record["resource"], "workspace:etc")
+        self.assertEqual(record["payload"]["workspace"], "etc")
+
     def test_approved_saved_git_operation_executes_real_side_effect_once(self):
         root = resolve_workspace_root(self.admin["id"], "approved-real-git")
         subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
