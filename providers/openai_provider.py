@@ -59,7 +59,7 @@ class OpenAIProvider(ProviderBase):
             "output_tokens": getattr(usage, "completion_tokens", None) if usage else None,
         }
 
-    def embed(self, texts: list) -> list:
+    def embed(self, texts: list, task_type=None) -> list:
         """
         Real embeddings via an OpenAI-compatible embeddings endpoint -
         used for knowledge base retrieval (T0903). Raises RuntimeError
