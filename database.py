@@ -533,6 +533,18 @@ def _initialize_database_on_connection(conn):
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS connector_credentials(
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            provider TEXT NOT NULL,
+            encrypted_access_token TEXT NOT NULL,
+            scopes_json TEXT NOT NULL DEFAULT '[]',
+            expires_at TEXT,
+            revoked_at TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS social_connections(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -678,6 +690,7 @@ def _initialize_database_on_connection(conn):
         "CREATE INDEX IF NOT EXISTS idx_social_content_user_updated ON social_content(user_id, updated_at)",
         "CREATE INDEX IF NOT EXISTS idx_social_campaigns_owner_updated ON social_campaigns(user_id, updated_at)",
         "CREATE INDEX IF NOT EXISTS idx_social_connections_owner_platform ON social_connections(user_id, platform, status)",
+        "CREATE INDEX IF NOT EXISTS idx_connector_credentials_owner_provider ON connector_credentials(user_id, provider, revoked_at)",
         "CREATE INDEX IF NOT EXISTS idx_social_publish_jobs_due ON social_publish_jobs(status, scheduled_at, id)",
         "CREATE INDEX IF NOT EXISTS idx_social_publish_jobs_owner ON social_publish_jobs(user_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_social_content_versions_owner ON social_content_versions(user_id, social_content_id, version)",
