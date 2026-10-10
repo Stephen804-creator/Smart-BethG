@@ -1,20 +1,14 @@
-// Smart BethG - shared topbar icon panels (notifications, usage, settings).
-// Every number/state shown here comes from a real endpoint - no
-// placeholder counts or fabricated activity.
+// Smart BethG - shared topbar icon panels.
 (function () {
   function closeAllPanels() {
-    document.querySelectorAll(".sbg-panel").forEach((p) => p.remove());
+    document.querySelectorAll(".sbg-panel").forEach((panel) => panel.remove());
     document.querySelectorAll("[data-panel-open]").forEach((el) => (el.dataset.panelOpen = "0"));
   }
 
-  // Opens (or closes, if already open) a panel anchored under anchorEl.
-  // Returns the panel's body element to fill in asynchronously, or null
-  // if the panel was closed instead of opened.
   function openPanel(anchorEl, title) {
     const alreadyOpen = anchorEl.dataset.panelOpen === "1";
     closeAllPanels();
     if (alreadyOpen) return null;
-
     anchorEl.dataset.panelOpen = "1";
 
     const panel = document.createElement("div");
@@ -31,92 +25,116 @@
 
     const body = document.createElement("div");
     panel.appendChild(body);
-
     const container = anchorEl.closest(".topbar-actions") || anchorEl.parentElement;
     container.style.position = container.style.position || "relative";
     container.appendChild(panel);
 
     setTimeout(() => {
-      document.addEventListener("click", function onDocClick(e) {
-        if (!panel.contains(e.target) && e.target !== anchorEl && !anchorEl.contains(e.target)) {
+      document.addEventListener("click", function onDocClick(event) {
+        if (!panel.contains(event.target) && event.target !== anchorEl && !anchorEl.contains(event.target)) {
           panel.remove();
           anchorEl.dataset.panelOpen = "0";
           document.removeEventListener("click", onDocClick);
         }
       });
     }, 0);
-
     return body;
   }
 
-  const emptyState = (text) =>
-    `<p style="color:var(--text-secondary); font-size:14px; margin:0;">${text}</p>`;
+  function showEmpty(body, message) {
+    const p = document.createElement("p");
+    p.style.cssText = "color:var(--text-secondary); font-size:14px; margin:0;";
+    p.textContent = message;
+    body.replaceChildren(p);
+  }
 
-  // --- Notifications: honestly empty until something real generates one ---
+  function addUsageRow(body, label, value, emphasize) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex; justify-content:space-between; gap:10px; font-size:13px; line-height:1.7;";
+    const labelEl = document.createElement("span");
+    labelEl.textContent = label;
+    const valueEl = document.createElement(emphasize ? "strong" : "span");
+    valueEl.textContent = String(value);
+    row.append(labelEl, valueEl);
+    body.appendChild(row);
+  }
+
   const notifBtn = document.getElementById("notificationsButton");
   if (notifBtn) {
-    notifBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
+    notifBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
       const body = openPanel(notifBtn, "Notifications");
-      if (body) body.innerHTML = emptyState("No notifications yet.");
+      if (body) showEmpty(body, "No notifications yet.");
     });
   }
 
-  // --- Usage: real token totals from /api/chat/usage ---
   const usageBtn = document.getElementById("usageButton");
   if (usageBtn) {
-    usageBtn.addEventListener("click", async (e) => {
-      e.stopPropagation();
+    usageBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
       const body = openPanel(usageBtn, "Token usage");
       if (!body) return;
-      body.innerHTML = emptyState("Loading...");
+      showEmpty(body, "Loading...");
       try {
         const res = await fetch("/api/chat/usage", { credentials: "same-origin" });
         if (res.status === 401) {
           window.location.href = "/login";
           return;
         }
+        if (!res.ok) throw new Error("Usage request failed.");
         const data = await res.json();
-        const t = data.totals || { input_tokens: 0, output_tokens: 0, message_count: 0 };
-        const rows = (data.by_model || [])
-          .map(
-            (m) =>
-              `<div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-secondary); padding:4px 0; border-top:1px solid var(--border);">
-                 <span>${m.provider || "?"} / ${m.model || "?"}</span>
-                 <span>${(m.input_tokens || 0) + (m.output_tokens || 0)} tok</span>
-               </div>`
-          )
-          .join("");
-        body.innerHTML =
-          `<div style="font-size:13px; line-height:1.7;">
-             <div>Input tokens: <strong>${t.input_tokens}</strong></div>
-             <div>Output tokens: <strong>${t.output_tokens}</strong></div>
-             <div>Replies: <strong>${t.message_count}</strong></div>
-           </div>` + (rows || emptyState("No usage yet."));
+        const totals = data.totals || {};
+        body.replaceChildren();
+        addUsageRow(body, "Input tokens", totals.input_tokens || 0, true);
+        addUsageRow(body, "Output tokens", totals.output_tokens || 0, true);
+        addUsageRow(body, "Replies", totals.message_count || 0, true);
+        (data.by_model || []).forEach((model) => {
+          const row = document.createElement("div");
+          row.style.cssText = "display:flex; justify-content:space-between; gap:10px; font-size:12px; color:var(--text-secondary); padding:6px 0; border-top:1px solid var(--border);";
+          const name = document.createElement("span");
+          name.style.overflowWrap = "anywhere";
+          name.textContent = String(model.provider || "?") + " / " + String(model.model || "?");
+          const count = document.createElement("span");
+          count.textContent = String((Number(model.input_tokens) || 0) + (Number(model.output_tokens) || 0)) + " tok";
+          row.append(name, count);
+          body.appendChild(row);
+        });
+        if (!(data.by_model || []).length) {
+          const empty = document.createElement("p");
+          empty.style.cssText = "color:var(--text-secondary); font-size:14px; margin:8px 0 0;";
+          empty.textContent = "No usage yet.";
+          body.appendChild(empty);
+        }
       } catch (err) {
-        body.innerHTML = emptyState("Couldn't load usage right now.");
+        showEmpty(body, "Couldn't load usage right now.");
       }
     });
   }
 
-  // --- Settings: real account info, no fake toggles ---
   const settingsBtn = document.getElementById("settingsButton");
   if (settingsBtn) {
-    settingsBtn.addEventListener("click", async (e) => {
-      e.stopPropagation();
+    settingsBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
       const body = openPanel(settingsBtn, "Account");
       if (!body) return;
-      body.innerHTML = emptyState("Loading...");
+      showEmpty(body, "Loading...");
       try {
         const res = await fetch("/auth/me", { credentials: "same-origin" });
         if (res.status === 401) {
           window.location.href = "/login";
           return;
         }
+        if (!res.ok) throw new Error("Account request failed.");
         const user = await res.json();
-        body.innerHTML = `<div style="font-size:13px; line-height:1.8;">Signed in as <strong>${user.username || "-"}</strong></div>`;
+        const line = document.createElement("div");
+        line.style.cssText = "font-size:13px; line-height:1.8; overflow-wrap:anywhere;";
+        line.append(document.createTextNode("Signed in as "));
+        const username = document.createElement("strong");
+        username.textContent = String(user.username || "-");
+        line.appendChild(username);
+        body.replaceChildren(line);
       } catch (err) {
-        body.innerHTML = emptyState("Couldn't load account info.");
+        showEmpty(body, "Couldn't load account info.");
       }
     });
   }
