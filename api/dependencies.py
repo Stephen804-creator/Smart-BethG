@@ -94,3 +94,9 @@ from services.mission_service import MissionService
 
 def get_mission_service():
     return MissionService()
+
+from services.workflow_service import WorkflowService
+
+
+def get_workflow_service():
+    return WorkflowService()
