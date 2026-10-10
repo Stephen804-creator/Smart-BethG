@@ -21,9 +21,14 @@ class SmartBethGTestCase(unittest.TestCase):
     def setUp(self):
         self._tmp_dir = tempfile.mkdtemp(prefix="smart_bethg_test_")
         self._original_db_path = database.DB_PATH
+        self._original_database_url = config.DATABASE_URL
+        # Unit tests must never inherit a developer's or production DATABASE_URL.
+        # PostgreSQL has its own explicitly configured integration-test job.
+        config.DATABASE_URL = ""
         database.DB_PATH = os.path.join(self._tmp_dir, "test.db")
         database.initialize_database()
 
     def tearDown(self):
         database.DB_PATH = self._original_db_path
+        config.DATABASE_URL = self._original_database_url
         shutil.rmtree(self._tmp_dir, ignore_errors=True)
