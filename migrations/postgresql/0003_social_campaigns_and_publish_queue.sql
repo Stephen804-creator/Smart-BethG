@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS social_campaigns (
     end_at TEXT,
     cadence_json TEXT NOT NULL DEFAULT '{}',
     autonomy_mode TEXT NOT NULL DEFAULT 'review_each_post',
+    autopublish_authorized_at TIMESTAMPTZ,
+    authorization_scope_json TEXT,
     daily_post_limit INTEGER NOT NULL DEFAULT 1,
     status TEXT NOT NULL DEFAULT 'draft',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
