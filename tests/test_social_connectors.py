@@ -1,4 +1,8 @@
+import os
 import unittest
+from unittest.mock import patch
+
+from cryptography.fernet import Fernet
 from connectors.social import ConnectorNotConfigured, SocialConnectorRegistry
 from routes.connectors import _meta_ready_for_oauth
 
