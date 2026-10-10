@@ -1,7 +1,7 @@
 # Smart BethG Whole-Codebase Audit
 
 **Audit date:** 2026-10-10 UTC  
-**Last updated:** 2026-10-10 19:23 UTC  
+**Last updated:** 2026-10-10 19:36 UTC  
 **Branch reviewed:** `update/corrected-zip-2026-10-10`  
 **Target branch:** `main`  
 **Status:** Engineering audit in progress; public launch is not approved.  
@@ -134,3 +134,28 @@ The unit suite caught a compatibility regression introduced while tightening tas
 **15. Concurrent PostgreSQL startup and configuration validation (covered).** PostgreSQL schema initialization is serialized with a fixed advisory lock so concurrent app workers cannot race additive schema migrations. An integration test runs multiple initializations concurrently. Configuration now rejects unknown environment names rather than silently treating a typo such as 'prod' as development; production also rejects missing or SQLite DATABASE_URL values.
 
 **Verification as of 2026-10-10 19:36 UTC:** commit a30059deed34cd9c4ce8bcb7a693d80b713a0944 passed **303 unit tests**, PostgreSQL integration tests, dependency vulnerability auditing, and Gitleaks secret scanning. PostgreSQL coverage includes concurrent startup, cross-instance rate-limit atomicity, usage-budget persistence, and capability-service round trips. This remains repository-level verification, not an independent penetration test or proof of live-host storage/backups.
+
+
+## Verification update — 2026-10-10 19:36 UTC
+
+**Code revision verified:** `a30059deed34cd9c4ce8bcb7a693d80b713a0944` on `update/corrected-zip-2026-10-10`.
+
+- SQLite/unit test suite: **303 tests passed**.
+- PostgreSQL integration job: **passed**, including concurrent schema initialization, rate-limit concurrency, usage-budget reservation/reconciliation, conversation persistence, and capability service round trips.
+- Python dependency vulnerability audit: **passed**.
+- Gitleaks secret scan: **passed**.
+- Python compilation: **passed**.
+
+Additional hardening verified in this pass:
+- Production environment values are explicit; unknown values such as `prod` now fail startup rather than silently selecting development behavior.
+- Unit-test setup clears any inherited `DATABASE_URL` and uses a throwaway SQLite file, preventing the normal unit suite from accidentally connecting to a developer or production PostgreSQL database.
+- PostgreSQL schema initialization is serialized with a session advisory lock so multiple application workers do not race through additive schema setup at startup.
+- PostgreSQL-generated IDs use integer serial types compatible with the schema's integer foreign-key columns, and the social-content version-history path has PostgreSQL coverage.
+- Tool authorization/approval records use the same canonical workspace name as the filesystem path, preventing the approval resource shown to a user from differing from the actual sanitized workspace.
+- Approval-route regression coverage verifies that the saved Git operation resumes after approval, executes once, does not execute after rejection, and can recover when the approval decision committed before the execution claim.
+
+These results validate the named code revision and checks above. A documentation-only audit update may create a newer Git commit; verify the resulting PR checks before merge. This is still **not** a penetration test, an independent security review, a load/chaos test, a legal sign-off, or proof of live-host configuration, persistent storage, backup restoration, domain/TLS, or monitoring.
+
+## Current release decision
+
+**Do not merge for unrestricted public launch yet.** The review branch has a green automated baseline, but the P0/P1 items above remain genuine launch gates. In particular, do not enable public arbitrary tool execution until an isolated production job runner and independent adversarial review exist; do not enable multiple replicas until uploads, artifacts, and workspaces use shared durable storage; and do not migrate real data until the versioned migration strategy and restore rehearsal are complete.
