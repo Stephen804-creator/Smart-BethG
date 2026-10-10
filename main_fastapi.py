@@ -16,6 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import config
 from database import initialize_database
 from logging_setup import setup_logging, get_logger
+from security.request_size_limit import RequestBodyLimitMiddleware
 from error_handlers import register_error_handlers
 
 from routes import (
@@ -144,6 +145,13 @@ def create_app() -> FastAPI:
         https_only=config.SESSION_HTTPS_ONLY,
         same_site="lax",
         max_age=config.SESSION_MAX_AGE_SECONDS,
+    )
+
+    # This outer ASGI middleware limits both declared and streamed request
+    # bodies before multipart parsing can consume unbounded disk/memory.
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_body_bytes=config.MAX_REQUEST_BODY_BYTES,
     )
 
     app.mount(
