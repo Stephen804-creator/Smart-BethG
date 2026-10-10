@@ -20,18 +20,18 @@ class TestToolServiceWorkspaceResolution(unittest.TestCase):
         shutil.rmtree(self._tmp, ignore_errors=True)
 
     def test_sanitizes_unsafe_characters(self):
-        root = resolve_workspace_root("../../etc")
+        root = resolve_workspace_root(1, "../../etc")
         # Traversal characters are stripped, not honored - the result
         # must still land inside the controlled projects directory.
         self.assertTrue(root.startswith(self._tmp))
         self.assertNotIn("..", os.path.relpath(root, self._tmp))
 
     def test_creates_the_directory(self):
-        root = resolve_workspace_root("my-project")
+        root = resolve_workspace_root(1, "my-project")
         self.assertTrue(os.path.isdir(root))
 
     def test_blank_name_falls_back_to_default(self):
-        root = resolve_workspace_root("")
+        root = resolve_workspace_root(1, "")
         self.assertTrue(root.endswith("default"))
 
 
@@ -51,7 +51,7 @@ class TestToolServiceExecution(SmartBethGTestCase):
         super().tearDown()
 
     def test_filesystem_read_success(self):
-        workspace_root = resolve_workspace_root("proj1")
+        workspace_root = resolve_workspace_root(1, "proj1")
         with open(os.path.join(workspace_root, "hello.txt"), "w") as f:
             f.write("hello world")
 
@@ -60,19 +60,19 @@ class TestToolServiceExecution(SmartBethGTestCase):
         self.assertEqual(result["result"]["content"], "hello world")
 
     def test_filesystem_read_path_traversal_blocked(self):
-        resolve_workspace_root("proj2")
+        resolve_workspace_root(1, "proj2")
         result = self.service.execute(self.user, "filesystem.read", workspace="proj2", path="../../etc/passwd")
         self.assertFalse(result["success"])
         self.assertEqual(result["status"], "failed")
 
     def test_filesystem_read_missing_file_fails_cleanly(self):
-        resolve_workspace_root("proj3")
+        resolve_workspace_root(1, "proj3")
         result = self.service.execute(self.user, "filesystem.read", workspace="proj3", path="nope.txt")
         self.assertFalse(result["success"])
         self.assertEqual(result["status"], "failed")
 
     def test_git_read_on_real_repo_succeeds(self):
-        workspace_root = resolve_workspace_root("gitproj")
+        workspace_root = resolve_workspace_root(1, "gitproj")
         subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
         result = self.service.execute(self.user, "git.read", workspace="gitproj")
         self.assertTrue(result["success"])
@@ -83,7 +83,7 @@ class TestToolServiceExecution(SmartBethGTestCase):
         directory that isn't a repository must not be reported as
         success just because subprocess didn't raise.
         """
-        resolve_workspace_root("notarepo")
+        resolve_workspace_root(1, "notarepo")
         result = self.service.execute(self.user, "git.read", workspace="notarepo")
         self.assertFalse(result["success"])
         self.assertEqual(result["status"], "command_failed")
@@ -124,7 +124,7 @@ class TestToolServiceExecution(SmartBethGTestCase):
         gate, which is tested separately above) to confirm the tool
         implementation itself actually works against a real repo.
         """
-        workspace_root = resolve_workspace_root("gitwrite")
+        workspace_root = resolve_workspace_root(1, "gitwrite")
         subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
         subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=workspace_root, check=True)
         subprocess.run(["git", "config", "user.name", "Test"], cwd=workspace_root, check=True)
@@ -154,7 +154,7 @@ class TestToolServiceExecution(SmartBethGTestCase):
         self.service._network_tool = FakeNetworkTool()
         from execution.execution_engine import ExecutionPermit
         permit = ExecutionPermit(request_id="test", action="network.request", resource="workspace:proj8", risk_level="high")
-        raw = self.service._run_network_request(permit, resolve_workspace_root("proj8"), url="https://example.com")
+        raw = self.service._run_network_request(permit, resolve_workspace_root(1, "proj8"), url="https://example.com")
         self.assertEqual(raw["content"], "<html>ok</html>")
 
     def test_network_request_requires_approval_for_admin_role(self):
