@@ -169,3 +169,20 @@ The application used signed client-side session cookies. Clearing the browser co
 **Behavioral choice:** logging out revokes every active session for that user, not just the current browser. This is intentionally safer for a public-launch target, though it means users on other devices must sign in again.
 
 **Verification required:** the new regression tests cover stale-cookie rejection, a current valid session, and unknown-user revocation. Do not call this closed until the CI run for the latest branch head passes. Password recovery, explicit “log out all devices,” and admin-triggered session revocation UX remain future account-management work.
+
+
+## Verification update — 2026-10-10 19:50 UTC
+
+**Verified review-branch revision:** `f805df04991a0532b1839720633c172b0f73292d`.
+
+- SQLite/unit CI: **308 tests completed successfully**; PostgreSQL-only tests are explicitly skipped in this job rather than accidentally running against SQLite.
+- PostgreSQL integration CI: **7 tests passed**, including baseline migration tracking/idempotence, concurrent schema initialization, conversation and approval round trips, usage-budget reservation/reconciliation, database-backed rate limiting, and capability-service persistence.
+- Python compilation: passed.
+- Dependency vulnerability audit: passed.
+- Gitleaks secret scan: passed.
+
+The CI process caught two genuine defects during this migration work. First, the migration runner initially split a full-line SQL comment at a semicolon and tried to execute the remaining comment text as SQL; comment lines are now stripped before statement splitting, and the PostgreSQL job passes. Second, the unit-test discovery job was collecting PostgreSQL-only migration tests against SQLite; those tests now require an explicit `SMART_BETHG_RUN_POSTGRES_TESTS=1` flag that is set only in the dedicated PostgreSQL CI job. The latest tested revision is green after both corrections.
+
+Session revocation now has unit and HTTP-level regression coverage: a copied signed session cookie works before logout and is rejected after logout increments the user's stored session version. The initial versioned PostgreSQL baseline migration is also exercised against a real PostgreSQL service and re-run idempotently.
+
+**Remaining limits:** the query compatibility adapter remains; migration tests do not yet cover every repository or every prior production schema. Shared object storage, password recovery, complete user data export/deletion, CSP design, broad adversarial tool-security testing, independent review, backup/restore drills, load tests, and public-launch legal/security gates remain open. This green CI result is not a penetration test and does not verify live hosting, domain/TLS, storage durability, or backups.
