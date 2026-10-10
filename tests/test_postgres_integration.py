@@ -16,6 +16,24 @@ class TestPostgreSQLIntegration(unittest.TestCase):
     def setUpClass(cls):
         initialize_database()
 
+    def test_versioned_baseline_migration_is_recorded(self):
+        conn = __import__("database").get_connection()
+        try:
+            row = conn.execute(
+                "SELECT version FROM schema_migrations WHERE version=?",
+                ("0001_initial_schema.sql",),
+            ).fetchone()
+            self.assertIsNotNone(row)
+            self.assertEqual(row["version"], "0001_initial_schema.sql")
+            columns = conn.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema=current_schema() AND table_name='users' "
+                "AND column_name='session_version'"
+            ).fetchone()
+            self.assertIsNotNone(columns)
+        finally:
+            conn.close()
+
     def test_concurrent_app_startup_serializes_schema_migrations(self):
         with ThreadPoolExecutor(max_workers=4) as pool:
             results = list(pool.map(lambda _: initialize_database(), range(4)))
