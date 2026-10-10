@@ -28,6 +28,48 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         self.assertNotIn("'unsafe-eval'", csp)
         self.assertNotIn("Content-Security-Policy", response.headers)  # report-only rollout
 
+
+    def test_all_state_changing_api_routes_require_csrf(self):
+        import database
+        from services.auth_service import create_user
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            old_db_path = database.DB_PATH
+            old_database_url = config.DATABASE_URL
+            database.DB_PATH = os.path.join(temp_dir, "csrf-test.db")
+            config.DATABASE_URL = ""
+            try:
+                database.initialize_database()
+                username = "csrf-boundary-test"
+                user = create_user(username, "csrf-test-password")
+                self.assertIsNotNone(user)
+                client = TestClient(create_app())
+
+                token = client.get("/auth/csrf").json()["csrf_token"]
+                login = client.post(
+                    "/auth/login",
+                    headers={"X-CSRF-Token": token},
+                    json={"username": username, "password": "csrf-test-password"},
+                )
+                self.assertEqual(login.status_code, 200, login.text)
+                fresh_token = client.get("/auth/csrf").json()["csrf_token"]
+
+                blocked = client.post(
+                    "/api/v1/projects",
+                    json={"name": "should not be created"},
+                )
+                self.assertEqual(blocked.status_code, 403)
+
+                allowed = client.post(
+                    "/api/v1/projects",
+                    headers={"X-CSRF-Token": fresh_token},
+                    json={"name": "csrf-protected project"},
+                )
+                self.assertEqual(allowed.status_code, 200, allowed.text)
+            finally:
+                database.DB_PATH = old_db_path
+                config.DATABASE_URL = old_database_url
+
     def test_approvals_endpoint_requires_authentication(self):
         client = TestClient(create_app())
         response = client.get("/approvals")
