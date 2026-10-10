@@ -15,6 +15,14 @@
   const SELECTION_KEY = "sbg:selection";
   let conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
 
+  async function getCsrfToken() {
+    const res = await fetch("/auth/csrf", { credentials: "same-origin", cache: "no-store" });
+    if (!res.ok) throw new Error("Could not obtain CSRF token.");
+    const data = await res.json();
+    if (!data.csrf_token) throw new Error("CSRF token missing.");
+    return data.csrf_token;
+  }
+
   async function loadApprovals() {
     const panel = document.getElementById("approvalPanel");
     const list = document.getElementById("approvalList");
@@ -78,10 +86,11 @@
     const status = document.getElementById("approvalStatus");
     if (status) status.textContent = "Saving your decision…";
     try {
+      const csrfToken = await getCsrfToken();
       const res = await fetch("/approvals/" + encodeURIComponent(approvalId), {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
         body: JSON.stringify({ approved }),
       });
       if (res.status === 401) {
@@ -278,10 +287,11 @@
     renderNotice("Thinking...");
 
     try {
+      const csrfToken = await getCsrfToken();
       const res = await fetch("/api/chat", {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
         body: JSON.stringify({
           message: text,
           conversation_id: conversationId,
