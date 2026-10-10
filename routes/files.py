@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import Response
 
+import config
 from api.dependencies import get_current_user
 from services.file_service import FileService
 
@@ -17,7 +18,12 @@ async def upload_file(
     user=Depends(get_current_user),
     service: FileService = Depends(get_file_service),
 ):
-    content = await file.read()
+    # Bound the read itself, not only the later service call. Reading the
+    # entire upload first would let an oversized request consume unbounded
+    # memory before MAX_UPLOAD_SIZE_BYTES could reject it.
+    content = await file.read(config.MAX_UPLOAD_SIZE_BYTES + 1)
+    if len(content) > config.MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(status_code=413, detail="Uploaded file exceeds the configured size limit.")
     try:
         record = service.save_upload(user["id"], file.filename, content, file.content_type)
     except ValueError as exc:
