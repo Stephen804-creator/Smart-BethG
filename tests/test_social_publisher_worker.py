@@ -14,8 +14,8 @@ class FakePublisher:
         self.outcome = outcome or {"external_post_id": "provider-post-123"}
         self.error = error
 
-    def publish(self, *, account_ref, content, idempotency_key):
-        self.calls.append((account_ref, content, idempotency_key))
+    def publish(self, *, account, content, idempotency_key):
+        self.calls.append((account, content, idempotency_key))
         if self.error:
             raise self.error
         return self.outcome
