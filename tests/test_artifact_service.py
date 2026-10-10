@@ -10,7 +10,13 @@ class TestArtifactService(SmartBethGTestCase):
         super().setUp()
         self.owner = create_user("artifact-owner", "password123")
         self.other = create_user("artifact-other", "password123")
+        self._old_artifact_dir = config.STORAGE_DIRS["artifacts"]
+        config.STORAGE_DIRS["artifacts"] = os.path.join(self._tmp_dir, "artifacts")
         self.service = ArtifactService()
+
+    def tearDown(self):
+        config.STORAGE_DIRS["artifacts"] = self._old_artifact_dir
+        super().tearDown()
 
     def test_create_read_and_delete_artifact(self):
         artifact = self.service.create(self.owner["id"], "notes", "important text")
