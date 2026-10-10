@@ -46,7 +46,20 @@ def _target_has_rows(target, table):
     ).fetchone()[0]
 
 
-def migrate(source_path, target_url, dry_run=False):
+def _remap_storage_path(value, old_root=None, new_root=None):
+    if not isinstance(value, str) or not value or not old_root or not new_root:
+        return value
+    old_abs = os.path.abspath(old_root)
+    value_abs = os.path.abspath(value)
+    try:
+        if os.path.commonpath([old_abs, value_abs]) != old_abs:
+            return value
+    except ValueError:
+        return value
+    return os.path.join(os.path.abspath(new_root), os.path.relpath(value_abs, old_abs))
+
+
+def migrate(source_path, target_url, dry_run=False, old_storage_root=None, new_storage_root=None):
     if not os.path.isfile(source_path):
         raise FileNotFoundError(f"SQLite source does not exist: {source_path}")
     if not target_url or not target_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
@@ -104,7 +117,13 @@ def migrate(source_path, target_url, dry_run=False):
                 )
                 cursor = source.execute(f'SELECT {", ".join(chr(34)+c+chr(34) for c in columns)} FROM "{table}"')
                 for row in cursor:
-                    target.execute(statement, tuple(row[c] for c in columns))
+                    values = []
+                    for column in columns:
+                        value = row[column]
+                        if column in {"path", "file_path", "storage_path"}:
+                            value = _remap_storage_path(value, old_storage_root, new_storage_root)
+                        values.append(value)
+                    target.execute(statement, tuple(values))
 
             for table in tables:
                 if "id" not in _columns_postgres(target, table):
@@ -129,9 +148,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sqlite_path", help="Path to the source SQLite database file")
     parser.add_argument("--dry-run", action="store_true", help="Print row counts without copying data")
+    parser.add_argument("--old-storage-root", help="Old root containing uploaded files/workspaces")
+    parser.add_argument("--new-storage-root", help="New root after copying the old storage directory")
     args = parser.parse_args()
+    if bool(args.old_storage_root) != bool(args.new_storage_root):
+        parser.error("--old-storage-root and --new-storage-root must be supplied together")
     try:
-        migrate(args.sqlite_path, os.getenv("DATABASE_URL", ""), dry_run=args.dry_run)
+        migrate(
+            args.sqlite_path, os.getenv("DATABASE_URL", ""), dry_run=args.dry_run,
+            old_storage_root=args.old_storage_root, new_storage_root=args.new_storage_root,
+        )
     except Exception as exc:
         print(f"Migration failed: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
