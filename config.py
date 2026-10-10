@@ -104,3 +104,9 @@ MAX_UPLOAD_SIZE_BYTES = int(
     os.getenv("SMART_BETHG_MAX_UPLOAD_BYTES", str(15 * 1024 * 1024))
 )
 BRAVE_SEARCH_API_KEY = os.getenv("BRAVE_SEARCH_API_KEY", "")
+
+# Docker execution is opt-in and restricted to exact, operator-approved image tags.
+DOCKER_ALLOWED_IMAGES = {
+    image.strip() for image in os.getenv("SMART_BETHG_DOCKER_ALLOWED_IMAGES", "").split(",")
+    if image.strip()
+}
