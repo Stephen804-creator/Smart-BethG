@@ -175,7 +175,7 @@ class FileService:
                 logger.warning("PDF extraction failed: user=%s file_id=%s error_type=%s", user_id, file_id, type(exc).__name__)
                 return None, "Could not extract text from this PDF. Check that it is a valid, unencrypted PDF."
 
-        return None, "Content extraction is not supported for this file type yet."
+        return None, "This file type isn't supported for content extraction yet."
 
     def summarize(self, user_id, file_id):
         text, error = self.extract_text(user_id, file_id)
