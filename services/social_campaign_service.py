@@ -354,26 +354,34 @@ class SocialCampaignService:
                 return None
             if row["status"] not in {"draft", "in_review"}:
                 raise ValueError("Only draft or in-review posts can be approved.")
-            try:
-                SocialConnectorRegistry().get_publisher(row["platform"])
-            except ConnectorNotConfigured as exc:
-                raise ValueError(str(exc)) from exc
+            if job["status"] != "awaiting_approval":
+                raise ValueError("This post is not waiting for an approval decision.")
             connection = conn.execute(
                 "SELECT id FROM social_connections WHERE user_id=? AND platform=? AND status='active' LIMIT 1",
                 (user_id, row["platform"]),
             ).fetchone()
-            if not connection:
-                raise ValueError(f"No active {row['platform']} account is connected.")
+            publisher_ready = True
+            try:
+                SocialConnectorRegistry().get_publisher(row["platform"])
+            except ConnectorNotConfigured:
+                publisher_ready = False
+            ready = bool(connection and publisher_ready)
+            next_job_status = "queued" if ready else "awaiting_connection"
+            error_code = None if ready else ("connector_not_configured" if not publisher_ready else "connection_required")
+            error_message = None if ready else (
+                "Publishing adapter is not installed for this platform."
+                if not publisher_ready else "Connect and verify a social account before publishing."
+            )
             conn.execute(
                 "UPDATE social_content SET status='approved', updated_at=CURRENT_TIMESTAMP "
                 "WHERE id=? AND user_id=? AND campaign_id=?",
                 (content_id, user_id, campaign_id),
             )
             conn.execute(
-                "UPDATE social_publish_jobs SET status='queued', connection_id=?, error_code=NULL, "
-                "error_message=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? "
+                "UPDATE social_publish_jobs SET status=?, connection_id=?, error_code=?, "
+                "error_message=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? "
                 "AND status='awaiting_approval'",
-                (connection["id"], job["id"], user_id),
+                (next_job_status, connection["id"] if ready else None, error_code, error_message, job["id"], user_id),
             )
             conn.commit()
         finally:
@@ -423,8 +431,8 @@ class SocialCampaignService:
                         (user_id, campaign_id),
                     )
                     conn.execute(
-                        "UPDATE social_publish_jobs SET status='queued', updated_at=CURRENT_TIMESTAMP "
-                        "WHERE user_id=? AND campaign_id=? AND status='awaiting_approval'",
+                        "UPDATE social_publish_jobs SET status='queued', error_code=NULL, error_message=NULL, updated_at=CURRENT_TIMESTAMP "
+                        "WHERE user_id=? AND campaign_id=? AND status IN ('awaiting_approval','awaiting_connection')",
                         (user_id, campaign_id),
                     )
             conn.execute(
