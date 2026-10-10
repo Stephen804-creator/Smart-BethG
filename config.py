@@ -44,9 +44,9 @@ def resolve_sqlite_path() -> str:
     if DATABASE_URL:
         if DATABASE_URL.startswith("sqlite:///"):
             return DATABASE_URL.replace("sqlite:///", "", 1)
-        raise ValueError(
-            f"Unsupported DATABASE_URL scheme for V1 (SQLite only): {DATABASE_URL!r}"
-        )
+        if DATABASE_URL.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
+            return os.path.join(STORAGE_DIRS["db"], "smart_bethg.db")
+        raise ValueError(f"Unsupported DATABASE_URL scheme: {DATABASE_URL!r}")
     legacy = os.getenv("SMART_BETHG_DB")
     if legacy:
         return legacy
