@@ -19,10 +19,12 @@ class LocalArtifactStorage:
         path.write_bytes(content)
         return key
 
-    def get(self, key):
+    def get(self, key, max_bytes=None):
         path = self._resolve(key)
         if not path.is_file():
             raise FileNotFoundError("Artifact object does not exist.")
+        if max_bytes is not None and path.stat().st_size > max_bytes:
+            raise ValueError("Artifact object exceeds the configured read limit.")
         return path.read_bytes()
 
     def delete(self, key):
@@ -62,9 +64,18 @@ class S3ArtifactStorage:
         self.client.put_object(Bucket=self.bucket, Key=key, Body=content)
         return key
 
-    def get(self, key):
+    def get(self, key, max_bytes=None):
         response = self.client.get_object(Bucket=self.bucket, Key=key)
-        return response["Body"].read()
+        body = response["Body"]
+        try:
+            if max_bytes is None:
+                return body.read()
+            content = body.read(max_bytes + 1)
+            if len(content) > max_bytes:
+                raise ValueError("Artifact object exceeds the configured read limit.")
+            return content
+        finally:
+            body.close()
 
     def delete(self, key):
         self.client.delete_object(Bucket=self.bucket, Key=key)
