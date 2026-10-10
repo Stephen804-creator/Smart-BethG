@@ -3,7 +3,7 @@
 Last reviewed: 2026-10-10. This records current decisions; deferred capabilities are not represented as implemented.
 
 ## Product boundary
-Until the owner explicitly chooses a public launch, operate Smart BethG as a personal / small trusted-group application. Do not invite strangers or advertise public registration before the security review, consent flow, privacy policy, and operational safeguards are complete. Production registration now defaults to closed; an operator may deliberately open it through SMART_BETHG_REGISTRATION_OPEN=true.
+Until the owner explicitly chooses a public launch, operate Smart BethG as a personal / small trusted-group application. Do not invite strangers or advertise public registration before the security review, consent flow, privacy policy, and operational safeguards are complete. Registration defaults to closed in every environment; an operator must deliberately open it through SMART_BETHG_REGISTRATION_OPEN=true.
 
 ## Planning and execution safety
 Keep the fixed-shape planner for now. It is auditable and predictable, while a general planner expands the action space and can chain unsafe or unintended operations. Do not add a general autonomous planner until each tool has explicit authorization, risk classification, approval enforcement, audit events, bounded execution, cancellation, and adversarial tests. Multi-step work should remain a small set of reviewed, named plan templates.
