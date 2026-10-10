@@ -23,7 +23,7 @@ class EvidenceService:
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "INSERT INTO evidence(mission_id, user_id, claim, source_url, source_excerpt, confidence, validation_status) "
+                "INSERT INTO evidence(mission_id, user_id, claim, evidence_text, source_reference, confidence, validation_status) "
                 "VALUES (?, ?, ?, ?, ?, ?, 'unverified')",
                 (mission_id, user_id, claim, source_url, source_excerpt or "", confidence),
             )
@@ -37,7 +37,7 @@ class EvidenceService:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, mission_id, user_id, claim, source_url, source_excerpt, confidence, "
+                "SELECT id, mission_id, user_id, claim, source_reference AS source_url, evidence_text AS source_excerpt, confidence, "
                 "validation_status, created_at FROM evidence WHERE user_id=? ORDER BY created_at DESC, id DESC",
                 (user_id,),
             ).fetchall()
