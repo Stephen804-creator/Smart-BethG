@@ -102,3 +102,21 @@ The application should remain provider-neutral. Render is an optional low-cost t
 ## Verification limitations
 
 This audit was based on the code and GitHub Actions evidence available on the named branch at the recorded date. It did not inspect live host settings, production secrets, real persistent storage, actual backups, domain/TLS configuration, provider account settings, or user traffic. Those must be verified separately. No claim is made that the application has undergone an external penetration test.
+
+## Audit updates — 2026-10-10 19:30 UTC
+
+### Additional defects found and addressed
+
+**11. Invalid Font Awesome Subresource Integrity value (fixed on review branch).**  
+The home page linked Font Awesome with a literal placeholder integrity="sha512-...". Browsers enforce Subresource Integrity and reject a stylesheet whose hash does not match, so icons on that page could fail to load. The placeholder attribute has been removed rather than pretending it was a real integrity hash, and a regression test now rejects this placeholder in HTML templates. Longer-term, self-hosting the required icon assets or pinning the actual verified upstream hash would reduce external-CDN dependence.
+
+**12. Task status updates were not owner-scoped (fixed on review branch; regression test added).**  
+The task repository's internal status-update method accepted a task ID without the owning user ID. There was no public status-update route in the reviewed route file, so this was a latent service/repository authorization flaw rather than a confirmed remotely exploitable endpoint. The repository update now includes both task ID and owner ID, the service requires the owner identity and validates the status allowlist, and a regression test verifies that a different user cannot change the task status.
+
+### Verification status after these updates
+
+The last completed security workflow for commit 6537f50e81d3a3c75af18aa7210fdf1940158951 passed both the dependency vulnerability audit and Gitleaks secret scan. The unit and PostgreSQL integration workflow for later commits was still running at the time of this update. Do not treat that earlier green security run as validation of the task-ownership changes; check the current PR head's workflow results before merge.
+
+### UI/capability status clarification
+
+Several schema-backed capability slices now have service, API, and unit-test coverage (projects, missions/runs, workflows, artifacts, social-content drafts, research, evidence, files, knowledge, memory). They are not all exposed through a finished user-facing workspace UI. Mission records do not yet constitute an autonomous durable worker, workflow validation does not execute workflow steps, and social-content approval does not publish to third-party platforms. Build the user-facing vertical slices and durable execution separately, and label unfinished execution honestly in the UI.
