@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from connectors.facebook_pages import FacebookPagesPublisher
+from connectors.social import ConnectorActionRejected
 
 
 class FakeVault:
@@ -41,6 +42,21 @@ class TestFacebookPagesPublisher(unittest.TestCase):
         self.assertIn("Useful idea", kwargs["data"]["message"])
         self.assertIn("#AI", kwargs["data"]["message"])
         self.assertIn("#learning", kwargs["data"]["message"])
+
+    @patch("connectors.facebook_pages.requests.post")
+    def test_provider_permission_rejection_is_not_reported_as_success(self, post):
+        response = Mock()
+        response.status_code = 403
+        post.return_value = response
+        with self.assertRaisesRegex(ConnectorActionRejected, "HTTP 403"):
+            self.publisher.publish(
+                account={
+                    "user_id": 7, "external_account_id": "page_123",
+                    "credential_ref": "vault:page-credential",
+                },
+                content={"title": "Title", "content": "Body", "hashtags": []},
+                idempotency_key="test-idempotency-key",
+            )
 
     @patch("connectors.facebook_pages.requests.post")
     def test_missing_provider_post_id_is_not_reported_as_success(self, post):
