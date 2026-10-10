@@ -1,4 +1,6 @@
 """Authenticated artifact API."""
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
@@ -48,8 +50,18 @@ def read_artifact(artifact_id: int, user=Depends(get_current_user), service=Depe
         raise HTTPException(status_code=404, detail="Artifact not found.")
     return Response(
         content=content,
-        media_type="text/plain; charset=utf-8",
-        headers={"Content-Disposition": "attachment; filename=artifact.txt", "X-Content-Type-Options": "nosniff"},
+        media_type=record.get("content_type") or "text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename*=UTF-8''" + quote(
+                record["name"] + {
+                    "text": ".txt", "markdown": ".md", "json": ".json",
+                    "python": ".py", "javascript": ".js", "html": ".html",
+                    "csv": ".csv", "yaml": ".yaml",
+                }.get(record.get("artifact_type"), ".txt")
+            ),
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+        },
     )
 
 
