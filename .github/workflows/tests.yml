@@ -53,7 +53,7 @@ jobs:
     env:
       SMART_BETHG_ENV: test
       SMART_BETHG_SECRET_KEY: ci-test-secret-key-not-for-production
-      SMART_BETHG_STORAGE_ROOT: ${{ runner.temp }}/smart-bethg-postgres-storage
+      SMART_BETHG_STORAGE_ROOT: ${{ github.workspace }}/.test-storage
       DATABASE_URL: postgresql://smartbethg:ci-only-password@localhost:5432/smartbethg_test
     steps:
       - name: Check out repository
