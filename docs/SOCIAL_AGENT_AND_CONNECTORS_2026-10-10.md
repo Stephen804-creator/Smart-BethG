@@ -30,7 +30,7 @@ The agent researches/uses approved references, prepares a calendar, generates pl
 - A separate durable worker claims due PostgreSQL jobs with leases, verifies campaign/post/account state, records confirmed success, blocks missing connectors, and marks unknown provider outcomes indeterminate rather than blindly retrying.
 - Meta OAuth connection flow for Facebook Pages, with state verification, required permission checks, pending Page selection, owner-scoped activation/disconnection, and encrypted token storage in the credential vault.
 - Facebook Pages text-post publisher, opt-in only when the operator configures the Meta app, token-encryption key, and explicit publishing-enabled flag. The adapter is text-only and is not an Instagram publisher.
-- Artifact service supports text, Markdown, JSON, Python, JavaScript, HTML, CSV, and YAML text outputs, verifies SHA-256 on reads, and can use local storage or an S3-compatible object store through configuration.
+- Artifact service supports text, Markdown, JSON, Python, JavaScript, HTML, CSV, and YAML text outputs plus bounded binary image/audio/video/PDF/ZIP/generic outputs. It verifies SHA-256 on reads, has owner-scoped local/S3-compatible storage, and exposes a home-page library for create/upload/list/download/delete. Binary uploads are capped at 25 MiB; streaming/multipart media and direct persistence from every generation provider remain open. See `docs/STAGE3_FILES_AND_ARTIFACTS_ACCEPTANCE_2026-10-10.md`.
 - Instagram, YouTube, LinkedIn, and X OAuth/publishing adapters remain planned. Facebook's app review and a real test-account end-to-end run are still external release gates. The existence of an adapter does not prove that Meta has approved the app or its permissions.
 
 ## Connector delivery sequence
