@@ -361,6 +361,69 @@
                     <p id="workspaceDashboardStatus" class="form-help" role="status"></p>
                 </section>
 
+                <!-- FILES AND GENERATED ARTIFACTS -->
+                <section class="workspace-management" aria-labelledby="artifactLibraryTitle">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Files and generated work</p>
+                            <h2 id="artifactLibraryTitle">Artifact library</h2>
+                            <p>Create downloadable text/code outputs or save a generated image, audio clip, video, PDF, or archive. Files are private to your account.</p>
+                        </div>
+                    </div>
+
+                    <div class="workspace-forms">
+                        <form id="artifactTextForm" class="workspace-form">
+                            <h3>Create a text artifact</h3>
+                            <div class="form-group">
+                                <label class="form-label" for="artifactName">Artifact name</label>
+                                <input class="form-control" id="artifactName" name="name" maxlength="160" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="artifactType">Format</label>
+                                <select class="form-control" id="artifactType" name="artifact_type">
+                                    <option value="text">Plain text</option>
+                                    <option value="markdown">Markdown</option>
+                                    <option value="json">JSON</option>
+                                    <option value="python">Python source</option>
+                                    <option value="javascript">JavaScript source</option>
+                                    <option value="html">HTML source</option>
+                                    <option value="csv">CSV</option>
+                                    <option value="yaml">YAML</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="artifactContent">Content</label>
+                                <textarea class="form-control" id="artifactContent" name="content" maxlength="1048576" rows="5" required></textarea>
+                            </div>
+                            <button class="btn btn-primary" type="submit">Save artifact</button>
+                            <p id="artifactTextStatus" class="form-help" role="status"></p>
+                        </form>
+
+                        <form id="artifactUploadForm" class="workspace-form">
+                            <h3>Save a binary output</h3>
+                            <p>Upload an image, audio/video clip, PDF, ZIP, or other binary output. Maximum size: 25 MiB.</p>
+                            <div class="form-group">
+                                <label class="form-label" for="artifactFile">Choose file</label>
+                                <input class="form-control" id="artifactFile" name="file" type="file" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="artifactUploadName">Display name (optional)</label>
+                                <input class="form-control" id="artifactUploadName" name="name" maxlength="160">
+                            </div>
+                            <button class="btn btn-primary" type="submit">Save file to library</button>
+                            <p id="artifactUploadStatus" class="form-help" role="status"></p>
+                        </form>
+                    </div>
+
+                    <section aria-labelledby="artifactListTitle">
+                        <h3 id="artifactListTitle">Your artifacts</h3>
+                        <div id="artifactList" class="workspace-list" aria-live="polite">
+                            <p>Loading artifacts…</p>
+                        </div>
+                    </section>
+                    <p id="artifactLibraryStatus" class="form-help" role="status"></p>
+                </section>
+
                 <!-- QUICK ACTIONS -->
                 {% if quick_actions %}
 
