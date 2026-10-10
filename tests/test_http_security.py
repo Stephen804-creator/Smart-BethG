@@ -59,6 +59,11 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
                     json={"name": "should not be created"},
                 )
                 self.assertEqual(blocked.status_code, 403)
+                blocked_campaign = client.post(
+                    "/api/v1/social-campaigns",
+                    json={"name": "should not be created", "objective": "test"},
+                )
+                self.assertEqual(blocked_campaign.status_code, 403)
 
                 allowed = client.post(
                     "/api/v1/projects",
@@ -106,6 +111,8 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
             "/api/v1/social-campaigns",
             "/api/v1/connectors",
             "/api/v1/connectors/social-accounts",
+            "/api/v1/connectors/meta/configuration",
+            "/api/v1/connectors/meta/start",
             "/api/v1/research",
             "/api/v1/evidence",
             "/api/v1/memory",
