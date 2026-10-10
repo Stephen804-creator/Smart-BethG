@@ -49,7 +49,7 @@ class EvidenceService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT id, mission_id, user_id, claim, source_url, source_excerpt, confidence, "
+                "SELECT id, mission_id, user_id, claim, source_reference AS source_url, evidence_text AS source_excerpt, confidence, "
                 "validation_status, created_at FROM evidence WHERE id=? AND user_id=? LIMIT 1",
                 (evidence_id, user_id),
             ).fetchone()
