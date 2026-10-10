@@ -20,7 +20,7 @@ from error_handlers import register_error_handlers
 
 from routes import (
     health, auth, auth_google, tasks, agents, approvals, audit, tools,
-    providers, chat, files, memory, knowledge, projects, artifacts, missions, workflows, social_content, research, evidence, training_export, pages,
+    providers, chat, files, memory, knowledge, projects, artifacts, missions, workflows, social_content, social_campaigns, connectors, research, evidence, training_export, pages,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
