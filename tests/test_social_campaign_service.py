@@ -1,0 +1,103 @@
+from tests.base import SmartBethGTestCase
+from services.auth_service import create_user
+from services.social_campaign_service import SocialCampaignService
+
+
+class TestSocialCampaignService(SmartBethGTestCase):
+    def setUp(self):
+        super().setUp()
+        self.owner = create_user("campaign-owner", "password123")
+        self.other = create_user("campaign-other", "password123")
+        self.service = SocialCampaignService()
+
+    def create_campaign(self, owner=None, **overrides):
+        values = {
+            "name": "Thirty-day launch",
+            "objective": "Educate the audience and grow reach",
+            "platforms": ["facebook", "linkedin"],
+            "timezone_name": "Africa/Lagos",
+            "start_at": "2026-10-12T08:00:00+01:00",
+            "end_at": "2026-11-12T23:00:00+01:00",
+            "cadence": {"days": ["mon", "wed", "fri"], "local_time": "08:00"},
+            "daily_post_limit": 2,
+        }
+        values.update(overrides)
+        return self.service.create((owner or self.owner)["id"], **values)
+
+    def test_campaign_round_trip_and_owner_isolation(self):
+        campaign = self.create_campaign()
+        self.assertEqual(campaign["platforms"], ["facebook", "linkedin"])
+        self.assertEqual(campaign["timezone"], "Africa/Lagos")
+        self.assertIsNone(self.service.get(self.other["id"], campaign["id"]))
+        self.assertEqual(self.service.list_for_user(self.other["id"]), [])
+
+    def test_requires_timezone_aware_timestamps(self):
+        with self.assertRaisesRegex(ValueError, "timezone offset"):
+            self.create_campaign(start_at="2026-10-12T08:00:00")
+
+    def test_autonomous_publishing_requires_explicit_authorization(self):
+        with self.assertRaisesRegex(ValueError, "explicit campaign-level authorization"):
+            self.create_campaign(autonomy_mode="auto_publish_after_campaign_approval")
+        campaign = self.create_campaign(
+            name="Authorized campaign",
+            autonomy_mode="auto_publish_after_campaign_approval",
+            auto_publish_authorized=True,
+        )
+        self.assertEqual(campaign["autonomy_mode"], "auto_publish_after_campaign_approval")
+
+    def test_add_batch_creates_versioned_posts_and_durable_jobs(self):
+        campaign = self.create_campaign()
+        result = self.service.add_posts(self.owner["id"], campaign["id"], [
+            {"platform": "facebook", "title": "Day one", "content": "Useful content for day one.",
+             "hashtags": ["learning"], "scheduled_at": "2026-10-12T08:00:00+01:00"},
+            {"platform": "linkedin", "title": "Day two", "content": "Useful content for day two.",
+             "hashtags": ["engineering"], "scheduled_at": "2026-10-13T08:00:00+01:00"},
+        ])
+        self.assertEqual(len(result["posts"]), 2)
+        self.assertEqual(result["status"], "planned")
+        import database
+        conn = database.get_connection()
+        try:
+            jobs = conn.execute(
+                "SELECT status, idempotency_key FROM social_publish_jobs WHERE user_id=? AND campaign_id=?",
+                (self.owner["id"], campaign["id"]),
+            ).fetchall()
+            self.assertEqual(len(jobs), 2)
+            self.assertTrue(all(row["status"] == "awaiting_approval" for row in jobs))
+            self.assertEqual(len({row["idempotency_key"] for row in jobs}), 2)
+        finally:
+            conn.close()
+
+    def test_daily_limit_is_enforced_atomically(self):
+        campaign = self.create_campaign(daily_post_limit=1)
+        posts = [
+            {"platform": "facebook", "title": "A", "content": "Post A",
+             "scheduled_at": "2026-10-12T08:00:00+01:00"},
+            {"platform": "facebook", "title": "B", "content": "Post B",
+             "scheduled_at": "2026-10-12T15:00:00+01:00"},
+        ]
+        with self.assertRaisesRegex(ValueError, "daily post limit"):
+            self.service.add_posts(self.owner["id"], campaign["id"], posts)
+        import database
+        conn = database.get_connection()
+        try:
+            count = conn.execute(
+                "SELECT COUNT(*) AS n FROM social_content WHERE user_id=? AND campaign_id=?",
+                (self.owner["id"], campaign["id"]),
+            ).fetchone()["n"]
+            self.assertEqual(count, 0)
+        finally:
+            conn.close()
+
+    def test_campaign_cannot_target_unselected_platform(self):
+        campaign = self.create_campaign(platforms=["facebook"])
+        with self.assertRaisesRegex(ValueError, "not part of this campaign"):
+            self.service.add_posts(self.owner["id"], campaign["id"], [{
+                "platform": "linkedin", "title": "Wrong platform", "content": "No",
+                "scheduled_at": "2026-10-12T08:00:00+01:00",
+            }])
+
+
+if __name__ == "__main__":
+    import unittest
+    unittest.main()
