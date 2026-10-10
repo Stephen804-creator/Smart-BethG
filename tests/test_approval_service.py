@@ -56,3 +56,24 @@ class TestApprovalService(SmartBethGTestCase):
 
     def test_is_approved_false_for_unknown_id(self):
         self.assertFalse(self.service.is_approved("not-a-real-id"))
+
+
+    def test_expired_approval_cannot_be_approved(self):
+        from database import get_connection
+        created = self.service.create(self.user["id"], "git.write", "workspace:default")
+        conn = get_connection()
+        try:
+            conn.execute(
+                "UPDATE approvals SET expires_at=? WHERE id=?",
+                ("2000-01-01T00:00:00+00:00", created["id"]),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        with self.assertRaises(HTTPException) as caught:
+            self.service.decide(created["id"], self.user["id"], True)
+        self.assertEqual(caught.exception.status_code, 409)
+        refreshed = self.service.get_for_user(created["id"], self.user["id"])
+        self.assertEqual(refreshed["status"], "expired")
+        self.assertEqual(refreshed["execution_status"], "pending")
