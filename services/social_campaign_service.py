@@ -69,10 +69,14 @@ class SocialCampaignService:
         try:
             cursor = conn.execute(
                 "INSERT INTO social_campaigns(user_id, name, objective, platforms_json, timezone, start_at, "
-                "end_at, cadence_json, autonomy_mode, daily_post_limit, status, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', CURRENT_TIMESTAMP)",
+                "end_at, cadence_json, autonomy_mode, autopublish_authorized_at, authorization_scope_json, "
+                "daily_post_limit, status, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', CURRENT_TIMESTAMP)",
                 (user_id, name, objective, json.dumps(cleaned_platforms), timezone_name, start, end,
-                 json.dumps(cadence), autonomy_mode, daily_post_limit),
+                 json.dumps(cadence), autonomy_mode, authorized_at,
+                 json.dumps({"platforms": cleaned_platforms, "daily_post_limit": daily_post_limit,
+                             "start_at": start, "end_at": end}) if authorized_at else None,
+                 daily_post_limit),
             )
             campaign_id = cursor.lastrowid
             # Keep authorization evidence separate from free-form campaign text.
