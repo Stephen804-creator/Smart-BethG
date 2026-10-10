@@ -164,7 +164,7 @@ def create_app() -> FastAPI:
     api_routers = [
         health.router, auth.router, tasks.router, agents.router, approvals.router,
         audit.router, tools.router, providers.router, chat.router, files.router,
-        memory.router, knowledge.router, projects.router, artifacts.router, missions.router, workflows.router, social_content.router, research.router, evidence.router,
+        memory.router, knowledge.router, projects.router, artifacts.router, missions.router, workflows.router, social_content.router, social_campaigns.router, connectors.router, research.router, evidence.router,
     ]
     for router in api_routers:
         if router in (chat.router, files.router, memory.router, knowledge.router):
