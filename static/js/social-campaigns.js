@@ -149,6 +149,18 @@
     card.append(meta);
 
     const actions = element("div", "campaign-actions");
+    const exportButton = element("button", "btn", "Save calendar as artifact");
+    exportButton.type = "button";
+    exportButton.addEventListener("click", async () => {
+      exportButton.disabled = true;
+      try {
+        const result = await api("/social-campaigns/" + campaign.id + "/export-artifact", { method: "POST" });
+        campaignStatus.textContent = "Saved JSON artifact: " + result.artifact.name;
+      } catch (error) { campaignStatus.textContent = error.message; }
+      finally { exportButton.disabled = false; }
+    });
+    actions.append(exportButton);
+
     const generate = element("button", "btn", "Generate 30 posts");
     generate.type = "button";
     generate.addEventListener("click", async () => {
@@ -264,7 +276,9 @@
   }
 
   autonomyMode.addEventListener("change", () => {
-    consentRow.hidden = autonomyMode.value !== "auto_publish_after_campaign_approval";
+    const automatic = autonomyMode.value === "auto_publish_after_campaign_approval";
+    consentRow.hidden = !automatic;
+    if (!automatic) $('input[name="auto_publish_authorized"]', form).checked = false;
   });
 
   form.addEventListener("submit", async event => {
