@@ -23,6 +23,11 @@ CREATE TABLE IF NOT EXISTS social_campaigns (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE social_campaigns ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT '';
+ALTER TABLE social_campaigns ADD COLUMN IF NOT EXISTS tone TEXT NOT NULL DEFAULT 'clear, helpful';
+ALTER TABLE social_campaigns ADD COLUMN IF NOT EXISTS reference_urls_json TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE social_campaigns ADD COLUMN IF NOT EXISTS content_rules TEXT NOT NULL DEFAULT '';
+
 CREATE INDEX IF NOT EXISTS idx_social_campaigns_owner_updated
     ON social_campaigns(user_id, updated_at DESC);
 
