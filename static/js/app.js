@@ -19,9 +19,18 @@
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       try {
-        await fetch("/auth/logout", { method: "POST", credentials: "same-origin" });
-      } finally {
+        const csrfResponse = await fetch("/auth/csrf", { credentials: "same-origin", cache: "no-store" });
+        if (!csrfResponse.ok) throw new Error("CSRF token request failed.");
+        const csrfData = await csrfResponse.json();
+        const logoutResponse = await fetch("/auth/logout", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "X-CSRF-Token": csrfData.csrf_token },
+        });
+        if (!logoutResponse.ok) throw new Error("Logout request failed.");
         window.location.href = "/login";
+      } catch (err) {
+        window.alert("Could not log out securely. Refresh the page and try again.");
       }
     });
   }
