@@ -32,7 +32,8 @@ SERIAL_ID_TABLES = {
     "users", "agents", "tasks", "auth_rate_limit_events", "audit_events",
     "providers", "conversations", "messages", "provider_calls", "missions",
     "mission_runs", "files", "memory", "research", "evidence", "workflows",
-    "artifacts", "social_content", "projects", "logs", "knowledge_chunks",
+    "artifacts", "social_content", "social_content_versions", "projects", "logs",
+    "knowledge_chunks",
 }
 
 
@@ -108,7 +109,7 @@ class _PostgresConnection:
         )
         clean = re.sub(
             r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT",
-            "BIGSERIAL PRIMARY KEY",
+            "SERIAL PRIMARY KEY",
             clean,
             flags=re.I,
         )
