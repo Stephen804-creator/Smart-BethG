@@ -22,6 +22,8 @@ REQUIRED_RUN_FLAGS = {
     "--cpus=1",
     "--pids-limit=128",
     "--user=10001:10001",
+    "--tmpfs",
+    "/tmp:rw,noexec,nosuid,size=64m",
 }
 FORBIDDEN_FLAGS = (
     "--privileged", "--volume", "-v", "--mount", "--device", "--network=host",
@@ -93,8 +95,8 @@ class DockerTool:
             raise PermissionError("Container image is not in SMART_BETHG_DOCKER_ALLOWED_IMAGES.")
         if not command_args:
             raise ValueError("A command must be provided for the allowlisted container image.")
-        if any(not re.fullmatch(r"[A-Za-z0-9_./:@+=,-]{1,256}", item) for item in command_args):
-            raise ValueError("Container command arguments contain unsupported characters.")
+        if any(not item or len(item) > 1024 or any(ord(ch) < 32 for ch in item) for item in command_args):
+            raise ValueError("Container command arguments are empty, too long, or contain control characters.")
 
         return subprocess.run(
             ["docker", *args], cwd=cwd, capture_output=True, text=True,
