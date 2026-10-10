@@ -116,6 +116,26 @@ class TestToolServiceExecution(SmartBethGTestCase):
         self.assertFalse(result["success"])
         self.assertEqual(result["status"], "command_failed")
 
+    def test_raw_git_terminal_command_is_rejected_before_approval(self):
+        result = self.service.execute(
+            self.admin, "terminal.execute", workspace="raw-git",
+            program="git", args=["-c", "core.pager=cat", "status"],
+        )
+        self.assertEqual(result["status"], "denied")
+        self.assertIn("dedicated git.read or git.write", result["reason"])
+        self.assertEqual(self.service.approvals.list_pending(self.admin["id"]), [])
+
+    def test_host_python_is_rejected_when_dev_execution_is_disabled(self):
+        from unittest.mock import patch
+        with patch("services.tool_service.config.ALLOW_DEV_PYTHON_EXECUTION", False):
+            result = self.service.execute(
+                self.admin, "terminal.execute", workspace="no-host-python",
+                program="python", args=["-c", "print('not executed')"],
+            )
+        self.assertEqual(result["status"], "denied")
+        self.assertIn("isolated job runner", result["reason"])
+        self.assertEqual(self.service.approvals.list_pending(self.admin["id"]), [])
+
     def test_terminal_execute_denied_for_user_role(self):
         result = self.service.execute(self.user, "terminal.execute", workspace="proj4", program="python", args=["--version"])
         self.assertFalse(result["success"])
