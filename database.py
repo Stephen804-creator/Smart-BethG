@@ -384,10 +384,23 @@ def initialize_database():
             caption TEXT,
             hashtags TEXT,
             status TEXT NOT NULL DEFAULT 'draft',
+            version INTEGER NOT NULL DEFAULT 1,
             external_post_id TEXT,
             published_at TEXT,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS social_content_versions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            social_content_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            version INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            hashtags TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(social_content_id) REFERENCES social_content(id)
         );
 
         CREATE TABLE IF NOT EXISTS projects(
@@ -452,6 +465,7 @@ def initialize_database():
     _add_column_if_missing(conn, "artifacts", "size_bytes", "INTEGER")
     _add_column_if_missing(conn, "artifacts", "checksum_sha256", "TEXT")
     _add_column_if_missing(conn, "artifacts", "updated_at", "TEXT")
+    _add_column_if_missing(conn, "social_content", "version", "INTEGER NOT NULL DEFAULT 1")
     _add_column_if_missing(conn, "social_content", "external_post_id", "TEXT")
     _add_column_if_missing(conn, "social_content", "published_at", "TEXT")
     _add_column_if_missing(conn, "social_content", "updated_at", "TEXT")
@@ -471,6 +485,7 @@ def initialize_database():
         "CREATE INDEX IF NOT EXISTS idx_workflows_user_updated ON workflows(user_id, updated_at)",
         "CREATE INDEX IF NOT EXISTS idx_artifacts_user_created ON artifacts(user_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_social_content_user_updated ON social_content(user_id, updated_at)",
+        "CREATE INDEX IF NOT EXISTS idx_social_content_versions_owner ON social_content_versions(user_id, social_content_id, version)",
         "CREATE INDEX IF NOT EXISTS idx_research_user_created ON research(user_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_evidence_user_created ON evidence(user_id, created_at)",
     ):
