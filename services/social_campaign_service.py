@@ -461,6 +461,11 @@ class SocialCampaignService:
                     "WHERE user_id=? AND campaign_id=? AND status IN ('queued','awaiting_approval','awaiting_connection','blocked')",
                     (user_id, campaign_id),
                 )
+                conn.execute(
+                    "UPDATE social_publish_jobs SET status='cancel_requested', updated_at=CURRENT_TIMESTAMP "
+                    "WHERE user_id=? AND campaign_id=? AND status='publishing'",
+                    (user_id, campaign_id),
+                )
             conn.commit()
         finally:
             conn.close()
