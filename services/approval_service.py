@@ -1,17 +1,9 @@
 """
-Smart BethG - Approval Service
-
-Previously this stored approvals in a plain Python dict on the service
-instance, and api/dependencies.get_approval_service() created a brand
-new instance on every single request - meaning an approval created on
-one request was already gone by the time any later request tried to
-read or decide it. This was a real, live bug (approvals could never
-actually work), not just an incomplete feature.
-
-Now backed by the `approvals` table, which already existed in the
-schema but nothing wrote to it.
+Persistent, user-scoped approval decisions for Smart BethG.
 """
 import uuid
+
+from fastapi import HTTPException, status
 
 from database import get_connection
 from logging_setup import get_logger
@@ -32,43 +24,77 @@ class ApprovalService:
             conn.commit()
         finally:
             conn.close()
-        logger.info("Approval created: id=%s user=%s action=%s resource=%s", approval_id, user_id, action, resource)
+
+        logger.info(
+            "Approval created: id=%s user=%s action=%s resource=%s",
+            approval_id, user_id, action, resource,
+        )
         return self._get(approval_id)
 
     def list_pending(self, user_id):
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT * FROM approvals WHERE user_id=? AND status='pending' ORDER BY created_at DESC",
+                "SELECT id, user_id, action, resource, status, created_at "
+                "FROM approvals WHERE user_id=? AND status='pending' "
+                "ORDER BY created_at DESC",
                 (user_id,),
             ).fetchall()
-            return [dict(r) for r in rows]
+            return [dict(row) for row in rows]
         finally:
             conn.close()
 
     def decide(self, approval_id, user_id, approved):
+        new_status = "approved" if approved else "rejected"
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT * FROM approvals WHERE id=? LIMIT 1", (approval_id,)
+                "SELECT user_id, status FROM approvals WHERE id=? LIMIT 1",
+                (approval_id,),
             ).fetchone()
-            if not row or row["user_id"] != user_id:
-                return {"error": "Approval not found."}
-            if row["status"] != "pending":
-                return {"error": f"Approval already {row['status']}."}
 
-            new_status = "approved" if approved else "rejected"
-            conn.execute("UPDATE approvals SET status=? WHERE id=?", (new_status, approval_id))
+            # Do not reveal whether another user's approval ID exists.
+            if not row or row["user_id"] != user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Approval not found.",
+                )
+            if row["status"] != "pending":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Approval already {row['status']}.",
+                )
+
+            # Conditional update prevents two concurrent requests from both
+            # deciding the same pending approval.
+            cursor = conn.execute(
+                "UPDATE approvals SET status=? "
+                "WHERE id=? AND user_id=? AND status='pending'",
+                (new_status, approval_id, user_id),
+            )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Approval was already decided. Refresh and try again.",
+                )
             conn.commit()
         finally:
             conn.close()
-        logger.info("Approval %s decided: %s by user %s", approval_id, new_status, user_id)
+
+        logger.info(
+            "Approval %s decided: %s by user %s",
+            approval_id, new_status, user_id,
+        )
         return self._get(approval_id)
 
     def is_approved(self, approval_id):
         conn = get_connection()
         try:
-            row = conn.execute("SELECT status FROM approvals WHERE id=? LIMIT 1", (approval_id,)).fetchone()
+            row = conn.execute(
+                "SELECT status FROM approvals WHERE id=? LIMIT 1",
+                (approval_id,),
+            ).fetchone()
             return bool(row) and row["status"] == "approved"
         finally:
             conn.close()
@@ -76,7 +102,11 @@ class ApprovalService:
     def _get(self, approval_id):
         conn = get_connection()
         try:
-            row = conn.execute("SELECT * FROM approvals WHERE id=? LIMIT 1", (approval_id,)).fetchone()
+            row = conn.execute(
+                "SELECT id, user_id, action, resource, status, created_at "
+                "FROM approvals WHERE id=? LIMIT 1",
+                (approval_id,),
+            ).fetchone()
             return dict(row) if row else None
         finally:
             conn.close()
