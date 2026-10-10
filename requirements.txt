@@ -47,3 +47,6 @@ psycopg[binary]>=3.2,<4.0
 
 # Optional S3-compatible durable object storage for artifacts
 boto3>=1.35,<2.0
+
+# Encrypt OAuth tokens at rest in the connector credential vault
+cryptography>=44,<47
