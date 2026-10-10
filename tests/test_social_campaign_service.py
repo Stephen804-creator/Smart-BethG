@@ -46,6 +46,20 @@ class TestSocialCampaignService(SmartBethGTestCase):
         )
         self.assertEqual(campaign["autonomy_mode"], "auto_publish_after_campaign_approval")
 
+    def test_autonomous_campaign_requires_a_bounded_authorization_window(self):
+        with self.assertRaisesRegex(ValueError, "explicit campaign end date"):
+            self.create_campaign(
+                autonomy_mode="auto_publish_after_campaign_approval",
+                auto_publish_authorized=True,
+                end_at=None,
+            )
+        with self.assertRaisesRegex(ValueError, "90-day authorization window"):
+            self.create_campaign(
+                autonomy_mode="auto_publish_after_campaign_approval",
+                auto_publish_authorized=True,
+                end_at="2027-02-01T23:00:00+01:00",
+            )
+
     def test_add_batch_creates_versioned_posts_and_durable_jobs(self):
         campaign = self.create_campaign()
         result = self.service.add_posts(self.owner["id"], campaign["id"], [
