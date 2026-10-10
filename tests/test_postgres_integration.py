@@ -38,8 +38,9 @@ class TestPostgreSQLIntegration(unittest.TestCase):
             ).fetchone()
             self.assertIsNotNone(columns)
 
-            # Simulate an existing schema without a recorded migration marker.
-            # The baseline must safely adopt it rather than recreate or damage it.
+            # Simulate a pre-versioned database missing a column added by
+            # the baseline migration. Re-running the migration must upgrade it.
+            conn.execute("ALTER TABLE users DROP COLUMN IF EXISTS session_version")
             conn.execute("DELETE FROM schema_migrations WHERE version=?", (version,))
             conn.commit()
             _run_postgres_migrations(conn)
@@ -47,6 +48,12 @@ class TestPostgreSQLIntegration(unittest.TestCase):
                 "SELECT version FROM schema_migrations WHERE version=?", (version,)
             ).fetchone()
             self.assertIsNotNone(adopted)
+            restored_column = conn.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema=current_schema() AND table_name='users' "
+                "AND column_name='session_version'"
+            ).fetchone()
+            self.assertIsNotNone(restored_column)
         finally:
             conn.close()
 
