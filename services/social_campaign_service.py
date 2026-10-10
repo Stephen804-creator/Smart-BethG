@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from database import get_connection
 from services.social_content_service import SocialContentService
+from connectors.social import ConnectorNotConfigured, SocialConnectorRegistry
 
 
 class SocialCampaignService:
@@ -207,6 +208,50 @@ class SocialCampaignService:
             conn.close()
         return self.get(user_id, campaign_id)
 
+    def approve_post(self, user_id, campaign_id, content_id):
+        campaign = self.get(user_id, campaign_id)
+        if not campaign:
+            return None
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT id, platform, status FROM social_content WHERE id=? AND user_id=? AND campaign_id=?",
+                (content_id, user_id, campaign_id),
+            ).fetchone()
+            job = conn.execute(
+                "SELECT id, status FROM social_publish_jobs WHERE user_id=? AND campaign_id=? AND content_id=?",
+                (user_id, campaign_id, content_id),
+            ).fetchone()
+            if not row or not job:
+                return None
+            if row["status"] not in {"draft", "in_review"}:
+                raise ValueError("Only draft or in-review posts can be approved.")
+            try:
+                SocialConnectorRegistry().get_publisher(row["platform"])
+            except ConnectorNotConfigured as exc:
+                raise ValueError(str(exc)) from exc
+            connection = conn.execute(
+                "SELECT id FROM social_connections WHERE user_id=? AND platform=? AND status='active' LIMIT 1",
+                (user_id, row["platform"]),
+            ).fetchone()
+            if not connection:
+                raise ValueError(f"No active {row['platform']} account is connected.")
+            conn.execute(
+                "UPDATE social_content SET status='approved', updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=? AND user_id=? AND campaign_id=?",
+                (content_id, user_id, campaign_id),
+            )
+            conn.execute(
+                "UPDATE social_publish_jobs SET status='queued', connection_id=?, error_code=NULL, "
+                "error_message=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? "
+                "AND status='awaiting_approval'",
+                (connection["id"], job["id"], user_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return self.get(user_id, campaign_id)
+
     def set_status(self, user_id, campaign_id, status):
         allowed = {
             "draft": {"planned", "cancelled"},
@@ -221,13 +266,39 @@ class SocialCampaignService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT status FROM social_campaigns WHERE id=? AND user_id=? LIMIT 1",
+                "SELECT * FROM social_campaigns WHERE id=? AND user_id=? LIMIT 1",
                 (campaign_id, user_id),
             ).fetchone()
             if not row:
                 return None
             if status not in allowed[row["status"]]:
                 raise ValueError(f"Cannot change campaign from {row['status']} to {status}.")
+            campaign = self._decode(row)
+            if status == "active":
+                if campaign["autonomy_mode"] == "auto_publish_after_campaign_approval" and not campaign.get("autopublish_authorized_at"):
+                    raise ValueError("Autonomous publishing has no recorded campaign authorization.")
+                for platform in campaign["platforms"]:
+                    try:
+                        SocialConnectorRegistry().get_publisher(platform)
+                    except ConnectorNotConfigured as exc:
+                        raise ValueError(str(exc)) from exc
+                    account = conn.execute(
+                        "SELECT id FROM social_connections WHERE user_id=? AND platform=? AND status='active' LIMIT 1",
+                        (user_id, platform),
+                    ).fetchone()
+                    if not account:
+                        raise ValueError(f"No active {platform} account is connected.")
+                if campaign["autonomy_mode"] == "auto_publish_after_campaign_approval":
+                    conn.execute(
+                        "UPDATE social_content SET status='approved', updated_at=CURRENT_TIMESTAMP "
+                        "WHERE user_id=? AND campaign_id=? AND status='draft'",
+                        (user_id, campaign_id),
+                    )
+                    conn.execute(
+                        "UPDATE social_publish_jobs SET status='queued', updated_at=CURRENT_TIMESTAMP "
+                        "WHERE user_id=? AND campaign_id=? AND status='awaiting_approval'",
+                        (user_id, campaign_id),
+                    )
             conn.execute(
                 "UPDATE social_campaigns SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
                 (status, campaign_id, user_id),
