@@ -83,10 +83,12 @@ The repository includes a fail-closed migration utility:
 
 ```bash
 DATABASE_URL="postgresql://..." python scripts/migrate_sqlite_to_postgres.py /path/to/smart_bethg.db --dry-run
-DATABASE_URL="postgresql://..." python scripts/migrate_sqlite_to_postgres.py /path/to/smart_bethg.db
+DATABASE_URL="postgresql://..." python scripts/migrate_sqlite_to_postgres.py /path/to/smart_bethg.db \
+  --old-storage-root /old/storage/root \
+  --new-storage-root /new/storage/root
 ```
 
-First take a backup and test against a fresh PostgreSQL database. The script refuses to merge into non-empty target tables and leaves the SQLite source unchanged. It migrates database rows, not uploaded files or workspace directories; copy and verify those files separately. Test the migration and restoration process before migrating real user data. Do not run this against your only production database without a verified backup.
+First take a backup and test against a fresh PostgreSQL database. The script refuses to merge into non-empty target tables and leaves the SQLite source unchanged. It migrates database rows, not uploaded files or workspace directories; copy those files separately. Use the storage-root options when the destination path differs so recognized file paths can be remapped. Follow the full [migration runbook](docs/DATABASE_MIGRATION_2026-10-10.md) and verify every migrated feature before moving real user data. Do not run this against your only production database without a verified backup.
 
 ## Tests and CI
 
