@@ -3,7 +3,7 @@ import uuid
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 
-from database import initialize_database
+from database import get_connection, initialize_database
 from repositories.conversation_repository import ConversationRepository
 from services.approval_service import ApprovalService
 from services.auth_service import create_user
@@ -17,7 +17,7 @@ class TestPostgreSQLIntegration(unittest.TestCase):
         initialize_database()
 
     def test_versioned_baseline_migration_is_recorded(self):
-        conn = __import__("database").get_connection()
+        conn = get_connection()
         try:
             row = conn.execute(
                 "SELECT version FROM schema_migrations WHERE version=?",
