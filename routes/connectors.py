@@ -193,7 +193,7 @@ def finish_meta_oauth(request: Request, user=Depends(get_current_user)):
             if existing and existing["credential_ref"]:
                 old_refs.append(existing["credential_ref"])
             credential_ref = vault.store(
-                user["id"], "meta", page["access_token"], scopes=list(META_SCOPES),
+                user["id"], "meta", page["access_token"], scopes=list(META_SCOPES), connection=conn,
             )
             created_refs.append(credential_ref)
             if existing:
