@@ -55,6 +55,7 @@ jobs:
       SMART_BETHG_SECRET_KEY: ci-test-secret-key-not-for-production
       SMART_BETHG_STORAGE_ROOT: ${{ github.workspace }}/.test-storage
       DATABASE_URL: postgresql://smartbethg:ci-only-password@localhost:5432/smartbethg_test
+      SMART_BETHG_RUN_POSTGRES_TESTS: "1"
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
