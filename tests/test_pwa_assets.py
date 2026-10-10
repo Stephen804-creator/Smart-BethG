@@ -43,6 +43,15 @@ class TestPwaAssets(unittest.TestCase):
         self.assertIn('"/api/"', src)
         self.assertIn('"/auth/"', src)
 
+    def test_templates_do_not_use_placeholder_subresource_integrity(self):
+        templates = os.path.join(BASE, "templates")
+        for filename in os.listdir(templates):
+            if not filename.endswith(".html"):
+                continue
+            with open(os.path.join(templates, filename), encoding="utf-8") as handle:
+                source = handle.read()
+            self.assertNotIn('integrity="sha512-..."', source, filename)
+
     def test_native_shell_does_not_hardcode_a_deployment_url(self):
         with open(os.path.join(BASE, "native", "capacitor.config.ts")) as f:
             src = f.read()
