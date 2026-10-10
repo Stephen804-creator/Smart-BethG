@@ -8,12 +8,12 @@ def authenticate_user(username, password):
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT id, username, password_hash, status, role FROM users WHERE username=? LIMIT 1",
+            "SELECT id, username, password_hash, status, role, session_version FROM users WHERE username=? LIMIT 1",
             (username,),
         ).fetchone()
         if not row or row["status"] != "active" or not row["password_hash"] or not check_password_hash(row["password_hash"], password):
             return None
-        return {"id": row["id"], "username": row["username"], "role": row["role"]}
+        return {"id": row["id"], "username": row["username"], "role": row["role"], "session_version": row["session_version"]}
     finally:
         conn.close()
 
@@ -22,9 +22,26 @@ def get_user_by_id(user_id):
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT id, username, status, role FROM users WHERE id=? LIMIT 1", (user_id,)
+            "SELECT id, username, status, role, session_version FROM users WHERE id=? LIMIT 1", (user_id,)
         ).fetchone()
-        return {"id": row["id"], "username": row["username"], "role": row["role"]} if row and row["status"] == "active" else None
+        return {"id": row["id"], "username": row["username"], "role": row["role"], "session_version": row["session_version"]} if row and row["status"] == "active" else None
+    finally:
+        conn.close()
+
+
+def revoke_user_sessions(user_id):
+    """Invalidate all previously issued signed cookies for this user."""
+    conn = get_connection()
+    try:
+        cursor = conn.execute(
+            "UPDATE users SET session_version=session_version+1 WHERE id=? AND status='active'",
+            (user_id,),
+        )
+        conn.commit()
+        return cursor.rowcount == 1
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
