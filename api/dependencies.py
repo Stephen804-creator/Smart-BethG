@@ -106,3 +106,14 @@ from services.social_content_service import SocialContentService
 
 def get_social_content_service():
     return SocialContentService()
+
+from services.research_service import ResearchService
+from services.evidence_service import EvidenceService
+
+
+def get_research_service():
+    return ResearchService()
+
+
+def get_evidence_service():
+    return EvidenceService()
