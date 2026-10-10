@@ -30,7 +30,7 @@ class LocalArtifactStorage:
         path.unlink(missing_ok=True)
 
     def _resolve(self, key):
-        if not isinstance(key, str) or "\\\\" in key:
+        if not isinstance(key, str) or "\\" in key:
             raise ValueError("Invalid artifact storage key.")
         parts = Path(key).parts
         # Keys are owner-prefixed and intentionally flat after the owner ID:
