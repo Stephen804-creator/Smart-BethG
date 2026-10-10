@@ -95,10 +95,11 @@ def create_app() -> FastAPI:
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
-        # Start with Report-Only to measure compatibility before enforcing CSP.
-        # Inline styles remain temporarily allowed because templates still use
-        # style attributes; inline scripts and eval are not allowed.
-        response.headers["Content-Security-Policy-Report-Only"] = (
+        # Enforce CSP: templates use local scripts and same-origin API calls.
+        # Inline style attributes remain allowed for the current UI; inline
+        # scripts, eval, plugins, framing, and external connections are blocked.
+        # Font Awesome is the only currently permitted external stylesheet/font.
+        response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "base-uri 'self'; "
             "object-src 'none'; "
