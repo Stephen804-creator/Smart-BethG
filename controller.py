@@ -14,6 +14,9 @@ happened - not left as "queued" forever.
 """
 
 from services.task_service import TaskService
+from logging_setup import get_logger
+
+logger = get_logger("task")
 from agent.executor import AgentExecutor
 from agent.request import AgentRequest
 
@@ -100,9 +103,10 @@ class Controller:
         try:
             agent_request = AgentRequest(text=request.strip(), user=user, workspace=workspace.strip())
             outcome = self.agent_executor.run(agent_request)
-        except Exception as exc:
+        except Exception:
+            logger.exception("Task execution failed: task_id=%s user_id=%s", task["task_id"], user["id"])
             self.task_service.update_status(task["task_id"], "failed")
-            return {**task, "status": "failed", "error": str(exc)}
+            return {**task, "status": "failed", "error": "The task failed unexpectedly. Please try again later."}
 
         self.task_service.update_status(task["task_id"], outcome["status"])
         return {**task, **outcome}
