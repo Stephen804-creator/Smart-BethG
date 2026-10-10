@@ -11,6 +11,7 @@ from database import _run_postgres_migrations, get_connection, initialize_databa
 from repositories.conversation_repository import ConversationRepository
 from services.approval_service import ApprovalService
 from services.auth_service import create_user
+from services.artifact_service import ArtifactService
 from services.credential_vault import CredentialVault
 from services.social_campaign_service import SocialCampaignService
 from workers.social_publisher import SocialPublisherWorker
@@ -183,6 +184,23 @@ class TestPostgreSQLIntegration(unittest.TestCase):
             conn.commit()
         finally:
             conn.close()
+
+    def test_artifact_storage_round_trip_and_owner_isolation(self):
+        suffix = uuid.uuid4().hex[:12]
+        owner = create_user("pg-artifact-owner-" + suffix, "test-password-123")
+        other = create_user("pg-artifact-other-" + suffix, "test-password-123")
+        service = ArtifactService()
+        payload = bytes([137]) + b"PNG" + bytes([13, 10, 26, 10]) + b"postgres-artifact"
+        artifact = service.create_bytes(owner["id"], "pg-image.png", payload, "image/png")
+        try:
+            stored, record = service.read_bytes(owner["id"], artifact["id"])
+            self.assertEqual(stored, payload)
+            self.assertEqual(record["content_type"], "image/png")
+            foreign, foreign_record = service.read_bytes(other["id"], artifact["id"])
+            self.assertIsNone(foreign)
+            self.assertIsNone(foreign_record)
+        finally:
+            service.delete(owner["id"], artifact["id"])
 
     def test_database_backed_rate_limiter(self):
         key = "pg-integration:" + uuid.uuid4().hex
