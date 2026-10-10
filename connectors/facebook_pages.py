@@ -4,8 +4,8 @@ import re
 
 import requests
 
-from connectors.social import SocialConnectorInfo
-from services.credential_vault import CredentialVault, CredentialVaultError
+from connectors.social import ConnectorActionRejected, ConnectorOutcomeUnknown, SocialConnectorInfo
+from services.credential_vault import CredentialVault
 
 
 class FacebookPagesPublisher:
@@ -65,6 +65,14 @@ class FacebookPagesPublisher:
             headers={"Authorization": "Bearer " + token},
             timeout=self.timeout,
         )
+        if 400 <= response.status_code < 500:
+            raise ConnectorActionRejected(
+                f"Meta rejected the post (HTTP {response.status_code}). Check Page permissions, content rules, and API limits."
+            )
+        if response.status_code >= 500:
+            raise ConnectorOutcomeUnknown(
+                f"Meta returned HTTP {response.status_code}; reconcile the Page before retrying."
+            )
         response.raise_for_status()
         payload = response.json()
         external_post_id = payload.get("id") if isinstance(payload, dict) else None
