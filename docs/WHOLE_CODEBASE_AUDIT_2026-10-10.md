@@ -1,7 +1,7 @@
 # Smart BethG Whole-Codebase Audit
 
 **Audit date:** 2026-10-10 UTC  
-**Last updated:** 2026-10-10 20:30 UTC  
+**Last updated:** 2026-10-10 20:34 UTC  
 **Branch reviewed:** `update/corrected-zip-2026-10-10`  
 **Target branch:** `main`  
 **Status:** Engineering audit in progress; public launch is not approved.  
@@ -254,3 +254,13 @@ This addendum supersedes only the older status statements explicitly corrected b
 - **Public-launch legal work:** dated Terms of Service and Privacy Policy remain drafts. A legal-review checklist has been added; neither draft should be represented as legally approved.
 - **Public capability UI:** project, mission, artifact, workflow, social-content, research, and evidence APIs/services exist in this branch, but the home page still presents only Chat as an available capability and several features do not yet have complete user-facing workflows. API presence alone does not equal a finished product. Keep capabilities clearly labeled and do not claim autonomous mission execution or social publishing unless the actual worker/integration is implemented.
 - **Production portability:** Render remains an optional test host only. The generic ASGI entry point and environment contract are documented; live deployment, storage durability, backups, and restore have not been verified from the repository.
+
+
+## Timestamped follow-up — 2026-10-10 20:34 UTC
+
+- **Shared rate-limit race found and fixed:** PostgreSQL integration CI exposed that a prior lock-row upsert accepted all 24 concurrent attempts despite a limit of 5. The limiter now acquires a transaction-scoped PostgreSQL advisory lock before counting/inserting. CI for commit `fdae607ffb4f159267297d67cd988caab9b7bdad` passed the PostgreSQL integration job, including the concurrent rate-limit regression test. A separate concurrent per-user token-budget reservation test has now been added; its latest run is pending.
+- **CSRF protection broadened:** a global ASGI middleware now checks the session CSRF token on every POST, PUT, PATCH, and DELETE route, rather than relying only on route-by-route protection for authentication endpoints. A regression test proves an authenticated project creation is rejected without the token and accepted with it. This must be verified on the latest CI head; browser flows and all external API clients still need compatibility testing.
+- **Content Security Policy:** report-only CSP and header tests are committed. This is deliberately not yet enforcement; review browser violation reports and remove inline styles before moving to an enforced policy.
+- **Project/mission dashboard:** the home page now has authenticated project creation/list/archive and mission-recording/list workflows. A project/mission HTTP test checks owner isolation and rendered controls. The UI explicitly states mission records are tracking data only; there is still no autonomous mission worker.
+- **Current-head verification rule:** commits `874dadc16e91e11721acaafd44ff3ccf270a7f48` and `9aa15aac89c4e340814be9525688a064f6eb51f9` had a dashboard test assertion that looked for wording in the rendered HTML even though that wording was only in the external JavaScript. The assertion was corrected on the later branch head. Those historical failures must not be confused with the final result; wait for the current-head test and PostgreSQL jobs before calling this batch green.
+- **Legal:** the Terms and Privacy files remain drafts. The dated legal checklist now explains the difference between the NDPC regulator, a qualified technology/privacy lawyer, and a licensed DPCO. No legal approval is claimed.
