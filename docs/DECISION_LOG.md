@@ -65,3 +65,14 @@ Revision `3edbacc04de9e53ac1dfc9ddb8bacbd262ecab28` passed 308 unit tests, 7 Pos
 
 **Status:** Fix committed to review branch; CI re-verification pending.  
 A later concurrent PostgreSQL integration run exposed a real regression: 24 concurrent requests were all accepted when the configured maximum was 5. The prior lock-row upsert was not sufficient in the observed execution path. The limiter now takes a transaction-scoped PostgreSQL advisory lock keyed by the hashed limiter key before counting and inserting events. The lock is held through commit, so the critical section is serialized across replicas. The row table remains for last-seen cleanup/diagnostics, but it is no longer the sole concurrency guarantee. This issue demonstrates why a green run on an older commit must not be used as evidence for the current head.
+
+
+## 2026-10-10 20:34 UTC — Global CSRF and report-only CSP
+
+**Status:** Implemented on review branch; current-head CI pending.  
+All state-changing POST/PUT/PATCH/DELETE requests now require the session's CSRF token in `X-CSRF-Token`. This is a global boundary to avoid leaving newly added capability routes unprotected by omission. Browser scripts must obtain the token from `/auth/csrf` and send it for mutations. A report-only CSP is also active for observation; enforcement is intentionally deferred until violations are reviewed and inline styles are migrated.
+
+## 2026-10-10 20:34 UTC — Project and mission dashboard vertical slice
+
+**Status:** Implemented on review branch; current-head CI pending.  
+The home page now supports owner-scoped project creation/list/archive and mission creation/list through the authenticated APIs. Mission entries are tracking records only; the UI must not imply that autonomous execution exists until a durable worker is connected and tested.
