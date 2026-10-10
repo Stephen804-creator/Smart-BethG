@@ -48,3 +48,8 @@ The signed cookie is bound to a server-side session version. Logout increments t
 ## 2026-10-10 — Versioned PostgreSQL schema migrations
 **Status:** Initial baseline implemented; upgrade and rollback verification still open  
 PostgreSQL schema initialization now applies ordered SQL files under `migrations/postgresql/` and records each applied filename in `schema_migrations`. The initial baseline migration is idempotent to support a controlled adoption of databases created by the earlier schema initializer. Future schema changes must be new numbered migration files; released migrations must not be silently edited. Before production data is used, verify clean installation, adoption/upgrade from the previous schema, rollback/recovery procedure, and backup restoration.
+
+
+## 2026-10-10 19:50 UTC — CI verification of session revocation and migration baseline
+**Status:** Verified on review branch, not yet merged  
+The revision `f805df04991a0532b1839720633c172b0f73292d` passed the 308-test unit suite, 7 PostgreSQL integration tests, Python compilation, dependency audit, and Gitleaks. The copied-cookie logout regression and idempotent PostgreSQL baseline migration test passed. This supersedes the earlier entries marked “CI verification pending” for those two implementation items. It does not close the separate launch gates for shared file storage, password recovery, full PostgreSQL repository coverage, independent security review, or backup/restore rehearsal.
