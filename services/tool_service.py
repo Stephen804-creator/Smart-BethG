@@ -113,9 +113,18 @@ class ToolService:
         try:
             raw_result = tool_fn(permit, workspace_root, **kwargs)
         except Exception as exc:
-            logger.error("Tool execution raised: action=%s user=%s error=%s", action, user["id"], exc)
-            self.audit.record(user["id"], action, resource, "failed", details=str(exc))
-            return {"success": False, "status": "failed", "reason": str(exc)}
+            logger.exception(
+                "Tool execution raised: action=%s user=%s error_type=%s",
+                action, user["id"], type(exc).__name__,
+            )
+            self.audit.record(
+                user["id"], action, resource, "failed", details=type(exc).__name__
+            )
+            return {
+                "success": False,
+                "status": "failed",
+                "reason": "Tool execution failed. Check the task result or server logs.",
+            }
 
         verified = verify_result(action, raw_result)
         if "operation" in kwargs:
