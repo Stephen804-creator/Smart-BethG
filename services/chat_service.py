@@ -1,5 +1,6 @@
 import time
 
+import config
 from repositories.conversation_repository import ConversationRepository
 from providers.provider_manager import provider_manager
 from services.model_evaluation_service import ModelEvaluationService
@@ -123,8 +124,9 @@ class ChatService:
 
         if result is None:
             reply = (
-                f"Smart BethG could not reach any configured AI provider "
-                f"(tried: {', '.join(attempted)}). Last error: {last_error}"
+                "Smart BethG could not reach a configured AI provider "
+                f"(attempted: {', '.join(attempted)}). Please try again later "
+                "or contact the operator if the problem continues."
             )
             self.repo.add_message(conversation_id, "assistant", reply)
             self.repo.touch(conversation_id)
@@ -182,12 +184,16 @@ class ChatService:
             (name, provider_manager.get(user_id, name), self._balanced_model_for(name))
             for name in provider_manager.fallback_candidates(exclude={provider_name})
         ]
+        candidates = candidates[:max(1, config.MAX_PROVIDER_ATTEMPTS_PER_CHAT)]
 
         last_error = None
         for name, candidate_provider, candidate_model in candidates:
             start = time.monotonic()
             try:
-                result = candidate_provider.generate(provider_messages, model=candidate_model)
+                bounded_messages = self._bound_context(provider_messages, config.MAX_CHAT_CONTEXT_CHARS)
+                result = candidate_provider.generate(
+                    bounded_messages, model=candidate_model, max_tokens=config.CHAT_MAX_OUTPUT_TOKENS
+                )
                 latency_ms = int((time.monotonic() - start) * 1000)
                 self.eval_service.record_call(user_id, name, candidate_model, True, latency_ms)
                 return result, name, candidate_model, attempted, last_error
@@ -199,6 +205,24 @@ class ChatService:
                 logger.error("Provider call failed (user=%s, provider=%s, model=%s): %s", user_id, name, candidate_model, exc)
 
         return None, None, None, attempted, last_error
+
+    @staticmethod
+    def _bound_context(messages, max_chars):
+        """Keep the newest context within a hard character budget."""
+        budget = max(4000, int(max_chars))
+        kept = []
+        used = 0
+        for message in reversed(messages):
+            content = str(message.get("content", ""))
+            remaining = budget - used
+            if remaining <= 0:
+                break
+            if len(content) > remaining:
+                content = content[-remaining:]
+            kept.append({"role": message.get("role", "user"), "content": content})
+            used += len(content)
+        kept.reverse()
+        return kept
 
     @staticmethod
     def _balanced_model_for(provider_name):
