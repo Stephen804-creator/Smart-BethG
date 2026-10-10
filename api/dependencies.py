@@ -76,3 +76,9 @@ def require_role(role: str):
             raise HTTPException(status_code=403, detail=f"This requires the '{role}' role.")
         return user
     return _check
+
+from services.project_service import ProjectService
+
+
+def get_project_service():
+    return ProjectService()
