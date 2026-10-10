@@ -17,6 +17,10 @@ class CampaignCreate(BaseModel):
     objective: str = Field(min_length=1, max_length=4000)
     platforms: list[str] = Field(min_length=1, max_length=5)
     timezone: str = Field(min_length=1, max_length=80)
+    audience: str = Field(default="", max_length=300)
+    tone: str = Field(default="clear, helpful", max_length=300)
+    reference_urls: list[str] = Field(default_factory=list, max_length=20)
+    content_rules: str = Field(default="", max_length=4000)
     start_at: str
     end_at: str | None = None
     cadence: dict = Field(default_factory=dict)
@@ -41,13 +45,20 @@ class CampaignStatusChange(BaseModel):
     status: str
 
 
+class GeneratePlanRequest(BaseModel):
+    count: int = Field(default=30, ge=1, le=30)
+    selection: str | None = Field(default=None, max_length=256)
+
+
 @router.post("")
 def create_campaign(payload: CampaignCreate, user=Depends(get_current_user)):
     try:
         return SocialCampaignService().create(
             user["id"], name=payload.name, objective=payload.objective,
             platforms=payload.platforms, timezone_name=payload.timezone,
-            start_at=payload.start_at, end_at=payload.end_at, cadence=payload.cadence,
+            audience=payload.audience, tone=payload.tone, reference_urls=payload.reference_urls,
+            content_rules=payload.content_rules, start_at=payload.start_at,
+            end_at=payload.end_at, cadence=payload.cadence,
             daily_post_limit=payload.daily_post_limit, autonomy_mode=payload.autonomy_mode,
             auto_publish_authorized=payload.auto_publish_authorized,
         )
@@ -65,6 +76,38 @@ def get_campaign(campaign_id: int, user=Depends(get_current_user)):
     campaign = SocialCampaignService().get(user["id"], campaign_id)
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found.")
+    return campaign
+
+
+@router.post("/{campaign_id}/generate-plan")
+def generate_campaign_plan(
+    campaign_id: int,
+    payload: GeneratePlanRequest,
+    user=Depends(get_current_user),
+):
+    try:
+        campaign = SocialCampaignService().generate_plan(
+            user["id"], campaign_id, count=payload.count, selection=payload.selection
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found.")
+    return campaign
+
+
+@router.post("/{campaign_id}/posts/{content_id}/approve")
+def approve_campaign_post(
+    campaign_id: int,
+    content_id: int,
+    user=Depends(get_current_user),
+):
+    try:
+        campaign = SocialCampaignService().approve_post(user["id"], campaign_id, content_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign or post not found.")
     return campaign
 
 
