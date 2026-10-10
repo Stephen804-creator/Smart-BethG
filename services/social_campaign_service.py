@@ -193,6 +193,28 @@ class SocialCampaignService:
         conn = get_connection()
         ids = []
         try:
+            # Serialize campaign writes so concurrent requests cannot both pass
+            # the daily-cap check or add posts after a cancellation commits.
+            if getattr(conn, "is_postgres", False):
+                locked_campaign = conn.execute(
+                    "SELECT status, timezone, daily_post_limit, start_at, end_at "
+                    "FROM social_campaigns WHERE id=? AND user_id=? FOR UPDATE",
+                    (campaign_id, user_id),
+                ).fetchone()
+            else:
+                conn.execute("BEGIN IMMEDIATE")
+                locked_campaign = conn.execute(
+                    "SELECT status, timezone, daily_post_limit, start_at, end_at "
+                    "FROM social_campaigns WHERE id=? AND user_id=?",
+                    (campaign_id, user_id),
+                ).fetchone()
+            if not locked_campaign:
+                conn.rollback()
+                return None
+            if locked_campaign["status"] in {"cancelled", "completed"}:
+                raise ValueError("Cannot add posts to a terminal campaign.")
+            if locked_campaign["timezone"] != campaign["timezone"]:
+                raise ValueError("Campaign settings changed while planning; reload and try again.")
             existing_rows = conn.execute(
                 "SELECT scheduled_at FROM social_content WHERE user_id=? AND campaign_id=? AND scheduled_at IS NOT NULL",
                 (user_id, campaign_id),
