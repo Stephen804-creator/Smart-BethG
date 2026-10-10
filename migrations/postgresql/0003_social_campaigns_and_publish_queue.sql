@@ -75,3 +75,18 @@ CREATE INDEX IF NOT EXISTS idx_social_publish_jobs_due
 
 CREATE INDEX IF NOT EXISTS idx_social_publish_jobs_owner
     ON social_publish_jobs(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS connector_credentials (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    provider TEXT NOT NULL,
+    encrypted_access_token TEXT NOT NULL,
+    scopes_json TEXT NOT NULL DEFAULT '[]',
+    expires_at TEXT,
+    revoked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_connector_credentials_owner_provider
+    ON connector_credentials(user_id, provider, revoked_at);
