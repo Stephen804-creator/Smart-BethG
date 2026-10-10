@@ -108,8 +108,6 @@ def create_app() -> FastAPI:
             app.include_router(router)
             app.include_router(router, prefix=config.API_PREFIX)
 
-    # Compatibility wart: chat.router already includes "/api/chat", so its
-    # versioned mirror currently lives at "/api/v1/api/chat/".
 
     @app.on_event("startup")
     async def on_startup():
