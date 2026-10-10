@@ -34,9 +34,13 @@ class GoogleProvider(ProviderBase):
             }
             for m in messages
         ]
+        from google.genai import types
         response = self._client.models.generate_content(
             model=model or self.model,
             contents=contents,
+            config=types.GenerateContentConfig(
+                max_output_tokens=kwargs.get("max_tokens", 1024)
+            ),
         )
         text = (response.text or "").strip()
         usage = getattr(response, "usage_metadata", None)
