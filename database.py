@@ -192,6 +192,7 @@ def _initialize_database_on_connection(conn):
             password_hash TEXT,
             status TEXT NOT NULL DEFAULT 'active',
             role TEXT NOT NULL DEFAULT 'user',
+            session_version INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -502,6 +503,7 @@ def _initialize_database_on_connection(conn):
     _add_column_if_missing(conn, "users", "oauth_provider", "TEXT")
     _add_column_if_missing(conn, "users", "oauth_subject", "TEXT")
     _add_column_if_missing(conn, "users", "role", "TEXT NOT NULL DEFAULT 'user'")
+    _add_column_if_missing(conn, "users", "session_version", "INTEGER NOT NULL DEFAULT 0")
     _add_column_if_missing(conn, "approvals", "payload_json", "TEXT")
     _add_column_if_missing(conn, "approvals", "execution_status", "TEXT NOT NULL DEFAULT 'pending'")
     _add_column_if_missing(conn, "approvals", "expires_at", "TEXT")
