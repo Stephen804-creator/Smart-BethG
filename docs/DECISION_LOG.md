@@ -1,6 +1,7 @@
 # Smart BethG Decision Log
 
-**Maintained:** 2026-10-10 UTC  
+**Maintained:** 2026-10-10 20:10 UTC
+**Last updated:** 2026-10-10 20:10 UTC  
 **Timestamp rule:** Each entry carries its recorded date. The exact time and author are preserved by the corresponding Git commit timestamp. New decisions are appended; superseded decisions are marked superseded rather than silently rewritten.
 
 ## 2026-10-10 — Public launch is the product target
