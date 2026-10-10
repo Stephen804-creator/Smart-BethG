@@ -219,3 +219,18 @@ The generic `terminal.execute` path accepted `git` as an allowed program. Even w
 The generic command runner no longer allows raw Git commands. Git actions must use the dedicated wrapper, which disables system/global configuration, prompts, hooks, and unsafe external filters. The tool service rejects raw Git requests before creating an approval record. Host Python execution remains a development-only capability; it is rejected before approval when disabled, including in production. Tests were added for both fail-closed paths.
 
 **Verification state:** the preceding revision passed unit tests, PostgreSQL integration, dependency auditing, and Gitleaks after the DNS-pinning mitigation. CI for the current terminal-execution change must finish successfully before this finding can be considered verified. Production terminal execution still requires a genuinely isolated worker/sandbox; this change intentionally does not pretend that the current host process is such a sandbox.
+
+
+## Verification update — 2026-10-10 20:10 UTC
+
+**Code revision verified:** `f2e8c7a97faa9ff4b41be7a8c75fdfa0ecdcc148`.
+
+- SQLite/unit workflow: **312 tests passed**, with 7 PostgreSQL-only tests intentionally skipped in this job.
+- PostgreSQL integration workflow: **passed**, including the migration-upgrade test, concurrent startup, shared rate-limit concurrency, usage-budget accounting, and capability persistence.
+- Python compilation: passed.
+- Dependency vulnerability audit: passed.
+- Gitleaks secret scan: passed.
+
+The new tests verify that generic raw Git terminal commands are denied before an approval record is created, and that host Python is denied before approval when development execution is disabled. The preceding DNS-pinning implementation also passed the unit, PostgreSQL, dependency-audit, and secret-scan workflows.
+
+Subsequent commits `e877d71023817d4787751ad63633e8a6aceda204`, `ee9552496dce9c9d41db934a9c7a74e3ee6d6e1a`, and `0f6470941d8e9342476619b261323126b03cb5fe` update audit/decision documentation and timestamps only. The current branch head must still complete its own CI checks before merge; use the current head's checks, not an earlier green run, as the final gate.
