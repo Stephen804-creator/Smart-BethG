@@ -62,6 +62,12 @@ class TestArtifactService(SmartBethGTestCase):
         self.assertEqual(record["checksum_sha256"], __import__("hashlib").sha256(payload).hexdigest())
         self.assertTrue(self.service.delete(self.owner["id"], artifact["id"]))
 
+    def test_binary_artifact_validates_declared_media_signature(self):
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            self.service.create_bytes(
+                self.owner["id"], "fake-image.png", b"this is not a PNG", "image/png"
+            )
+
     def test_binary_artifact_rejects_oversized_payload(self):
         with self.assertRaisesRegex(ValueError, "25 MiB"):
             self.service.create_bytes(
