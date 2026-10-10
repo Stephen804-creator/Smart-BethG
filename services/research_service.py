@@ -19,7 +19,7 @@ class ResearchService:
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "INSERT INTO research(user_id, mission_id, query, summary, source_urls) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO research(user_id, mission_id, topic, summary, source_info) VALUES (?, ?, ?, ?, ?)",
                 (user_id, mission_id, query, summary, json.dumps(urls, ensure_ascii=False)),
             )
             record_id = cursor.lastrowid
@@ -32,7 +32,7 @@ class ResearchService:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, user_id, mission_id, query, summary, source_urls, created_at "
+                "SELECT id, user_id, mission_id, topic AS query, summary, source_info AS source_urls, created_at "
                 "FROM research WHERE user_id=? ORDER BY created_at DESC, id DESC",
                 (user_id,),
             ).fetchall()
