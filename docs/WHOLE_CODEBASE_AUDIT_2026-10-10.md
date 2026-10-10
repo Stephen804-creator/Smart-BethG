@@ -1,7 +1,7 @@
 # Smart BethG Whole-Codebase Audit
 
 **Audit date:** 2026-10-10 UTC  
-**Last updated:** 2026-10-10 20:34 UTC  
+**Last updated:** 2026-10-10 20:38 UTC  
 **Branch reviewed:** `update/corrected-zip-2026-10-10`  
 **Target branch:** `main`  
 **Status:** Engineering audit in progress; public launch is not approved.  
@@ -264,3 +264,16 @@ This addendum supersedes only the older status statements explicitly corrected b
 - **Project/mission dashboard:** the home page now has authenticated project creation/list/archive and mission-recording/list workflows. A project/mission HTTP test checks owner isolation and rendered controls. The UI explicitly states mission records are tracking data only; there is still no autonomous mission worker.
 - **Current-head verification rule:** commits `874dadc16e91e11721acaafd44ff3ccf270a7f48` and `9aa15aac89c4e340814be9525688a064f6eb51f9` had a dashboard test assertion that looked for wording in the rendered HTML even though that wording was only in the external JavaScript. The assertion was corrected on the later branch head. Those historical failures must not be confused with the final result; wait for the current-head test and PostgreSQL jobs before calling this batch green.
 - **Legal:** the Terms and Privacy files remain drafts. The dated legal checklist now explains the difference between the NDPC regulator, a qualified technology/privacy lawyer, and a licensed DPCO. No legal approval is claimed.
+
+
+## Timestamped verification — 2026-10-10 20:38 UTC
+
+Current reviewed PR head: `022f057765f0b0ed4104f7898eeb0b95903b7a0e`.
+
+- Unit test workflow: **317 tests passed**; Python compilation and JavaScript syntax check passed.
+- PostgreSQL integration workflow: **9 tests passed**, including concurrent rate-limit enforcement and concurrent per-user token-budget reservations.
+- Dependency audit and Gitleaks secret scan: passed on the current PR head.
+- The report-only CSP test, global CSRF mutation test, and project/mission dashboard HTTP/owner-isolation tests are included in the verified test baseline.
+- The two historical red test runs immediately before this baseline were caused by a dashboard test asserting JavaScript-only copy in rendered HTML. The assertion was corrected; later current-head runs passed. The rate-limit race was a separate genuine failure and was fixed/tested as recorded above.
+
+This is a green repository CI baseline, not a live deployment audit, independent penetration test, legal approval, backup restore drill, or public-launch sign-off.
