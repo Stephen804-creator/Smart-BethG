@@ -475,6 +475,11 @@ def _initialize_database_on_connection(conn):
             content_type TEXT,
             size_bytes INTEGER,
             checksum_sha256 TEXT,
+            source_type TEXT NOT NULL DEFAULT 'user_created',
+            source_id TEXT,
+            provider TEXT,
+            model TEXT,
+            metadata_json TEXT NOT NULL DEFAULT '{}',
             status TEXT NOT NULL DEFAULT 'pending',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -645,6 +650,11 @@ def _initialize_database_on_connection(conn):
     _add_column_if_missing(conn, "artifacts", "size_bytes", "INTEGER")
     _add_column_if_missing(conn, "artifacts", "checksum_sha256", "TEXT")
     _add_column_if_missing(conn, "artifacts", "updated_at", "TEXT")
+    _add_column_if_missing(conn, "artifacts", "source_type", "TEXT NOT NULL DEFAULT 'user_created'")
+    _add_column_if_missing(conn, "artifacts", "source_id", "TEXT")
+    _add_column_if_missing(conn, "artifacts", "provider", "TEXT")
+    _add_column_if_missing(conn, "artifacts", "model", "TEXT")
+    _add_column_if_missing(conn, "artifacts", "metadata_json", "TEXT NOT NULL DEFAULT '{}'")
     _add_column_if_missing(conn, "social_content", "version", "INTEGER NOT NULL DEFAULT 1")
     _add_column_if_missing(conn, "social_content", "external_post_id", "TEXT")
     _add_column_if_missing(conn, "social_content", "published_at", "TEXT")
@@ -687,6 +697,7 @@ def _initialize_database_on_connection(conn):
         "CREATE INDEX IF NOT EXISTS idx_missions_user_updated ON missions(user_id, updated_at)",
         "CREATE INDEX IF NOT EXISTS idx_workflows_user_updated ON workflows(user_id, updated_at)",
         "CREATE INDEX IF NOT EXISTS idx_artifacts_user_created ON artifacts(user_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_artifacts_owner_source ON artifacts(user_id, source_type, source_id)",
         "CREATE INDEX IF NOT EXISTS idx_social_content_user_updated ON social_content(user_id, updated_at)",
         "CREATE INDEX IF NOT EXISTS idx_social_campaigns_owner_updated ON social_campaigns(user_id, updated_at)",
         "CREATE INDEX IF NOT EXISTS idx_social_connections_owner_platform ON social_connections(user_id, platform, status)",
