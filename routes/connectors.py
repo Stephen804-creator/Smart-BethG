@@ -5,11 +5,13 @@ import logging
 import os
 import secrets
 from datetime import datetime, timezone
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+
+import config
 
 from api.dependencies import get_current_user
 from connectors.social import ConnectorNotConfigured, SocialConnectorRegistry
@@ -32,7 +34,18 @@ def _meta_config():
 
 
 def _meta_ready_for_oauth(settings):
-    return bool(settings["app_id"] and settings["app_secret"] and settings["redirect_uri"])
+    if not (settings["app_id"] and settings["app_secret"] and settings["redirect_uri"]):
+        return False
+    if not __import__("re").fullmatch(r"v\\d+\\.\\d+", settings["api_version"]):
+        return False
+    parsed = urlsplit(settings["redirect_uri"])
+    if not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        return False
+    if not parsed.path.endswith("/connectors/meta/callback"):
+        return False
+    if config.IS_PRODUCTION and parsed.scheme != "https":
+        return False
+    return parsed.scheme in {"http", "https"}
 
 
 @router.get("")
@@ -108,8 +121,11 @@ def finish_meta_oauth(request: Request, user=Depends(get_current_user)):
         or expected_user_id != int(user["id"])
     ):
         return RedirectResponse("/social?meta=state_error", status_code=303)
-    if request.query_params.get("error") or not request.query_params.get("code"):
+    code = request.query_params.get("code", "")
+    if request.query_params.get("error") or not code:
         return RedirectResponse("/social?meta=cancelled", status_code=303)
+    if len(code) > 4096:
+        return RedirectResponse("/social?meta=token_error", status_code=303)
 
     settings = _meta_config()
     if not _meta_ready_for_oauth(settings):
@@ -125,7 +141,7 @@ def finish_meta_oauth(request: Request, user=Depends(get_current_user)):
                 "client_id": settings["app_id"],
                 "client_secret": settings["app_secret"],
                 "redirect_uri": settings["redirect_uri"],
-                "code": request.query_params["code"],
+                "code": code,
             },
             timeout=15,
         )
