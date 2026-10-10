@@ -41,7 +41,7 @@ def _meta_ready_for_oauth(settings):
     parsed = urlsplit(settings["redirect_uri"])
     if not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
         return False
-    if not parsed.path.endswith("/connectors/meta/callback"):
+    if parsed.path != "/connectors/meta/callback":
         return False
     if config.IS_PRODUCTION and parsed.scheme != "https":
         return False
