@@ -43,15 +43,15 @@ from logging_setup import get_logger
 logger = get_logger("task")
 
 
-def resolve_workspace_root(workspace_name: str) -> str:
+def resolve_workspace_root(user_id, workspace_name: str) -> str:
     """
-    Maps a workspace name to a real, contained directory under the app's
-    own storage root - never a caller-supplied absolute path. Sanitizes
-    the name itself so path traversal can't happen through the workspace
-    name before FileReader/FileWriter's own escape checks even run.
+    Maps a workspace to a directory owned by one authenticated user.
+    The user ID comes from the server-side session, never the request
+    body. Workspace names are sanitized and never treated as paths.
     """
     safe_name = "".join(c for c in (workspace_name or "") if c.isalnum() or c in ("-", "_")) or "default"
-    root = os.path.join(config.STORAGE_DIRS["projects"], safe_name)
+    user_root = os.path.join(config.STORAGE_DIRS["projects"], str(user_id))
+    root = os.path.join(user_root, safe_name)
     os.makedirs(root, exist_ok=True)
     return root
 
@@ -69,7 +69,7 @@ class ToolService:
         self._docker_tool = DockerTool()
 
     def execute(self, user: dict, action: str, workspace: str = "default", **kwargs) -> dict:
-        workspace_root = resolve_workspace_root(workspace)
+        workspace_root = resolve_workspace_root(user["id"], workspace)
         resource = f"workspace:{workspace}"
 
         context = build_security_context(user, workspace=workspace_root)
