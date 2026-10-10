@@ -415,6 +415,7 @@ class SocialCampaignService:
             if status == "active":
                 if campaign["autonomy_mode"] == "auto_publish_after_campaign_approval" and not campaign.get("autopublish_authorized_at"):
                     raise ValueError("Autonomous publishing has no recorded campaign authorization.")
+                connections = {}
                 for platform in campaign["platforms"]:
                     try:
                         SocialConnectorRegistry().get_publisher(platform)
@@ -426,17 +427,30 @@ class SocialCampaignService:
                     ).fetchone()
                     if not account:
                         raise ValueError(f"No active {platform} account is connected.")
+                    connections[platform] = account["id"]
+
                 if campaign["autonomy_mode"] == "auto_publish_after_campaign_approval":
                     conn.execute(
                         "UPDATE social_content SET status='approved', updated_at=CURRENT_TIMESTAMP "
                         "WHERE user_id=? AND campaign_id=? AND status='draft'",
                         (user_id, campaign_id),
                     )
-                    conn.execute(
-                        "UPDATE social_publish_jobs SET status='queued', error_code=NULL, error_message=NULL, updated_at=CURRENT_TIMESTAMP "
-                        "WHERE user_id=? AND campaign_id=? AND status IN ('awaiting_approval','awaiting_connection')",
-                        (user_id, campaign_id),
-                    )
+                for platform, connection_id in connections.items():
+                    if campaign["autonomy_mode"] == "auto_publish_after_campaign_approval":
+                        conn.execute(
+                            "UPDATE social_publish_jobs SET status='queued', connection_id=?, error_code=NULL, "
+                            "error_message=NULL, updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND campaign_id=? "
+                            "AND platform=? AND status IN ('awaiting_approval','awaiting_connection')",
+                            (connection_id, user_id, campaign_id, platform),
+                        )
+                    else:
+                        conn.execute(
+                            "UPDATE social_publish_jobs SET status='queued', connection_id=?, error_code=NULL, "
+                            "error_message=NULL, updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND campaign_id=? "
+                            "AND platform=? AND status='awaiting_connection' "
+                            "AND content_id IN (SELECT id FROM social_content WHERE user_id=? AND campaign_id=? AND status='approved')",
+                            (connection_id, user_id, campaign_id, platform, user_id, campaign_id),
+                        )
             conn.execute(
                 "UPDATE social_campaigns SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
                 (status, campaign_id, user_id),
