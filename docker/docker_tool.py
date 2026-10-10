@@ -75,13 +75,13 @@ class DockerTool:
         i = 1
         while i < len(args):
             token = args[i]
-            if token in REQUIRED_RUN_FLAGS:
-                i += 1
-                continue
             if token == "--tmpfs":
                 if i + 1 >= len(args) or args[i + 1] != "/tmp:rw,noexec,nosuid,size=64m":
                     raise PermissionError("Only the bounded, no-exec /tmp tmpfs is allowed.")
                 i += 2
+                continue
+            if token in REQUIRED_RUN_FLAGS:
+                i += 1
                 continue
             if token.startswith("-"):
                 raise PermissionError(f"Docker option is not allowlisted: {token}")
