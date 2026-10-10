@@ -88,6 +88,21 @@ class SocialPublisherWorker:
         finally:
             conn.close()
 
+    def _current_state(self, job_id):
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT j.status AS job_status, c.status AS campaign_status, s.status AS content_status "
+                "FROM social_publish_jobs j "
+                "JOIN social_campaigns c ON c.id=j.campaign_id AND c.user_id=j.user_id "
+                "JOIN social_content s ON s.id=j.content_id AND s.user_id=j.user_id "
+                "WHERE j.id=? LIMIT 1",
+                (job_id,),
+            ).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
     def _update_job(self, job_id, status, *, error_code=None, error_message=None,
                     external_post_id=None, published_at=None):
         conn = get_connection()
@@ -95,7 +110,7 @@ class SocialPublisherWorker:
             cursor = conn.execute(
                 "UPDATE social_publish_jobs SET status=?, error_code=?, error_message=?, "
                 "external_post_id=?, published_at=?, lease_until=NULL, updated_at=CURRENT_TIMESTAMP "
-                "WHERE id=? AND status='publishing'",
+                "WHERE id=? AND status IN ('publishing','cancel_requested')",
                 (status, error_code, error_message, external_post_id, published_at, job_id),
             )
             if cursor.rowcount != 1:
@@ -135,6 +150,11 @@ class SocialPublisherWorker:
                                  error_message="Campaign was not active at execution time.")
                 results.append({"job_id": job_id, "status": "blocked"})
                 continue
+            if job["autonomy_mode"] == "auto_publish_after_campaign_approval" and not job.get("autopublish_authorized_at"):
+                self._update_job(job_id, "blocked", error_code="authorization_missing",
+                                 error_message="Campaign-level autonomous publishing authorization is missing.")
+                results.append({"job_id": job_id, "status": "blocked"})
+                continue
             if job["content_status"] != "approved":
                 self._update_job(job_id, "blocked", error_code="post_not_approved",
                                  error_message="The post is not approved for publication.")
@@ -150,6 +170,20 @@ class SocialPublisherWorker:
             except ConnectorNotConfigured as exc:
                 self._update_job(job_id, "blocked", error_code="connector_not_configured",
                                  error_message=str(exc))
+                results.append({"job_id": job_id, "status": "blocked"})
+                continue
+            state = self._current_state(job_id)
+            if not state or state["job_status"] not in {"publishing", "cancel_requested"}:
+                results.append({"job_id": job_id, "status": "indeterminate"})
+                continue
+            if state["job_status"] == "cancel_requested" or state["campaign_status"] != "active":
+                self._update_job(job_id, "cancelled", error_code="cancelled_before_publish",
+                                 error_message="Campaign was cancelled before the provider call.")
+                results.append({"job_id": job_id, "status": "cancelled"})
+                continue
+            if state["content_status"] != "approved":
+                self._update_job(job_id, "blocked", error_code="post_not_approved",
+                                 error_message="The post approval was revoked before publication.")
                 results.append({"job_id": job_id, "status": "blocked"})
                 continue
             try:
