@@ -136,7 +136,7 @@ class SocialCampaignService:
             campaign = self._decode(row)
             posts = conn.execute(
                 "SELECT c.id, c.platform, c.topic AS title, c.caption AS content, c.status, c.scheduled_at, "
-                "c.external_post_id, c.published_at, c.created_at, j.status AS publish_status, "
+                "c.external_post_id, c.published_at, c.hashtags, c.created_at, j.status AS publish_status, "
                 "j.error_code AS publish_error_code, j.error_message AS publish_error_message "
                 "FROM social_content c LEFT JOIN social_publish_jobs j "
                 "ON j.content_id=c.id AND j.user_id=c.user_id "
