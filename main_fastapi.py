@@ -50,6 +50,30 @@ def create_app() -> FastAPI:
     register_error_handlers(app)
 
     @app.middleware("http")
+    async def enforce_csrf_for_cookie_authenticated_mutations(request: Request, call_next):
+        # Every unsafe browser request is protected, not just login/logout.
+        # SessionMiddleware is outside this middleware, so request.session is
+        # available. The token is not stored in a readable cookie; clients must
+        # fetch /auth/csrf and send it in X-CSRF-Token.
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            expected = request.session.get("csrf_token")
+            supplied = request.headers.get("X-CSRF-Token", "")
+            if (
+                not isinstance(expected, str)
+                or not expected
+                or not isinstance(supplied, str)
+                or not supplied
+                or not __import__("hmac").compare_digest(expected, supplied)
+            ):
+                from fastapi.responses import JSONResponse
+                return JSONResponse(
+                    {"detail": "CSRF validation failed. Fetch /auth/csrf and send X-CSRF-Token."},
+                    status_code=403,
+                    headers={"Cache-Control": "no-store"},
+                )
+        return await call_next(request)
+
+    @app.middleware("http")
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
