@@ -88,23 +88,31 @@ class MissionService:
             return None
         if mission["status"] in self.TERMINAL_STATUSES:
             raise ValueError("A completed or cancelled mission cannot be started again.")
-        if mission["status"] == "running":
-            raise ValueError("This mission already has a running attempt.")
-        attempt = len(mission["runs"]) + 1
-        idempotency_key = str(uuid.uuid4())
+
         conn = get_connection()
         try:
+            # Conditional state transition makes concurrent start requests
+            # compete for one row; only one may create a running attempt.
             cursor = conn.execute(
+                "UPDATE missions SET status='running', updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=? AND user_id=? AND status IN ('pending', 'failed')",
+                (mission_id, user_id),
+            )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                raise ValueError("This mission is already running or no longer startable.")
+            count = conn.execute(
+                "SELECT COUNT(*) AS count FROM mission_runs WHERE mission_id=?",
+                (mission_id,),
+            ).fetchone()["count"]
+            attempt = int(count) + 1
+            idempotency_key = str(uuid.uuid4())
+            run_cursor = conn.execute(
                 "INSERT INTO mission_runs(mission_id, attempt_number, status, idempotency_key) "
                 "VALUES (?, ?, 'running', ?)",
                 (mission_id, attempt, idempotency_key),
             )
-            run_id = cursor.lastrowid
-            conn.execute(
-                "UPDATE missions SET status='running', updated_at=CURRENT_TIMESTAMP "
-                "WHERE id=? AND user_id=?",
-                (mission_id, user_id),
-            )
+            run_id = run_cursor.lastrowid
             conn.execute(
                 "INSERT INTO logs(mission_id, user_id, level, event_type, message) "
                 "VALUES (?, ?, 'info', 'mission_run_started', ?)",
@@ -153,21 +161,20 @@ class MissionService:
         return self.get(user_id, mission_id)
 
     def cancel(self, user_id, mission_id):
-        mission = self.get(user_id, mission_id)
-        if not mission:
-            return False
-        if mission["status"] in self.TERMINAL_STATUSES:
-            return False
         conn = get_connection()
         try:
+            cursor = conn.execute(
+                "UPDATE missions SET status='cancelled', updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=? AND user_id=? AND status IN ('pending', 'running', 'failed')",
+                (mission_id, user_id),
+            )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                return False
             conn.execute(
                 "UPDATE mission_runs SET status='cancelled', error='Cancelled by owner.', "
                 "completed_at=CURRENT_TIMESTAMP WHERE mission_id=? AND status='running'",
                 (mission_id,),
-            )
-            conn.execute(
-                "UPDATE missions SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
-                (mission_id, user_id),
             )
             conn.execute(
                 "INSERT INTO logs(mission_id, user_id, level, event_type, message) "
