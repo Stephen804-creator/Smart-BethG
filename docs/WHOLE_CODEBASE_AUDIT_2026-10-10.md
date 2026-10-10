@@ -19,10 +19,10 @@ The completed CI run for commit `af9f3d2c7659281c786bf994083fd2bd0da6fd22` repor
 
 ### P0 — Must be closed before unrestricted public launch
 
-**1. PostgreSQL migration/compatibility layer needs a production-grade migration strategy.**  
-PostgreSQL is now the required production database, including for a single app instance. SQLite is only for local development and isolated tests. The current `database.py` adapter translates a subset of existing SQLite-style SQL and schema declarations at runtime. PostgreSQL smoke tests cover important paths, but do not prove every repository/query/schema edge case. The `executescript` translation is deliberately small and is not a substitute for versioned, reviewed schema migrations.
+**1. PostgreSQL migration/compatibility layer needs broader production verification.**  
+PostgreSQL is now the required production database, including for a single app instance. SQLite is only for local development and isolated tests. A numbered baseline migration now exists at `migrations/postgresql/0001_initial_schema.sql`; the PostgreSQL initializer records applied migration versions in `schema_migrations` and serializes concurrent startup. The query compatibility adapter still translates a subset of existing SQLite-style repository SQL at runtime. A green PostgreSQL smoke test does not prove every repository/query/schema edge case or every upgrade from a real prior database.
 
-**Required:** introduce explicit, versioned PostgreSQL migrations; test upgrades from a clean database and a prior schema version; cover every repository with PostgreSQL integration tests; document rollback and backup/restore; do not migrate real data without a verified backup and rehearsal.
+**Required:** add new schema changes only as new numbered migrations; test both clean install and upgrade from a database initialized by the previous adapter; cover every repository with PostgreSQL integration tests; document rollback and backup/restore; do not migrate real data without a verified backup and rehearsal.
 
 **2. Multi-instance file and workspace storage is not yet shared.**  
 Database records and rate limits can be shared across replicas, but user uploads, generated artifacts, and tool workspaces still use configured local filesystem paths. A second application instance may not see a file written by the first, and a replica replacement can lose files if the host's disk is ephemeral.
@@ -91,8 +91,8 @@ The application should remain provider-neutral. Render is an optional low-cost t
 
 ## Recommended order of work
 
-1. Confirm CI green after the latest approval recovery test.
-2. Replace ad hoc PostgreSQL schema translation with explicit versioned migrations and broaden PostgreSQL coverage.
+1. Confirm CI green after the latest session-revocation and versioned-migration changes.
+2. Broaden PostgreSQL integration coverage to all repositories and test clean-install plus legacy-database adoption/upgrade.
 3. Add shared object storage while keeping a local adapter for development.
 4. Complete tool-execution adversarial tests and arrange an independent security review.
 5. Implement revocable sessions, password recovery, account export/deletion, CSP, and remaining privacy controls.
