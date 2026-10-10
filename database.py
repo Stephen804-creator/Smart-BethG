@@ -33,7 +33,7 @@ SERIAL_ID_TABLES = {
     "users", "agents", "tasks", "auth_rate_limit_events", "audit_events",
     "providers", "conversations", "messages", "provider_calls", "missions",
     "mission_runs", "files", "memory", "research", "evidence", "workflows",
-    "artifacts", "social_content", "social_content_versions", "projects", "logs",
+    "artifacts", "social_content", "social_content_versions", "social_campaigns", "social_connections", "social_publish_jobs", "projects", "logs",
     "knowledge_chunks",
 }
 
@@ -492,6 +492,8 @@ def _initialize_database_on_connection(conn):
             version INTEGER NOT NULL DEFAULT 1,
             external_post_id TEXT,
             published_at TEXT,
+            campaign_id INTEGER,
+            scheduled_at TEXT,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
@@ -506,6 +508,59 @@ def _initialize_database_on_connection(conn):
             hashtags TEXT,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(social_content_id) REFERENCES social_content(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS social_campaigns(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            objective TEXT NOT NULL,
+            platforms_json TEXT NOT NULL,
+            timezone TEXT NOT NULL,
+            start_at TEXT NOT NULL,
+            end_at TEXT,
+            cadence_json TEXT NOT NULL DEFAULT '{}',
+            autonomy_mode TEXT NOT NULL DEFAULT 'review_each_post',
+            daily_post_limit INTEGER NOT NULL DEFAULT 1,
+            status TEXT NOT NULL DEFAULT 'draft',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS social_connections(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            platform TEXT NOT NULL,
+            external_account_id TEXT NOT NULL,
+            display_name TEXT,
+            credential_ref TEXT NOT NULL,
+            scopes_json TEXT NOT NULL DEFAULT '[]',
+            status TEXT NOT NULL DEFAULT 'pending',
+            connected_at TEXT,
+            last_validated_at TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, platform, external_account_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS social_publish_jobs(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            campaign_id INTEGER,
+            content_id INTEGER NOT NULL,
+            connection_id INTEGER,
+            platform TEXT NOT NULL,
+            scheduled_at TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'queued',
+            idempotency_key TEXT NOT NULL UNIQUE,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            lease_until TEXT,
+            error_code TEXT,
+            error_message TEXT,
+            external_post_id TEXT,
+            published_at TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS projects(
@@ -576,6 +631,8 @@ def _initialize_database_on_connection(conn):
     _add_column_if_missing(conn, "social_content", "external_post_id", "TEXT")
     _add_column_if_missing(conn, "social_content", "published_at", "TEXT")
     _add_column_if_missing(conn, "social_content", "updated_at", "TEXT")
+    _add_column_if_missing(conn, "social_content", "campaign_id", "INTEGER")
+    _add_column_if_missing(conn, "social_content", "scheduled_at", "TEXT")
     _add_column_if_missing(conn, "projects", "updated_at", "TEXT")
     _add_column_if_missing(conn, "logs", "user_id", "INTEGER")
     _add_column_if_missing(conn, "messages", "tokens_in", "INTEGER")
@@ -607,6 +664,10 @@ def _initialize_database_on_connection(conn):
         "CREATE INDEX IF NOT EXISTS idx_workflows_user_updated ON workflows(user_id, updated_at)",
         "CREATE INDEX IF NOT EXISTS idx_artifacts_user_created ON artifacts(user_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_social_content_user_updated ON social_content(user_id, updated_at)",
+        "CREATE INDEX IF NOT EXISTS idx_social_campaigns_owner_updated ON social_campaigns(user_id, updated_at)",
+        "CREATE INDEX IF NOT EXISTS idx_social_connections_owner_platform ON social_connections(user_id, platform, status)",
+        "CREATE INDEX IF NOT EXISTS idx_social_publish_jobs_due ON social_publish_jobs(status, scheduled_at, id)",
+        "CREATE INDEX IF NOT EXISTS idx_social_publish_jobs_owner ON social_publish_jobs(user_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_social_content_versions_owner ON social_content_versions(user_id, social_content_id, version)",
         "CREATE INDEX IF NOT EXISTS idx_research_user_created ON research(user_id, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_evidence_user_created ON evidence(user_id, created_at)",
