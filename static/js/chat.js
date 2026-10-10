@@ -41,6 +41,15 @@
         const resource = document.createElement("p");
         resource.style.cssText = "margin:6px 0 10px; font-size:13px; overflow-wrap:anywhere;";
         resource.textContent = "Resource: " + (approval.resource || "not specified");
+        const details = document.createElement("details");
+        details.style.cssText = "margin:8px 0 10px;";
+        const detailsSummary = document.createElement("summary");
+        detailsSummary.textContent = "Review exact operation arguments";
+        const detailsBody = document.createElement("pre");
+        detailsBody.style.cssText = "white-space:pre-wrap; overflow-wrap:anywhere; max-height:220px; overflow:auto; font-size:12px; padding:8px; background:var(--surface-hover, transparent); border-radius:6px;";
+        detailsBody.textContent = JSON.stringify(approval.payload || {}, null, 2);
+        details.append(detailsSummary, detailsBody);
+
         const actions = document.createElement("div");
         actions.style.cssText = "display:flex; gap:8px; flex-wrap:wrap;";
         const approve = document.createElement("button");
@@ -55,7 +64,7 @@
         reject.addEventListener("click", () => decideApproval(approval.id, false));
         approve.addEventListener("click", () => decideApproval(approval.id, true));
         actions.append(approve, reject);
-        card.append(title, resource, actions);
+        card.append(title, resource, details, actions);
         list.appendChild(card);
       });
     } catch (err) {
@@ -81,12 +90,25 @@
       }
       const data = await res.json();
       if (!res.ok || data.error) {
-        if (status) status.textContent = data.detail || data.error || "Could not save your decision.";
+        const errorMessage = (data.error && data.error.message) || data.detail || data.error || "Could not save your decision.";
+        if (status) status.textContent = String(errorMessage);
         return;
       }
-      if (status) status.textContent = approved
-        ? "Approval recorded. The original operation has not resumed."
-        : "Action rejected.";
+      if (status) {
+        if (!approved) {
+          status.textContent = "Action rejected. It will not be executed.";
+        } else {
+          const execution = data.execution;
+          if (execution && execution.success) {
+            status.textContent = "Approved and executed successfully.";
+          } else if (execution) {
+            status.textContent = "Approval recorded, but execution status is " +
+              (execution.execution_status || execution.status || "unknown") + ". Review the result before retrying.";
+          } else {
+            status.textContent = "Approval recorded.";
+          }
+        }
+      }
       await loadApprovals();
     } catch (err) {
       if (status) status.textContent = "Could not reach the server. Your decision may not have been saved.";
