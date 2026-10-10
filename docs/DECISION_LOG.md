@@ -53,3 +53,8 @@ PostgreSQL schema initialization now applies ordered SQL files under `migrations
 ## 2026-10-10 19:50 UTC — CI verification of session revocation and migration baseline
 **Status:** Verified on review branch, not yet merged  
 The revision `f805df04991a0532b1839720633c172b0f73292d` passed the 308-test unit suite, 7 PostgreSQL integration tests, Python compilation, dependency audit, and Gitleaks. The copied-cookie logout regression and idempotent PostgreSQL baseline migration test passed. This supersedes the earlier entries marked “CI verification pending” for those two implementation items. It does not close the separate launch gates for shared file storage, password recovery, full PostgreSQL repository coverage, independent security review, or backup/restore rehearsal.
+
+
+## 2026-10-10 19:51 UTC — PostgreSQL upgrade regression test passed
+**Status:** Verified on review branch, not merged  
+Revision `3edbacc04de9e53ac1dfc9ddb8bacbd262ecab28` passed 308 unit tests, 7 PostgreSQL integration tests, Python compilation, dependency auditing, and Gitleaks. The PostgreSQL migration test now simulates a prior schema missing `users.session_version`, reapplies the unrecorded baseline, and verifies the column is restored. This is one tested upgrade path, not a replacement for full migration rehearsals and backup/restore drills.
