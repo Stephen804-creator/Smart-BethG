@@ -234,3 +234,10 @@ The generic command runner no longer allows raw Git commands. Git actions must u
 The new tests verify that generic raw Git terminal commands are denied before an approval record is created, and that host Python is denied before approval when development execution is disabled. The preceding DNS-pinning implementation also passed the unit, PostgreSQL, dependency-audit, and secret-scan workflows.
 
 Subsequent commits `e877d71023817d4787751ad63633e8a6aceda204`, `ee9552496dce9c9d41db934a9c7a74e3ee6d6e1a`, and `0f6470941d8e9342476619b261323126b03cb5fe` update audit/decision documentation and timestamps only. The current branch head must still complete its own CI checks before merge; use the current head's checks, not an earlier green run, as the final gate.
+
+
+## Verification correction — 2026-10-10 20:13 UTC
+
+An intermediate PostgreSQL run exposed that the original transaction-scoped advisory-lock implementation did not reliably serialize the concurrency test: all 24 parallel attempts were accepted despite a limit of five. That was a real correctness failure, not just CI noise.
+
+The limiter has been changed to acquire a row lock through an UPSERT in the shared `auth_rate_limit_locks` table before counting and inserting events. The table is created in SQLite development/test schema and added to PostgreSQL via the new numbered migration `0002_rate_limit_lock_table.sql`. The PostgreSQL concurrency test then passed: the tested run accepted exactly five of 24 concurrent attempts. The failed intermediate run remains in GitHub Actions history; it is superseded by the later passing run, not erased. Current branch-head CI must still finish before merge.
