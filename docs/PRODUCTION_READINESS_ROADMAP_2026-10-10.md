@@ -15,11 +15,11 @@ A capability is not complete merely because its table, endpoint, or screen exist
 
 ### 1. Full-stack developer
 
-**Current evidence:** authentication/session flows, chat, projects and mission tracking, social-campaign workspace, artifact APIs/library, and connector endpoints exist across main and the current feature PR.
+**Current evidence:** authentication/session flows, chat, projects and mission tracking, a social-campaign workspace, text/binary artifact APIs and library UI, encrypted connector credentials, and the first Facebook Pages OAuth/text-post adapter exist in main plus the current feature PR. The current PR remains under review and is not a public-launch approval.
 
 **Remaining work:**
-- Finish the Artifact Library flow for text and bounded binary files; connect every relevant generation provider so its output is persisted as an artifact and attached to its job/mission.
-- Build a complete files workspace: upload, list, download, delete, preview safe text, search, ingest into knowledge only by explicit user action, and clear size/type/retention limits.
+- Integrate each relevant generation provider so image/audio/video/code outputs are persisted as artifacts and linked to their job, mission, or project.
+- Add user storage quotas, retention controls, orphan-object cleanup, large-media streaming/multipart upload, and safe explicit file-to-knowledge ingestion. The current binary cap is 25 MiB and the artifact UI does not yet make every provider output automatically persist.
 - Build memory/knowledge management UI: inspect, edit, delete, scope, and understand what the assistant may use.
 - Finish social account lifecycle, campaign calendar, per-post versions, pause/resume/cancel, publication history, failed/indeterminate jobs, and user-visible recovery guidance.
 - Add robust empty/loading/error states and ensure long jobs show progress without blocking the browser.
