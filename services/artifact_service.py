@@ -170,6 +170,7 @@ class ArtifactService:
         key = record.get("path")
         if not isinstance(key, str) or ".." in key.split("/"):
             return None
+        limit = self.MAX_BINARY_BYTES if record.get("artifact_type") == "binary" else self.MAX_CONTENT_BYTES
         if os.path.isabs(key):
             root = Path(config.STORAGE_DIRS["artifacts"], str(user_id)).resolve()
             legacy_path = Path(key).resolve()
@@ -177,15 +178,16 @@ class ArtifactService:
                 return None
             if not legacy_path.is_file():
                 return None
+            if legacy_path.stat().st_size > limit:
+                raise ValueError("Stored artifact exceeds the configured read limit.")
             encoded = legacy_path.read_bytes()
         else:
             if not key.startswith(f"{user_id}/"):
                 return None
             try:
-                encoded = get_artifact_storage().get(key)
+                encoded = get_artifact_storage().get(key, max_bytes=limit)
             except FileNotFoundError:
                 return None
-        limit = self.MAX_BINARY_BYTES if record.get("artifact_type") == "binary" else self.MAX_CONTENT_BYTES
         if len(encoded) > limit:
             raise ValueError("Stored artifact exceeds the configured read limit.")
         digest = hashlib.sha256(encoded).hexdigest()
