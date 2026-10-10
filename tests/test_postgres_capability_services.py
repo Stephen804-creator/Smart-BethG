@@ -29,6 +29,13 @@ class TestPostgresCapabilityServices(unittest.TestCase):
         self.assertEqual(WorkflowService().validate(uid, workflow['id'])['status'], 'validated')
         social = SocialContentService().create(uid, 'facebook', 'Draft', 'Draft content', ['#test'])
         self.assertEqual(social['status'], 'draft')
+        updated_social = SocialContentService().update(
+            uid, social['id'],
+            {'title': 'Revised ' + suffix, 'content': 'Revised content', 'hashtags': ['#updated']},
+        )
+        self.assertEqual(updated_social['version'], 2)
+        self.assertEqual(len(updated_social['versions']), 2)
+        self.assertEqual(updated_social['content'], 'Revised content')
         research = ResearchService().create(uid, 'Topic', 'Summary', ['https://example.org/source'], mission['id'])
         self.assertEqual(research['source_urls'], ['https://example.org/source'])
         evidence = EvidenceService().create(uid, 'Claim', 'https://example.org/evidence', 'Excerpt', 0.5, mission['id'])
