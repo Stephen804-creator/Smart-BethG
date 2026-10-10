@@ -85,7 +85,7 @@
         return;
       }
       if (status) status.textContent = approved
-        ? "Approval recorded. The action has not necessarily run yet."
+        ? "Approval recorded. The original operation has not resumed."
         : "Action rejected.";
       await loadApprovals();
     } catch (err) {
