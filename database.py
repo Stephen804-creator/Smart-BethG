@@ -307,7 +307,7 @@ def initialize_database():
         );
 
         -- ==================================================
-        -- V1 capability foundations (storage only - see module docstring)
+        -- Schema-backed capability foundations; implementation status is recorded in the dated audit.
         -- ==================================================
         CREATE TABLE IF NOT EXISTS missions(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -373,6 +373,7 @@ def initialize_database():
             claim TEXT NOT NULL,
             evidence_text TEXT NOT NULL,
             source_reference TEXT,
+            confidence REAL,
             validation_status TEXT NOT NULL DEFAULT 'unvalidated',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(mission_id) REFERENCES missions(id)
@@ -489,6 +490,7 @@ def initialize_database():
     _add_column_if_missing(conn, "mission_runs", "result_json", "TEXT")
     _add_column_if_missing(conn, "mission_runs", "idempotency_key", "TEXT")
     _add_column_if_missing(conn, "evidence", "user_id", "INTEGER")
+    _add_column_if_missing(conn, "evidence", "confidence", "REAL")
     _add_column_if_missing(conn, "workflows", "definition_json", "TEXT NOT NULL DEFAULT '[]'")
     _add_column_if_missing(conn, "workflows", "version", "INTEGER NOT NULL DEFAULT 1")
     _add_column_if_missing(conn, "artifacts", "content_type", "TEXT")
