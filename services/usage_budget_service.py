@@ -99,11 +99,22 @@ class UsageBudgetService:
     def reconcile(self, reservation_id, actual_input_tokens=None, actual_output_tokens=None):
         conn = get_connection()
         try:
+            if not getattr(conn, "is_postgres", False):
+                conn.execute("BEGIN IMMEDIATE")
+            claim = conn.execute(
+                "UPDATE usage_budget_reservations SET status='reconciling' "
+                "WHERE id=? AND status='reserved'",
+                (reservation_id,),
+            )
+            if claim.rowcount != 1:
+                conn.rollback()
+                return False
             row = conn.execute(
-                "SELECT * FROM usage_budget_reservations WHERE id=? AND status='reserved' LIMIT 1",
+                "SELECT * FROM usage_budget_reservations WHERE id=? AND status='reconciling' LIMIT 1",
                 (reservation_id,),
             ).fetchone()
             if not row:
+                conn.rollback()
                 return False
             record = dict(row)
             input_tokens = max(0, int(actual_input_tokens)) if actual_input_tokens is not None else record["estimated_input_tokens"]
@@ -124,7 +135,7 @@ class UsageBudgetService:
                 )
             conn.execute(
                 "UPDATE usage_budget_reservations SET actual_input_tokens=?, actual_output_tokens=?, "
-                "actual_cost_micros=?, status='completed', completed_at=CURRENT_TIMESTAMP WHERE id=? AND status='reserved'",
+                "actual_cost_micros=?, status='completed', completed_at=CURRENT_TIMESTAMP WHERE id=? AND status='reconciling'",
                 (input_tokens, output_tokens, actual_cost, reservation_id),
             )
             conn.commit()
