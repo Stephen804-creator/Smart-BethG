@@ -28,14 +28,16 @@ The agent researches/uses approved references, prepares a calendar, generates pl
 - Post drafts retain version history and receive unique idempotency keys.
 - Connector catalog and an explicit publisher interface.
 - A separate durable worker claims due PostgreSQL jobs with leases, verifies campaign/post/account state, records confirmed success, blocks missing connectors, and marks unknown provider outcomes indeterminate rather than blindly retrying.
+- Meta OAuth connection flow for Facebook Pages, with state verification, required permission checks, pending Page selection, owner-scoped activation/disconnection, and encrypted token storage in the credential vault.
+- Facebook Pages text-post publisher, opt-in only when the operator configures the Meta app, token-encryption key, and explicit publishing-enabled flag. The adapter is text-only and is not an Instagram publisher.
 - Artifact service supports text, Markdown, JSON, Python, JavaScript, HTML, CSV, and YAML text outputs, verifies SHA-256 on reads, and can use local storage or an S3-compatible object store through configuration.
-- Real publishing adapters and OAuth account-connection flows are not included yet. The catalog deliberately reports them as planned. It would be misleading and unsafe to claim a post will publish until the provider adapter, OAuth, permissions, and full worker deployment have been implemented and tested.
+- Instagram, YouTube, LinkedIn, and X OAuth/publishing adapters remain planned. Facebook's app review and a real test-account end-to-end run are still external release gates. The existence of an adapter does not prove that Meta has approved the app or its permissions.
 
 ## Connector delivery sequence
 
 1. Shared connector contract: capabilities, auth status, health, publish result, rate-limit response, retryability, idempotency, and provider error normalization.
-2. Account authorization: provider OAuth state/PKCE where supported, CSRF/state verification, least-privilege scopes, callback URL configuration, refresh/revocation, encrypted secret storage, and disconnect/delete flows.
-3. First platform adapter: choose one supported platform and post type; verify provider API permissions and app-review requirements using official provider documentation.
+2. Extend account authorization from Facebook Pages to other providers with OAuth state/PKCE where supported, least-privilege scopes, callback configuration, refresh/revocation, encrypted secret storage, and disconnect/delete flows.
+3. Expand Facebook support beyond text only, then add Instagram Professional publishing with media validation; verify each provider's current API permissions and app-review requirements using official provider documentation.
 4. Durable worker: PostgreSQL job leases/claims, bounded concurrency, retries only for known retryable errors, dead-letter/reconciliation states, metrics, and multi-instance safety.
 5. Additional adapters: add one provider at a time, each with sandbox/contract tests and a documented capability matrix.
 6. End-to-end acceptance: connect a test account, create a multi-day campaign, leave the browser closed, observe scheduled publication, test pause/cancel, revoke access, simulate provider timeouts, and prove that duplicate posts are not created.
