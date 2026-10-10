@@ -49,6 +49,22 @@ class TestArtifactService(SmartBethGTestCase):
         with self.assertRaisesRegex(ValueError, "integrity check"):
             self.service.read_content(self.owner["id"], artifact["id"])
 
+    def test_artifact_provenance_is_persisted_and_owner_scoped(self):
+        artifact = self.service.create(
+            self.owner["id"], "campaign-export", '{"schema_version":1}', "json",
+            source_type="campaign", source_id="campaign-42", provider="openai",
+            model="test-model", metadata={"export_schema_version": 1, "export_kind": "social_campaign_calendar"},
+        )
+        self.assertEqual(artifact["source_type"], "campaign")
+        self.assertEqual(artifact["source_id"], "campaign-42")
+        self.assertEqual(artifact["provider"], "openai")
+        self.assertEqual(artifact["model"], "test-model")
+        self.assertEqual(artifact["metadata"]["export_schema_version"], 1)
+        listed = self.service.list_for_user(self.owner["id"])
+        self.assertEqual(listed[0]["id"], artifact["id"])
+        self.assertEqual(listed[0]["metadata"]["export_kind"], "social_campaign_calendar")
+        self.assertIsNone(self.service.get(self.other["id"], artifact["id"]))
+
     def test_binary_artifact_round_trip_and_owner_isolation(self):
         payload = bytes([137]) + b"PNG" + bytes([13, 10, 26, 10]) + b"sample-image-data"
         artifact = self.service.create_bytes(
