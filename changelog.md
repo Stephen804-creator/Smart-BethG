@@ -662,3 +662,42 @@ retraining loop - intentionally a manual, operator-controlled step.
   "admin chamber" pattern discussed but the screen itself isn't built.
 - Same standing, unchangeable-by-me caveat: untested against a live
   server; verified via 234 tests against the service/logic layer.
+
+
+## 2026-10-10 UTC — Public-launch architecture and security audit
+
+**Recorded in Git history:** the commit timestamp is the exact time for this entry. This entry supersedes earlier statements where current behavior differs.
+
+### Architecture decisions activated
+- PostgreSQL is now the required production database for both single-instance and multi-instance deployments. SQLite is retained for local development and isolated unit tests.
+- Added a PostgreSQL DB-API compatibility adapter, a shared PostgreSQL-backed authentication rate limiter, a PostgreSQL CI service, and integration smoke tests.
+- Added a fail-closed SQLite-to-PostgreSQL data migration utility and a dated migration runbook. The utility copies rows only; files and storage paths need a separate verified migration.
+- Added provider-neutral setup/deployment documentation. No Render-specific manifest or provider runtime is required.
+- Recorded the public-launch target and decisions for token budgets, shared storage, approvals, and schema-backed feature areas in `architecture.md` and `docs/DECISION_LOG.md`.
+
+### Security and reliability changes
+- Approval records now persist the operation payload, owner, resource/workspace, expiry, decision, execution state, and result. The approval service atomically claims approved operations and rejects duplicate execution; the tool service rechecks permissions and executes the saved operation once. Crash outcomes remain non-replayable and require reconciliation.
+- The chat approval UI now shows the exact saved arguments and reports execution status.
+- Tool workspaces are separated by authenticated user ID.
+- Upload reads are bounded before the entire file is loaded into memory.
+- Network requests reject non-HTTP schemes, embedded credentials, non-public IP destinations, and oversized responses; redirects are revalidated.
+- Docker CLI passthrough is restricted to read-only inspection or explicitly allowlisted, constrained container runs.
+- Unsandboxed host Python execution is disabled in production. A real isolated job runner is still required before public code execution.
+- CORS allowlist is wired; registration defaults closed; OAuth creation respects registration state and requires a verified Google email; authentication input lengths are bounded.
+- Dynamic account/usage data in the topbar is rendered with DOM text nodes rather than interpolated into HTML.
+- Fixed the versioned chat route to `/api/v1/chat` while preserving the legacy `/api/chat` endpoint.
+- Training export remains disabled until explicit, recorded, revocable user consent is implemented.
+
+### Documentation added
+- `README.md` — provider-neutral local/production setup.
+- `docs/DECISION_LOG.md` — dated active decisions.
+- `docs/TERMS_OF_SERVICE_DRAFT_2026-10-10.md` and `docs/PRIVACY_POLICY_DRAFT_2026-10-10.md` — drafts requiring legal and product review.
+- `docs/REPOSITORY_AUDIT_2026-10-10.md` — living whole-repository findings and verification matrix.
+- `docs/DATABASE_MIGRATION_2026-10-10.md` — migration and rollback checklist.
+- `scripts/manage_user.py` — trusted CLI for initial administrator setup.
+
+### Verification status and remaining work
+- A PostgreSQL integration CI job passed an earlier revision for user creation, conversation persistence, approval persistence, and database-backed rate limiting. The latest revision must pass both CI jobs before merge.
+- Do not treat this change log as proof of live deployment persistence, backups, legal approval, independent security review, or multi-instance file-storage readiness.
+- Still open: complete owner-isolation audit, end-to-end approval and crash-recovery tests, versioned schema migrations, per-user/global token-spend enforcement, shared file/workspace storage, durable background jobs, real sandboxing, dependency/secret scanning, CSRF/session hardening, password reset/MFA/account deletion, browser accessibility testing, and feature vertical slices for projects/missions/workflows/artifacts/social content/research/evidence.
+- Public launch remains **not approved** until the release gates in the dated audit report are verified.
