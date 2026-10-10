@@ -18,7 +18,7 @@ from error_handlers import register_error_handlers
 
 from routes import (
     health, auth, auth_google, tasks, agents, approvals, audit, tools,
-    providers, chat, files, memory, knowledge, projects, artifacts, missions, workflows, training_export, pages,
+    providers, chat, files, memory, knowledge, projects, artifacts, missions, workflows, social_content, training_export, pages,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -96,7 +96,7 @@ def create_app() -> FastAPI:
     api_routers = [
         health.router, auth.router, tasks.router, agents.router, approvals.router,
         audit.router, tools.router, providers.router, chat.router, files.router,
-        memory.router, knowledge.router, projects.router, artifacts.router, missions.router, workflows.router,
+        memory.router, knowledge.router, projects.router, artifacts.router, missions.router, workflows.router, social_content.router,
     ]
     for router in api_routers:
         if router is chat.router or router is files.router:
