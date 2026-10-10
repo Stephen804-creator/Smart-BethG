@@ -2,9 +2,12 @@
 (function () {
   const projectForm = document.getElementById("projectCreateForm");
   const missionForm = document.getElementById("missionCreateForm");
+  const artifactTextForm = document.getElementById("artifactTextForm");
+  const artifactUploadForm = document.getElementById("artifactUploadForm");
   if (!projectForm || !missionForm) return;
 
   const projectList = document.getElementById("projectList");
+  const artifactList = document.getElementById("artifactList");
   const missionList = document.getElementById("missionList");
   const missionProject = document.getElementById("missionProject");
   const dashboardStatus = document.getElementById("workspaceDashboardStatus");
@@ -28,7 +31,7 @@
     if (options.method && options.method !== "GET") {
       headers.set("X-CSRF-Token", await getCsrfToken());
     }
-    if (options.body) headers.set("Content-Type", "application/json");
+    if (options.body && !(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
     const response = await fetch(path, {
       ...options,
       headers,
@@ -122,6 +125,50 @@
     if (!items.length) missionList.appendChild(makeText("p", "workspace-empty", "No missions yet. Record an objective above."));
   }
 
+  function renderArtifacts(items) {
+    if (!artifactList) return;
+    artifactList.replaceChildren();
+    items.forEach((artifact) => {
+      const card = document.createElement("article");
+      card.className = "workspace-card";
+      const size = Number(artifact.size_bytes || 0);
+      const sizeLabel = size < 1024 ? size + " B" : size < 1024 * 1024
+        ? (size / 1024).toFixed(1) + " KiB"
+        : (size / (1024 * 1024)).toFixed(2) + " MiB";
+      card.append(
+        makeText("h4", "", artifact.name),
+        makeText("p", "", "Type: " + (artifact.artifact_type || "unknown") + " · " + sizeLabel),
+        makeText("p", "workspace-meta", "Created: " + (artifact.created_at || "unknown"))
+      );
+      const actions = document.createElement("div");
+      actions.className = "workspace-card-actions";
+      const download = document.createElement("a");
+      download.className = "btn btn-secondary";
+      download.href = "/api/v1/artifacts/" + encodeURIComponent(artifact.id) + "/download";
+      download.textContent = "Download";
+      actions.appendChild(download);
+      actions.appendChild(makeButton("Delete", "btn btn-danger", async () => {
+        if (!window.confirm("Delete artifact “" + artifact.name + "”? This cannot be undone.")) return;
+        try {
+          await api("/api/v1/artifacts/" + encodeURIComponent(artifact.id), { method: "DELETE" });
+          await refreshArtifacts();
+          setStatus("artifactLibraryStatus", "Artifact deleted.");
+        } catch (error) {
+          setStatus("artifactLibraryStatus", error.message, true);
+        }
+      }));
+      card.appendChild(actions);
+      artifactList.appendChild(card);
+    });
+    if (!items.length) artifactList.appendChild(makeText("p", "workspace-empty", "No artifacts yet. Create a text artifact or save a generated file above."));
+  }
+
+  async function refreshArtifacts() {
+    if (!artifactList) return;
+    const data = await api("/api/v1/artifacts");
+    renderArtifacts(data.artifacts || []);
+  }
+
   async function refreshProjects() {
     const data = await api("/api/v1/projects");
     renderProjects(data.projects || []);
@@ -183,9 +230,60 @@
     }
   });
 
+  if (artifactTextForm) {
+    artifactTextForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = document.getElementById("artifactName").value.trim();
+      const artifact_type = document.getElementById("artifactType").value;
+      const content = document.getElementById("artifactContent").value;
+      const submit = artifactTextForm.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      setStatus("artifactTextStatus", "Saving artifact…");
+      try {
+        await api("/api/v1/artifacts", {
+          method: "POST",
+          body: JSON.stringify({ name, artifact_type, content }),
+        });
+        artifactTextForm.reset();
+        await refreshArtifacts();
+        setStatus("artifactTextStatus", "Artifact saved to your private library.");
+      } catch (error) {
+        setStatus("artifactTextStatus", error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+
+  if (artifactUploadForm) {
+    artifactUploadForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const fileInput = document.getElementById("artifactFile");
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append("file", file);
+      const name = document.getElementById("artifactUploadName").value.trim();
+      if (name) formData.append("name", name);
+      const submit = artifactUploadForm.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      setStatus("artifactUploadStatus", "Saving file…");
+      try {
+        await api("/api/v1/artifacts/upload", { method: "POST", body: formData });
+        artifactUploadForm.reset();
+        await refreshArtifacts();
+        setStatus("artifactUploadStatus", "File saved to your private artifact library.");
+      } catch (error) {
+        setStatus("artifactUploadStatus", error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+
   async function initialize() {
     try {
-      await Promise.all([refreshProjects(), refreshMissions()]);
+      await Promise.all([refreshProjects(), refreshMissions(), refreshArtifacts()]);
     } catch (error) {
       dashboardStatus.textContent = error.message;
       dashboardStatus.classList.add("status-error-text");
