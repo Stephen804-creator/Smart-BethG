@@ -63,6 +63,8 @@ class RequestBodyLimitMiddleware:
                     response_started = True
                     await self._reject(scope, receive, send)
                 return
+            if message.get("type") == "http.response.start":
+                response_started = True
             await send(message)
 
         try:
