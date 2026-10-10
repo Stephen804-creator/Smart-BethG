@@ -1,10 +1,10 @@
 """
 Smart BethG - Database
 
-SQLite-backed persistent storage for V1. DATABASE_URL is a configuration
-boundary for a future engine migration (see config.py); only sqlite paths
-are accepted today, so a non-SQLite URL fails fast instead of silently
-reaching sqlite3.connect().
+PostgreSQL is the production backend; SQLite is retained for local development
+and isolated tests. Existing repository SQL uses a small compatibility adapter
+to support both while the PostgreSQL migration is completed. The adapter is
+not a substitute for PostgreSQL integration tests and versioned schema migrations.
 
 Table groups:
 - Application/security: users, agents, tasks, approvals, audit_events,
@@ -29,6 +29,13 @@ import sqlite3
 import config
 
 DB_PATH = config.resolve_sqlite_path()
+
+SERIAL_ID_TABLES = {
+    "users", "agents", "tasks", "auth_rate_limit_events", "audit_events",
+    "providers", "conversations", "messages", "provider_calls", "missions",
+    "mission_runs", "files", "memory", "research", "evidence", "workflows",
+    "artifacts", "social_content", "projects", "logs", "knowledge_chunks",
+}
 
 
 class _EmptyCursor:
@@ -85,7 +92,7 @@ class _PostgresConnection:
         )
         if insert and not re.search(r"\bRETURNING\b", statement, re.I):
             columns = {part.strip().strip(chr(34)).lower() for part in insert.group(2).split(",")}
-            if "id" not in columns:
+            if insert.group(1).lower() in SERIAL_ID_TABLES and "id" not in columns:
                 statement += " RETURNING id"
                 lastrowid = "__returning_id__"
 
