@@ -10,6 +10,7 @@ import config
 import database
 from main_fastapi import create_app
 from services.approval_service import ApprovalService
+from services.tool_service import resolve_workspace_root
 
 
 class TestHttpSecurityBoundaries(unittest.TestCase):
@@ -90,6 +91,24 @@ class TestApprovalService(unittest.TestCase):
         with self.assertRaises(HTTPException) as caught:
             self.service.decide("does-not-exist", 10, True)
         self.assertEqual(caught.exception.status_code, 404)
+
+
+class TestWorkspaceIsolation(unittest.TestCase):
+    def test_workspaces_are_isolated_by_authenticated_user(self):
+        with tempfile.TemporaryDirectory() as root:
+            with patch.dict(config.STORAGE_DIRS, {"projects": root}):
+                user_one = resolve_workspace_root(101, "default")
+                user_two = resolve_workspace_root(202, "default")
+                self.assertNotEqual(user_one, user_two)
+                self.assertTrue(user_one.startswith(os.path.join(root, "101")))
+                self.assertTrue(user_two.startswith(os.path.join(root, "202")))
+
+    def test_workspace_name_cannot_escape_user_root(self):
+        with tempfile.TemporaryDirectory() as root:
+            with patch.dict(config.STORAGE_DIRS, {"projects": root}):
+                resolved = resolve_workspace_root(101, "../../another-user")
+                self.assertTrue(resolved.startswith(os.path.join(root, "101")))
+                self.assertNotIn("..", os.path.relpath(resolved, os.path.join(root, "101")))
 
 
 if __name__ == "__main__":
