@@ -96,6 +96,18 @@ First take a backup and test against a fresh PostgreSQL database. The script ref
 
 The Terms of Service and Privacy Policy under `docs/` are **drafts, not final or approved legal documents**. Read [the dated legal/privacy launch checklist](docs/LEGAL_AND_PRIVACY_LAUNCH_CHECKLIST_2026-10-10.md) before preparing a public launch. The product owner can prepare initial drafts, but qualified Nigerian legal review is recommended before publication. Assess any NDPC registration, audit, or notification duties against the actual data-processing activities and current rules; do not assume the draft itself establishes compliance.
 
+## Files, artifacts, and social automation
+
+The current feature branch includes the first Artifact Library UI and API for text/code outputs plus bounded binary artifacts (images, audio/video, PDF, ZIP, and generic files). It verifies SHA-256 on reads and supports local development storage or an S3-compatible artifact backend. Binary uploads are currently limited to 25 MiB; large media streaming, direct persistence from every generation provider, unified shared storage for uploads/workspaces, quotas, and restore-tested object storage remain open.
+
+- [Stage 3 files and artifacts acceptance record](docs/STAGE3_FILES_AND_ARTIFACTS_ACCEPTANCE_2026-10-10.md)
+- [Artifact storage and migration runbook](docs/ARTIFACT_STORAGE_RUNBOOK_2026-10-10.md)
+- [Social agent and connector plan](docs/SOCIAL_AGENT_AND_CONNECTORS_2026-10-10.md)
+- [Connector and plugin ecosystem](docs/CONNECTOR_ECOSYSTEM_2026-10-10.md)
+- [Social worker operations](docs/SOCIAL_WORKER_OPERATIONS_2026-10-10.md)
+
+Social campaigns can generate a scheduled multi-day content plan and store it as a JSON artifact. The feature branch includes a durable PostgreSQL publication queue and an initial Facebook Pages text-post adapter, but it requires an operator-owned Meta developer app, appropriate provider approval, a connected test Page, and a separately supervised worker process. Other social platforms remain planned; do not assume every connector in the catalog is implemented.
+
 ## Tests and CI
 
 GitHub Actions runs:
