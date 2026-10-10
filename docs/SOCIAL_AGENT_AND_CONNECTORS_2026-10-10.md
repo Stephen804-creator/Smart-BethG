@@ -1,0 +1,48 @@
+# Smart BethG Social Agent and Connector Plan
+
+**Created:** 2026-10-10 UTC  
+**Last updated:** 2026-10-10 UTC  
+**Status:** Architecture and initial API implementation; not yet an end-to-end publishing integration.
+
+## Intended user experience
+
+A user connects an eligible social account through the provider's official OAuth flow, chooses the pages/channels they own, and asks Smart BethG for a campaign—for example, thirty days of educational posts. In the campaign workspace, the user sets the goal, platforms, audience, language/tone, timezone, schedule/cadence, reference links/files, excluded topics, per-day limit, and autonomy level. The agent may propose sensible defaults and ask only for missing decisions that materially affect the campaign. The campaign workspace should stay focused: objective, schedule/calendar, post review, connected accounts, run status, and a concise activity log—not a second general-purpose chat room.
+
+The agent researches/uses approved references, prepares a calendar, generates platform-specific content, checks factual claims and platform limits, stores versioned posts and supporting artifacts, and reports what is scheduled, blocked, published, or failed. A durable worker must continue while the user is offline. Users need pause/resume/cancel, edit-before-publication, retry/reconciliation, timezone-aware scheduling, per-platform outcomes, and notifications.
+
+## Authority and safety model
+
+- Default is review_each_post: no post is published merely because it was generated or scheduled.
+- auto_publish_after_campaign_approval requires explicit campaign-level authorization. That authorization must be scoped to selected platforms, accounts, campaign, time window, daily cap, and the exact kinds of external actions allowed.
+- Approval to publish must not imply permission to send messages, delete content, follow/unfollow accounts, spend money, or change account settings.
+- If content changes after approval, require a new approval.
+- Re-check account ownership, provider scopes, current permissions, campaign status, and job idempotency immediately before publication.
+- Store only a secret-manager reference in PostgreSQL. Never store access/refresh tokens in ordinary campaign tables, logs, source files, or API responses.
+- Treat a post timeout as an indeterminate outcome until the provider is queried. Do not blindly retry a potentially successful external post.
+- Respect provider rate limits, media constraints, user revocation, account disconnection, and current platform terms.
+
+## Current implementation in this branch
+
+- Versioned PostgreSQL migration plus SQLite test schema for campaigns, connected-account metadata, and durable publish-job records.
+- Owner-scoped campaign APIs, validated IANA timezones and timezone-aware timestamps, selected-platform enforcement, bounded batch size, per-day limits, and atomic post-batch creation.
+- Post drafts retain version history and receive unique idempotency keys.
+- Connector catalog and an explicit publisher interface.
+- Artifact service supports text, Markdown, JSON, Python, JavaScript, HTML, CSV, and YAML text outputs, verifies SHA-256 on reads, and can use local storage or an S3-compatible object store through configuration.
+- Real publishing adapters and OAuth account-connection flows are not included yet. The catalog deliberately reports them as planned. It would be misleading and unsafe to claim a post will publish until the provider adapter, OAuth, permissions, and durable worker have been implemented and tested.
+
+## Connector delivery sequence
+
+1. Shared connector contract: capabilities, auth status, health, publish result, rate-limit response, retryability, idempotency, and provider error normalization.
+2. Account authorization: provider OAuth state/PKCE where supported, CSRF/state verification, least-privilege scopes, callback URL configuration, refresh/revocation, encrypted secret storage, and disconnect/delete flows.
+3. First platform adapter: choose one supported platform and post type; verify provider API permissions and app-review requirements using official provider documentation.
+4. Durable worker: PostgreSQL job leases/claims, bounded concurrency, retries only for known retryable errors, dead-letter/reconciliation states, metrics, and multi-instance safety.
+5. Additional adapters: add one provider at a time, each with sandbox/contract tests and a documented capability matrix.
+6. End-to-end acceptance: connect a test account, create a multi-day campaign, leave the browser closed, observe scheduled publication, test pause/cancel, revoke access, simulate provider timeouts, and prove that duplicate posts are not created.
+
+## Portability
+
+Keep connectors provider-neutral. Credentials are supplied through standard environment configuration/secret-manager adapters; object storage supports local development or an S3-compatible backend. Do not add Render-only assumptions. A compatible ASGI deployment and independent worker process should be deployable on a generic Linux host, DigitalOcean, AWS, Azure, or another compatible provider.
+
+## External prerequisites
+
+The operator must create/own the provider developer apps and complete each platform's current approval/review process. Smart BethG cannot grant itself Facebook, Instagram, YouTube, LinkedIn, or X publishing permission. Provider pricing, scopes, app-review rules, quotas, and allowed post types must be verified against current official documentation at implementation time.
