@@ -1,3 +1,5 @@
+import hmac
+
 from fastapi import Depends, HTTPException, Request, status
 from database import get_connection
 from services.auth_service import get_user_by_id
@@ -24,6 +26,15 @@ def get_audit_service(): return AuditService()
 def get_provider_service(): return ProviderService()
 def get_tool_service(): return ToolService()
 
+def require_csrf(request: Request):
+    """Validate the synchronizer token for every unsafe cookie-authenticated request."""
+    expected = request.session.get("csrf_token")
+    supplied = request.headers.get("x-csrf-token", "")
+    if not expected or not supplied or not hmac.compare_digest(str(expected), str(supplied)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token missing or invalid.")
+    return True
+
+
 def get_current_user(request: Request):
     """
     Resolve the authenticated user from the signed session cookie.
@@ -42,6 +53,8 @@ def get_current_user(request: Request):
     if not user:
         request.session.clear()
         raise HTTPException(status_code=401, detail="Invalid or inactive user.")
+    if request.method.upper() not in {"GET", "HEAD", "OPTIONS", "TRACE"}:
+        require_csrf(request)
     return user
 
 
