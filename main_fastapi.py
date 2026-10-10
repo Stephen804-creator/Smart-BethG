@@ -16,11 +16,12 @@ from starlette.middleware.sessions import SessionMiddleware
 import config
 from database import initialize_database
 from logging_setup import setup_logging, get_logger
+from security.request_size_limit import RequestBodyLimitMiddleware
 from error_handlers import register_error_handlers
 
 from routes import (
     health, auth, auth_google, tasks, agents, approvals, audit, tools,
-    providers, chat, files, memory, knowledge, projects, artifacts, missions, workflows, social_content, research, evidence, training_export, pages,
+    providers, chat, files, memory, knowledge, projects, artifacts, missions, workflows, social_content, social_campaigns, connectors, research, evidence, training_export, pages,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -62,6 +63,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     register_error_handlers(app)
+    # Add this before user middleware so security headers, request logging,
+    # sessions, and CORS can wrap the bounded-body rejection response.
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_body_bytes=config.MAX_REQUEST_BODY_BYTES,
+    )
 
     @app.middleware("http")
     async def enforce_csrf_for_cookie_authenticated_mutations(request: Request, call_next):
@@ -164,7 +171,7 @@ def create_app() -> FastAPI:
     api_routers = [
         health.router, auth.router, tasks.router, agents.router, approvals.router,
         audit.router, tools.router, providers.router, chat.router, files.router,
-        memory.router, knowledge.router, projects.router, artifacts.router, missions.router, workflows.router, social_content.router, research.router, evidence.router,
+        memory.router, knowledge.router, projects.router, artifacts.router, missions.router, workflows.router, social_content.router, social_campaigns.router, connectors.router, research.router, evidence.router,
     ]
     for router in api_routers:
         if router in (chat.router, files.router, memory.router, knowledge.router):

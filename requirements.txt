@@ -44,3 +44,9 @@ requests>=2.32,<3.0
 
 # PostgreSQL production database (SQLite remains for local development/tests)
 psycopg[binary]>=3.2,<4.0
+
+# Optional S3-compatible durable object storage for artifacts
+boto3>=1.35,<2.0
+
+# Encrypt OAuth tokens at rest in the connector credential vault
+cryptography>=50.0.0,<51

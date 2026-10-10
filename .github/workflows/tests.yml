@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: smart-bethg-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -31,8 +35,11 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
       - name: Compile Python files
         run: python -m compileall -q .
-      - name: Check workspace dashboard JavaScript syntax
-        run: node --check static/js/workspace-dashboard.js
+      - name: Check frontend JavaScript syntax
+        run: |
+          node --check static/js/workspace-dashboard.js
+          node --check static/js/social-campaigns.js
+          node --check static/js/artifacts.js
       - name: Run unit tests
         env:
           SMART_BETHG_ENV: test

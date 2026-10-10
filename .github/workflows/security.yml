@@ -9,6 +9,10 @@ on:
     - cron: "17 5 * * 1"
   workflow_dispatch:
 
+concurrency:
+  group: smart-bethg-security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: read

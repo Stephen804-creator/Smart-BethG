@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Manage Smart BethG files and generated artifacts.">
+  <meta name="theme-color" content="#08111f">
+  <title>Artifacts and files · Smart BethG</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/artifacts.css') }}">
+  <script>
+    window.SMART_BETHG_API_PREFIX = {{ api_prefix | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='js/artifacts.js') }}" defer></script>
+</head>
+<body>
+<div class="app artifact-app">
+  <aside class="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a href="/" class="logo"><span class="logo-mark" aria-hidden="true">SB</span><span>Smart BethG</span></a>
+    </div>
+    <nav class="sidebar-navigation">
+      <ul>
+        <li><a href="/"><span>Home</span></a></li>
+        <li><a href="/chat"><span>AI Assistant</span></a></li>
+        <li><a href="/social"><span>Social campaigns</span></a></li>
+        <li><a href="/artifacts" class="active" aria-current="page"><span>Files & artifacts</span></a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="content artifact-content">
+    <header class="artifact-heading">
+      <div>
+        <p class="eyebrow">SMART BETHG · YOUR FILES</p>
+        <h1>Files and generated artifacts</h1>
+        <p class="muted">Save text outputs, upload images/audio/video/PDFs, download verified artifacts, and remove files you no longer need. Each artifact is private to your account.</p>
+      </div>
+      <button type="button" class="btn" id="refreshArtifacts">Refresh library</button>
+    </header>
+
+    <section class="notice notice-warning">
+      <strong>Storage note</strong>
+      Uploads are limited to 25 MiB each. Local storage is suitable for development and single-instance testing; production multi-instance use requires configured shared object storage and a tested migration/backup plan.
+    </section>
+
+    <div class="artifact-grid">
+      <section class="artifact-card">
+        <p class="eyebrow">TEXT OUTPUT</p>
+        <h2>Create a text artifact</h2>
+        <form id="textArtifactForm" class="artifact-form">
+          <label>Name<input name="name" required maxlength="160" placeholder="Research summary"></label>
+          <label>Format
+            <select name="artifact_type">
+              <option value="text">Plain text</option>
+              <option value="markdown">Markdown</option>
+              <option value="json">JSON (validated)</option>
+              <option value="csv">CSV</option>
+              <option value="yaml">YAML</option>
+              <option value="python">Python source</option>
+              <option value="javascript">JavaScript source</option>
+              <option value="html">HTML file</option>
+            </select>
+          </label>
+          <label>Content<textarea name="content" rows="7" maxlength="1048576" required placeholder="Paste the output you want to keep…"></textarea></label>
+          <button class="btn btn-primary" type="submit" id="createTextArtifact">Save artifact</button>
+          <p id="textArtifactStatus" class="status-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="artifact-card">
+        <p class="eyebrow">FILE UPLOAD</p>
+        <h2>Upload a file</h2>
+        <form id="binaryArtifactForm" class="artifact-form">
+          <label>Display name (optional)<input name="name" maxlength="160" placeholder="Use the original filename if blank"></label>
+          <label>File
+            <input name="file" type="file" required accept="image/png,image/jpeg,image/webp,application/pdf,video/mp4,audio/mpeg,audio/wav,application/zip,application/octet-stream">
+          </label>
+          <p class="muted small">Supported types include PNG/JPEG/WebP, PDF, MP4, MP3/WAV, ZIP, and generic binary files. Known media types are checked against file signatures.</p>
+          <button class="btn btn-primary" type="submit" id="uploadArtifact">Upload file</button>
+          <p id="binaryArtifactStatus" class="status-message" aria-live="polite"></p>
+        </form>
+      </section>
+    </div>
+
+    <section class="artifact-card artifact-library">
+      <div class="section-heading">
+        <div><p class="eyebrow">PRIVATE LIBRARY</p><h2>Your artifacts</h2></div>
+        <label class="artifact-search">Search<input id="artifactSearch" type="search" placeholder="Name, type, or media type"></label>
+      </div>
+      <p id="artifactListStatus" class="status-message" aria-live="polite"></p>
+      <div id="artifactList" class="artifact-list"><p class="muted">Loading artifacts…</p></div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

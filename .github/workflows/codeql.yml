@@ -1,0 +1,47 @@
+name: Smart BethG CodeQL
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, "update/**", "feat/**"]
+  schedule:
+    - cron: "31 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: smart-bethg-codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+  actions: read
+
+jobs:
+  # CodeQL analysis is skipped for private repositories unless the repository
+  # owner confirms Code Security entitlement and enables the opt-in variable.
+  # This avoids turning an informational note into a failing status check.
+  analyze:
+    if: github.event.repository.visibility == 'public' || vars.SMART_BETHG_CODEQL_PRIVATE_ENABLED == 'true'
+    name: Analyze ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+          build-mode: none
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

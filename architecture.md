@@ -44,6 +44,14 @@ The following tables are deliberate product foundations, not features to leave u
 
 Implementation order should favor the shared foundation first: projects/workspaces and files/artifacts; mission lifecycle and runs; reusable workflows; research/evidence attached to missions; social-content drafts and publishing lifecycle. Do not expose a feature as available in the product until its complete vertical slice works. Do not remove schema merely because the first implementation is incomplete; use versioned migrations after checking references and data.
 
+## Social campaigns and external connectors
+
+Social campaign planning is an authenticated capability: it stores audience/brand guidance, target platforms, references, cadence, timezone-aware slots, versioned posts, campaign authority, and durable publication jobs. AI generation uses the existing provider fallback and usage-budget pipeline, validates structured output, and persists a plan only after all batches pass validation. Reference URLs are stored but are not claimed to be fetched or verified.
+
+The connector catalog is intentionally honest: a planned connector is not a working integration. This branch includes a Facebook Pages OAuth flow and text-post adapter, gated by explicit operator configuration and Meta's external app-review requirements. Instagram, YouTube, LinkedIn, and X remain planned. Tokens are encrypted in the credential vault using a Fernet key supplied through deployment secrets; campaign and account rows store only vault references. The durable worker runs separately from the web app, claims due PostgreSQL jobs with leases, and records confirmed provider IDs. Unknown provider outcomes become indeterminate and require reconciliation rather than blind retries. Keep the browser-closed/offline use case as an end-to-end release test, not a claim based on queue rows alone.
+
+Generated text and binary artifacts are owner-scoped, checksummed, and stored through a provider-neutral interface. Binary uploads have per-file size limits and known media-type signature checks. Local storage is for development/single-instance operation; S3-compatible storage supports shared artifact access. Changing storage backends does not migrate existing files automatically. Follow the dated migration runbook, verify backups and checksums, and test restoration before switching production data.
+
 ## Storage and portability
 
 The application must not depend on Render-specific configuration, services, or deployment manifests. It should run locally and be deployable to any compatible Linux/Python host using documented environment variables and a standard ASGI entry point. Render may be used as a low-cost test target, but it is only one deployment option. Keep host-specific setup outside the application core.

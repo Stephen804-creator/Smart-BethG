@@ -59,6 +59,11 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
                     json={"name": "should not be created"},
                 )
                 self.assertEqual(blocked.status_code, 403)
+                blocked_campaign = client.post(
+                    "/api/v1/social-campaigns",
+                    json={"name": "should not be created", "objective": "test"},
+                )
+                self.assertEqual(blocked_campaign.status_code, 403)
 
                 allowed = client.post(
                     "/api/v1/projects",
@@ -103,6 +108,11 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
             "/api/v1/missions",
             "/api/v1/workflows",
             "/api/v1/social-content",
+            "/api/v1/social-campaigns",
+            "/api/v1/connectors",
+            "/api/v1/connectors/social-accounts",
+            "/api/v1/connectors/meta/configuration",
+            "/api/v1/connectors/meta/start",
             "/api/v1/research",
             "/api/v1/evidence",
             "/api/v1/memory",
@@ -112,6 +122,58 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
             with self.subTest(path=path):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 401)
+
+    def test_binary_artifact_upload_download_requires_auth_and_preserves_bytes(self):
+        from services.auth_service import create_user
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            old_db_path = database.DB_PATH
+            old_database_url = config.DATABASE_URL
+            old_artifact_dir = config.STORAGE_DIRS["artifacts"]
+            database.DB_PATH = os.path.join(temp_dir, "artifact-http.db")
+            config.DATABASE_URL = ""
+            config.STORAGE_DIRS["artifacts"] = os.path.join(temp_dir, "artifacts")
+            try:
+                database.initialize_database()
+                username = "artifact-http-owner"
+                create_user(username, "artifact-http-password")
+                client = TestClient(create_app())
+                token = client.get("/auth/csrf").json()["csrf_token"]
+                login = client.post(
+                    "/auth/login",
+                    headers={"X-CSRF-Token": token},
+                    json={"username": username, "password": "artifact-http-password"},
+                )
+                self.assertEqual(login.status_code, 200, login.text)
+                token = client.get("/auth/csrf").json()["csrf_token"]
+
+                payload = b"\x89PNG\r\n\x1a\nartifact-test"
+                uploaded = client.post(
+                    "/api/v1/artifacts/upload",
+                    headers={"X-CSRF-Token": token},
+                    data={"name": "test-image.png"},
+                    files={"file": ("test-image.png", payload, "image/png")},
+                )
+                self.assertEqual(uploaded.status_code, 200, uploaded.text)
+                artifact_id = uploaded.json()["id"]
+
+                downloaded = client.get(f"/api/v1/artifacts/{artifact_id}/download")
+                self.assertEqual(downloaded.status_code, 200)
+                self.assertEqual(downloaded.content, payload)
+                self.assertEqual(downloaded.headers.get("x-content-type-options"), "nosniff")
+                self.assertIn("attachment", downloaded.headers.get("content-disposition", ""))
+
+                blocked_delete = client.delete(f"/api/v1/artifacts/{artifact_id}")
+                self.assertEqual(blocked_delete.status_code, 403)
+                deleted = client.delete(
+                    f"/api/v1/artifacts/{artifact_id}",
+                    headers={"X-CSRF-Token": token},
+                )
+                self.assertEqual(deleted.status_code, 200, deleted.text)
+            finally:
+                database.DB_PATH = old_db_path
+                config.DATABASE_URL = old_database_url
+                config.STORAGE_DIRS["artifacts"] = old_artifact_dir
 
     def test_registration_can_be_closed_by_operator(self):
         with patch.object(config, "REGISTRATION_OPEN", False):
