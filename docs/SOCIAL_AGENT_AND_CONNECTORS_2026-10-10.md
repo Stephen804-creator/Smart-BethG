@@ -17,7 +17,7 @@ The agent researches/uses approved references, prepares a calendar, generates pl
 - Approval to publish must not imply permission to send messages, delete content, follow/unfollow accounts, spend money, or change account settings.
 - If content changes after approval, require a new approval.
 - Re-check account ownership, provider scopes, current permissions, campaign status, and job idempotency immediately before publication.
-- Store only a secret-manager reference in PostgreSQL. Never store access/refresh tokens in ordinary campaign tables, logs, source files, or API responses.
+- Store only a credential-vault reference in social account rows. Token ciphertext lives in the dedicated credential-vault table, encrypted with a Fernet key supplied outside the database. Never store tokens in campaign rows, logs, source files, or API responses. A KMS/managed-secret backend and automated key rotation remain future hardening tasks.
 - Treat a post timeout as an indeterminate outcome until the provider is queried. Do not blindly retry a potentially successful external post.
 - Respect provider rate limits, media constraints, user revocation, account disconnection, and current platform terms.
 
@@ -38,7 +38,7 @@ The agent researches/uses approved references, prepares a calendar, generates pl
 1. Shared connector contract: capabilities, auth status, health, publish result, rate-limit response, retryability, idempotency, and provider error normalization.
 2. Extend account authorization from Facebook Pages to other providers with OAuth state/PKCE where supported, least-privilege scopes, callback configuration, refresh/revocation, encrypted secret storage, and disconnect/delete flows.
 3. Expand Facebook support beyond text only, then add Instagram Professional publishing with media validation; verify each provider's current API permissions and app-review requirements using official provider documentation.
-4. Durable worker: PostgreSQL job leases/claims, bounded concurrency, retries only for known retryable errors, dead-letter/reconciliation states, metrics, and multi-instance safety.
+4. Harden and deploy the durable worker: PostgreSQL job leases/claims, bounded concurrency, provider-specific retry rules, dead-letter/reconciliation states, metrics, and multi-instance safety. The first worker is present, but operational hardening is not complete.
 5. Additional adapters: add one provider at a time, each with sandbox/contract tests and a documented capability matrix.
 6. End-to-end acceptance: connect a test account, create a multi-day campaign, leave the browser closed, observe scheduled publication, test pause/cancel, revoke access, simulate provider timeouts, and prove that duplicate posts are not created.
 
