@@ -75,6 +75,8 @@ class SocialPublisherWorker:
         try:
             row = conn.execute(
                 "SELECT j.*, c.status AS campaign_status, c.autonomy_mode, c.autopublish_authorized_at, "
+                "c.authorization_scope_json, c.start_at AS campaign_start_at, c.end_at AS campaign_end_at, "
+                "c.platforms_json AS campaign_platforms_json, c.timezone AS campaign_timezone, "
                 "s.status AS content_status, s.topic AS title, s.caption AS content, s.hashtags, "
                 "sc.credential_ref, sc.external_account_id, sc.display_name, sc.status AS connection_status "
                 "FROM social_publish_jobs j "
@@ -152,11 +154,48 @@ class SocialPublisherWorker:
                                  error_message="Campaign was not active at execution time.")
                 results.append({"job_id": job_id, "status": "blocked"})
                 continue
-            if job["autonomy_mode"] == "auto_publish_after_campaign_approval" and not job.get("autopublish_authorized_at"):
-                self._update_job(job_id, "blocked", error_code="authorization_missing",
-                                 error_message="Campaign-level autonomous publishing authorization is missing.")
-                results.append({"job_id": job_id, "status": "blocked"})
-                continue
+            if job["autonomy_mode"] == "auto_publish_after_campaign_approval":
+                try:
+                    scope = json.loads(job.get("authorization_scope_json") or "")
+                    authorized_platforms = scope.get("platforms", [])
+                    scope_start = datetime.fromisoformat(scope["start_at"])
+                    scope_end = datetime.fromisoformat(scope["end_at"])
+                    scheduled_at = datetime.fromisoformat(job["scheduled_at"])
+                    valid_scope = (
+                        bool(job.get("autopublish_authorized_at"))
+                        and isinstance(authorized_platforms, list)
+                        and job["platform"] in authorized_platforms
+                        and scheduled_at.tzinfo is not None
+                        and scope_start.tzinfo is not None
+                        and scope_end.tzinfo is not None
+                        and scope_start <= scheduled_at <= scope_end
+                        and datetime.fromisoformat(job["campaign_start_at"]) <= scheduled_at
+                        and datetime.fromisoformat(job["campaign_end_at"]) >= scheduled_at
+                    )
+                except (TypeError, ValueError, KeyError, json.JSONDecodeError):
+                    valid_scope = False
+                if not valid_scope:
+                    self._update_job(job_id, "blocked", error_code="authorization_scope_invalid",
+                                     error_message="Campaign authorization is missing, invalid, or does not cover this platform and schedule.")
+                    results.append({"job_id": job_id, "status": "blocked"})
+                    continue
+            else:
+                try:
+                    scheduled_at = datetime.fromisoformat(job["scheduled_at"])
+                    campaign_start = datetime.fromisoformat(job["campaign_start_at"])
+                    campaign_end = datetime.fromisoformat(job["campaign_end_at"]) if job.get("campaign_end_at") else None
+                    valid_schedule = (
+                        scheduled_at.tzinfo is not None
+                        and campaign_start <= scheduled_at
+                        and (campaign_end is None or scheduled_at <= campaign_end)
+                    )
+                except (TypeError, ValueError):
+                    valid_schedule = False
+                if not valid_schedule:
+                    self._update_job(job_id, "blocked", error_code="schedule_outside_campaign",
+                                     error_message="Scheduled time is outside the campaign's configured date range.")
+                    results.append({"job_id": job_id, "status": "blocked"})
+                    continue
             if job["content_status"] != "approved":
                 self._update_job(job_id, "blocked", error_code="post_not_approved",
                                  error_message="The post is not approved for publication.")
