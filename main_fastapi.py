@@ -57,6 +57,22 @@ def create_app() -> FastAPI:
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+        # Start with Report-Only to measure compatibility before enforcing CSP.
+        # Inline styles remain temporarily allowed because templates still use
+        # style attributes; inline scripts and eval are not allowed.
+        response.headers["Content-Security-Policy-Report-Only"] = (
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'none'; "
+            "form-action 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "font-src 'self' data: https://cdnjs.cloudflare.com; "
+            "img-src 'self' data: blob:; "
+            "connect-src 'self'; "
+            "upgrade-insecure-requests"
+        )
         if config.IS_PRODUCTION and config.SESSION_HTTPS_ONLY:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
