@@ -32,7 +32,7 @@ class TestUsageBudgetService(SmartBethGTestCase):
 
     def test_global_budget_is_shared_across_users(self):
         with patch("services.usage_budget_service.config.USER_DAILY_TOKEN_BUDGET", 10000):
-            with patch("services.usage_budget_service.config.GLOBAL_DAILY_TOKEN_BUDGET", 350):
+            with patch("services.usage_budget_service.config.GLOBAL_DAILY_TOKEN_BUDGET", 250):
                 self.service.reserve(self.user["id"], "openai", "gpt-6-luna", 50, 100)
                 with self.assertRaises(BudgetExceededError):
                     self.service.reserve(self.other["id"], "openai", "gpt-6-luna", 50, 100)
