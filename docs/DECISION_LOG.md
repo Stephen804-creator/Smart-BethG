@@ -69,10 +69,16 @@ A later concurrent PostgreSQL integration run exposed a real regression: 24 conc
 
 ## 2026-10-10 20:34 UTC — Global CSRF and report-only CSP
 
-**Status:** Implemented on review branch; current-head CI pending.  
+**Status:** Implemented and covered by passing current-head CI on 2026-10-10.  
 All state-changing POST/PUT/PATCH/DELETE requests now require the session's CSRF token in `X-CSRF-Token`. This is a global boundary to avoid leaving newly added capability routes unprotected by omission. Browser scripts must obtain the token from `/auth/csrf` and send it for mutations. A report-only CSP is also active for observation; enforcement is intentionally deferred until violations are reviewed and inline styles are migrated.
 
 ## 2026-10-10 20:34 UTC — Project and mission dashboard vertical slice
 
-**Status:** Implemented on review branch; current-head CI pending.  
+**Status:** Implemented and covered by passing current-head CI on 2026-10-10.  
 The home page now supports owner-scoped project creation/list/archive and mission creation/list through the authenticated APIs. Mission entries are tracking records only; the UI must not imply that autonomous execution exists until a durable worker is connected and tested.
+
+
+## 2026-10-10 20:38 UTC — Current-head verification
+
+**Status:** Verified on PR branch; not merged.  
+Commit `022f057765f0b0ed4104f7898eeb0b95903b7a0e` passed 317 unit tests, 9 PostgreSQL integration tests, Python compilation, dashboard JavaScript syntax validation, dependency vulnerability audit, and Gitleaks secret scanning. This includes the new global CSRF regression, report-only CSP checks, project/mission dashboard HTTP owner-isolation tests, concurrent rate limiting, and concurrent user-budget reservation coverage. Production storage/backup, independent adversarial review, legal approval, and public-launch gates remain open.
