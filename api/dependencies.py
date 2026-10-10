@@ -100,3 +100,9 @@ from services.workflow_service import WorkflowService
 
 def get_workflow_service():
     return WorkflowService()
+
+from services.social_content_service import SocialContentService
+
+
+def get_social_content_service():
+    return SocialContentService()
