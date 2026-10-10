@@ -59,3 +59,9 @@ The revision `f805df04991a0532b1839720633c172b0f73292d` passed the 308-test unit
 ## 2026-10-10 19:51 UTC — PostgreSQL upgrade regression test passed
 **Status:** Verified on review branch, not merged  
 Revision `3edbacc04de9e53ac1dfc9ddb8bacbd262ecab28` passed 308 unit tests, 7 PostgreSQL integration tests, Python compilation, dependency auditing, and Gitleaks. The PostgreSQL migration test now simulates a prior schema missing `users.session_version`, reapplies the unrecorded baseline, and verifies the column is restored. This is one tested upgrade path, not a replacement for full migration rehearsals and backup/restore drills.
+
+
+## 2026-10-10 20:31 UTC — PostgreSQL rate-limit concurrency regression
+
+**Status:** Fix committed to review branch; CI re-verification pending.  
+A later concurrent PostgreSQL integration run exposed a real regression: 24 concurrent requests were all accepted when the configured maximum was 5. The prior lock-row upsert was not sufficient in the observed execution path. The limiter now takes a transaction-scoped PostgreSQL advisory lock keyed by the hashed limiter key before counting and inserting events. The lock is held through commit, so the critical section is serialized across replicas. The row table remains for last-seen cleanup/diagnostics, but it is no longer the sole concurrency guarantee. This issue demonstrates why a green run on an older commit must not be used as evidence for the current head.
