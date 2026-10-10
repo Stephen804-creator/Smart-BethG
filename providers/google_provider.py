@@ -1,4 +1,5 @@
 from .provider_base import ProviderBase
+from .model_catalog import model_for_tier
 
 
 class GoogleProvider(ProviderBase):
@@ -13,9 +14,9 @@ class GoogleProvider(ProviderBase):
 
     name = "google"
 
-    def __init__(self, api_key: str, model: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: str, model: str = None):
         self.api_key = api_key
-        self.model = model
+        self.model = model or model_for_tier("google", "balanced")["id"]
         self._client = None
         if api_key:
             from google import genai
@@ -37,4 +38,25 @@ class GoogleProvider(ProviderBase):
             model=model or self.model,
             contents=contents,
         )
-        return (response.text or "").strip()
+        text = (response.text or "").strip()
+        usage = getattr(response, "usage_metadata", None)
+        return {
+            "text": text,
+            "input_tokens": getattr(usage, "prompt_token_count", None) if usage else None,
+            "output_tokens": getattr(usage, "candidates_token_count", None) if usage else None,
+        }
+
+    EMBEDDING_MODEL = "models/text-embedding-004"
+
+    def embed(self, texts: list) -> list:
+        """
+        Real embeddings via Gemini's embedding API - used for knowledge
+        base retrieval (T0903). Raises RuntimeError if unconfigured,
+        same "no fake capability" rule as generate().
+        """
+        if not self._client:
+            raise RuntimeError(
+                "Google provider has no API key configured (set GOOGLE_API_KEY)."
+            )
+        response = self._client.models.embed_content(model=self.EMBEDDING_MODEL, contents=texts)
+        return [e.values for e in response.embeddings]

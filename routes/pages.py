@@ -1,8 +1,7 @@
 import os
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse, FileResponse
-from urllib.parse import urlencode
 
 from api.dependencies import get_optional_user
 from providers.provider_manager import provider_manager
@@ -86,8 +85,6 @@ def home(request: Request):
             "capabilities": _real_capabilities(),
             "missions": None,
             "artifacts": None,
-            "notifications": None,
-            "recent_activity": None,
             "system_status": _real_system_status(),
             "error_message": None,
         },
@@ -100,20 +97,6 @@ def chat_page(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=302)
     return _render(request, "chat.html")
-
-
-@router.post("/chat", name="main.chat")
-def chat_quick_submit(request: Request, prompt: str = Form(...)):
-    """
-    Handles the home page's quick-assistant box. It does not fabricate a
-    response inline - it hands the prompt to the real chat page, which
-    sends it through the actual /api/chat endpoint.
-    """
-    user = _require_user(request)
-    if not user:
-        return RedirectResponse("/login", status_code=302)
-    query = urlencode({"prompt": prompt})
-    return RedirectResponse(f"/chat?{query}", status_code=302)
 
 
 @router.get("/favicon.ico", include_in_schema=False)

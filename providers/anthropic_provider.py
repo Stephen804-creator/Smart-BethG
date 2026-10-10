@@ -1,4 +1,5 @@
 from .provider_base import ProviderBase
+from .model_catalog import model_for_tier
 
 
 class AnthropicProvider(ProviderBase):
@@ -11,9 +12,9 @@ class AnthropicProvider(ProviderBase):
 
     name = "anthropic"
 
-    def __init__(self, api_key: str, model: str = "claude-3-5-haiku-20241022"):
+    def __init__(self, api_key: str, model: str = None):
         self.api_key = api_key
-        self.model = model
+        self.model = model or model_for_tier("anthropic", "balanced")["id"]
         self._client = None
         if api_key:
             from anthropic import Anthropic
@@ -31,4 +32,10 @@ class AnthropicProvider(ProviderBase):
             messages=messages,
         )
         parts = [block.text for block in response.content if getattr(block, "type", None) == "text"]
-        return "\n".join(parts).strip()
+        text = "\n".join(parts).strip()
+        usage = getattr(response, "usage", None)
+        return {
+            "text": text,
+            "input_tokens": getattr(usage, "input_tokens", None) if usage else None,
+            "output_tokens": getattr(usage, "output_tokens", None) if usage else None,
+        }

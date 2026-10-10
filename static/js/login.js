@@ -28,6 +28,19 @@
     setMode(mode === "login" ? "register" : "login");
   });
 
+  const toggleBtn = document.getElementById("togglePassword");
+  const passwordInput = document.getElementById("password");
+  if (toggleBtn && passwordInput) {
+    toggleBtn.addEventListener("click", () => {
+      const showing = passwordInput.type === "text";
+      passwordInput.type = showing ? "password" : "text";
+      toggleBtn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+      toggleBtn.innerHTML = showing
+        ? '<i class="fa-solid fa-eye" aria-hidden="true"></i>'
+        : '<i class="fa-solid fa-eye-slash" aria-hidden="true"></i>';
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     errorEl.textContent = "";
@@ -70,4 +83,14 @@
   });
 
   setMode("login");
+
+  fetch("/auth/config")
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.google_oauth_enabled) {
+        document.getElementById("googleAuthDivider").style.display = "flex";
+        document.getElementById("googleAuthButton").style.display = "flex";
+      }
+    })
+    .catch(() => {});
 })();

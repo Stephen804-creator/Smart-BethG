@@ -1,4 +1,4 @@
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from database import get_connection
 from services.auth_service import get_user_by_id
 from services.task_service import TaskService
@@ -49,3 +49,15 @@ def get_optional_user(request: Request):
     if not user_id:
         return None
     return get_user_by_id(user_id)
+
+
+def require_role(role: str):
+    """
+    Dependency factory: `Depends(require_role("admin"))`. Fails closed -
+    unknown/missing role is never treated as authorized.
+    """
+    def _check(user=Depends(get_current_user)):
+        if user.get("role") != role:
+            raise HTTPException(status_code=403, detail=f"This requires the '{role}' role.")
+        return user
+    return _check

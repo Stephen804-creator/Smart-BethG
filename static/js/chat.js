@@ -7,11 +7,70 @@
   const promptEl = document.getElementById("prompt");
   const sendBtn = document.getElementById("sendMessage");
   const providerSelect = document.getElementById("providerSelect");
+  const conversationListEl = document.getElementById("conversationList");
+  const newChatBtn = document.getElementById("newChatButton");
   if (!messagesEl || !promptEl || !sendBtn) return;
 
   const STORAGE_KEY = "sbg:conversationId";
-  const PROVIDER_KEY = "sbg:provider";
+  const SELECTION_KEY = "sbg:selection";
   let conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
+
+  async function loadConversationList() {
+    if (!conversationListEl) return;
+    try {
+      const res = await fetch("/api/chat/conversations", { credentials: "same-origin" });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      renderConversationList(data.conversations || []);
+    } catch (err) {
+      // Silent: history is a convenience, chat still works without it.
+    }
+  }
+
+  function renderConversationList(conversations) {
+    conversationListEl.innerHTML = "";
+    if (conversations.length === 0) {
+      const empty = document.createElement("p");
+      empty.style.cssText = "color:var(--text-secondary); font-size:13px; padding:6px 8px;";
+      empty.textContent = "No conversations yet.";
+      conversationListEl.appendChild(empty);
+      return;
+    }
+    conversations.forEach((c) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      const isActive = String(c.id) === String(conversationId);
+      item.style.cssText =
+        "display:block; width:100%; text-align:left; padding:9px 10px; border-radius:8px; " +
+        "border:none; background:" + (isActive ? "var(--surface-hover, rgba(255,255,255,0.08))" : "transparent") +
+        "; color:var(--text-primary); font-size:13px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;";
+      item.textContent = c.title || "New conversation";
+      item.addEventListener("click", () => switchConversation(c.id));
+      conversationListEl.appendChild(item);
+    });
+  }
+
+  function switchConversation(id) {
+    conversationId = id;
+    window.localStorage.setItem(STORAGE_KEY, conversationId);
+    messagesEl.innerHTML = "";
+    loadHistory();
+    loadConversationList();
+  }
+
+  if (newChatBtn) {
+    newChatBtn.addEventListener("click", () => {
+      conversationId = null;
+      window.localStorage.removeItem(STORAGE_KEY);
+      messagesEl.innerHTML = "";
+      promptEl.focus();
+      loadConversationList();
+    });
+  }
 
   async function loadProviders() {
     if (!providerSelect) return;
@@ -23,36 +82,47 @@
       }
       if (!res.ok) return;
       const data = await res.json();
-      const available = data.available || [];
+      const catalog = data.catalog || {};
+      const providerNames = Object.keys(catalog);
 
-      if (available.length === 0) {
+      if (providerNames.length === 0) {
         providerSelect.style.display = "none";
         return;
       }
-      if (available.length === 1) {
-        providerSelect.style.display = "none";
-      }
 
       providerSelect.innerHTML = "";
-      available.forEach((name) => {
-        const opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
-        providerSelect.appendChild(opt);
+
+      const autoOpt = document.createElement("option");
+      autoOpt.value = "auto";
+      autoOpt.textContent = "Auto";
+      providerSelect.appendChild(autoOpt);
+
+      providerNames.forEach((providerName) => {
+        const group = document.createElement("optgroup");
+        group.label = catalog[providerName].label;
+        (catalog[providerName].models || []).forEach((m) => {
+          const opt = document.createElement("option");
+          opt.value = `${providerName}:${m.id}`;
+          opt.textContent = m.label;
+          group.appendChild(opt);
+        });
+        providerSelect.appendChild(group);
       });
 
-      const saved = window.localStorage.getItem(PROVIDER_KEY);
-      providerSelect.value = available.includes(saved) ? saved : (data.default || available[0]);
+      const saved = window.localStorage.getItem(SELECTION_KEY);
+      providerSelect.value = saved && [...providerSelect.options].some((o) => o.value === saved)
+        ? saved
+        : "auto";
 
       providerSelect.addEventListener("change", () => {
-        window.localStorage.setItem(PROVIDER_KEY, providerSelect.value);
+        window.localStorage.setItem(SELECTION_KEY, providerSelect.value);
       });
     } catch (err) {
-      // Silent: chat still works with the backend's default provider.
+      // Silent: chat still works with the backend's Auto selection.
     }
   }
 
-  function renderMessage(role, content) {
+  function renderMessage(role, content, note) {
     const wrapper = document.createElement("div");
     wrapper.className = "message " + (role === "user" ? "message-user" : "message-assistant");
 
@@ -64,6 +134,13 @@
     const body = document.createElement("div");
     body.textContent = content;
     wrapper.appendChild(body);
+
+    if (note) {
+      const noteEl = document.createElement("div");
+      noteEl.style.cssText = "font-size:12px; color:var(--text-secondary); margin-top:4px; opacity:0.8;";
+      noteEl.textContent = note;
+      wrapper.appendChild(noteEl);
+    }
 
     messagesEl.appendChild(wrapper);
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -108,7 +185,7 @@
         body: JSON.stringify({
           message: text,
           conversation_id: conversationId,
-          provider: providerSelect && providerSelect.value ? providerSelect.value : null,
+          selection: providerSelect && providerSelect.value ? providerSelect.value : "auto",
         }),
       });
 
@@ -127,7 +204,8 @@
       const data = await res.json();
       conversationId = data.conversation_id;
       window.localStorage.setItem(STORAGE_KEY, conversationId);
-      renderMessage("assistant", data.reply);
+      renderMessage("assistant", data.reply, buildNote(data));
+      loadConversationList();
     } catch (err) {
       if (messagesEl.lastChild) messagesEl.lastChild.remove();
       renderNotice("Could not reach Smart BethG. Check your connection and try again.");
@@ -136,6 +214,21 @@
       promptEl.disabled = false;
       promptEl.focus();
     }
+  }
+
+  function buildNote(data) {
+    // Surfaces state that used to be silently dropped: which provider
+    // actually answered (if it wasn't the one requested) and whether an
+    // action is now sitting pending approval, rather than just showing
+    // the reply text with no indication anything unusual happened.
+    const parts = [];
+    if (data.fallback_used && data.provider) {
+      parts.push(`switched to ${data.provider} after the requested provider failed`);
+    }
+    if (data.intent && data.intent !== "chat") {
+      parts.push(`action: ${data.intent}`);
+    }
+    return parts.length ? parts.join(" · ") : null;
   }
 
   function handleSend() {
@@ -159,4 +252,5 @@
 
   loadProviders();
   loadHistory();
+  loadConversationList();
 })();

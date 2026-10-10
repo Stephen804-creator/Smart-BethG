@@ -44,6 +44,10 @@
         defer
     ></script>
     <script
+        src="{{ url_for('static', filename='js/topbar.js') }}"
+        defer
+    ></script>
+    <script
         src="{{ url_for('static', filename='js/register-sw.js') }}"
         defer
     ></script>
@@ -213,6 +217,21 @@
                         ></i>
                     </button>
 
+
+                    <button
+                        type="button"
+                        id="usageButton"
+                        class="icon-button"
+                        aria-label="Token usage"
+                        aria-haspopup="dialog"
+                        aria-expanded="false"
+                        title="Token usage"
+                    >
+                        <i
+                            class="fa-solid fa-chart-simple"
+                            aria-hidden="true"
+                        ></i>
+                    </button>
 
                     <button
                         type="button"
@@ -629,129 +648,6 @@
                 {% endif %}
 
 
-                <!-- NOTIFICATIONS -->
-                <section
-                    class="notification-section"
-                    aria-labelledby="notificationsTitle"
-                >
-
-                    <div class="section-heading">
-
-                        <div>
-                            <p class="eyebrow">
-                                Updates
-                            </p>
-
-                            <h2 id="notificationsTitle">
-                                Notifications
-                            </h2>
-                        </div>
-
-                    </div>
-
-
-                    <div
-                        id="notificationsList"
-                        class="notification-list"
-                        aria-live="polite"
-                    >
-
-                        {% if notifications %}
-
-                            {% for notification in notifications %}
-
-                            <article class="notification-item">
-
-                                <h3>
-                                    {{ notification.title }}
-                                </h3>
-
-                                <p>
-                                    {{ notification.message }}
-                                </p>
-
-                            </article>
-
-                            {% endfor %}
-
-                        {% else %}
-
-                            <p class="empty-state">
-                                No new notifications.
-                            </p>
-
-                        {% endif %}
-
-                    </div>
-
-                </section>
-
-
-                <!-- RECENT ACTIVITY -->
-                <section
-                    class="activity-section"
-                    aria-labelledby="activityTitle"
-                >
-
-                    <div class="section-heading">
-
-                        <div>
-                            <p class="eyebrow">
-                                History
-                            </p>
-
-                            <h2 id="activityTitle">
-                                Recent activity
-                            </h2>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="activity-list">
-
-                        {% if recent_activity %}
-
-                            {% for activity in recent_activity %}
-
-                            <article class="activity-item">
-
-                                <div class="activity-content">
-
-                                    <h3>
-                                        {{ activity.title }}
-                                    </h3>
-
-                                    <p>
-                                        {{ activity.description }}
-                                    </p>
-
-                                </div>
-
-                                {% if activity.time %}
-                                <time>
-                                    {{ activity.time }}
-                                </time>
-                                {% endif %}
-
-                            </article>
-
-                            {% endfor %}
-
-                        {% else %}
-
-                            <p class="empty-state">
-                                No recent activity.
-                            </p>
-
-                        {% endif %}
-
-                    </div>
-
-                </section>
-
-
                 <!-- SYSTEM STATUS -->
                 <section
                     class="system-section"
@@ -881,73 +777,32 @@
 
 
                 <!-- =========================
-                     ASSISTANT
+                     GO TO CHAT
                 ========================== -->
                 <section
                     class="assistant"
                     aria-labelledby="assistantTitle"
+                    style="text-align:center;"
                 >
 
-                    <div class="section-heading">
+                    <i
+                        class="fa-solid fa-comments"
+                        aria-hidden="true"
+                        style="font-size:28px; color:var(--accent); margin-bottom:12px; display:block;"
+                    ></i>
 
-                        <div>
+                    <h2 id="assistantTitle" style="margin:0 0 6px;">
+                        Ready when you are
+                    </h2>
 
-                            <p class="eyebrow">
-                                Assistant
-                            </p>
+                    <p style="color:var(--text-secondary); margin:0 0 18px;">
+                        Everything happens in one place - open the chat to get started.
+                    </p>
 
-                            <h2 id="assistantTitle">
-                                Ask Smart BethG
-                            </h2>
-
-                        </div>
-
-                    </div>
-
-
-                    <form
-                        id="assistantForm"
-                        method="post"
-                        action="{{ url_for('main.chat') }}"
-                    >
-
-                        <div class="assistant-input">
-
-                            <label
-                                for="assistantPrompt"
-                                class="sr-only"
-                            >
-                                Message Smart BethG
-                            </label>
-
-                            <textarea
-                                id="assistantPrompt"
-                                name="prompt"
-                                rows="3"
-                                placeholder="Tell Smart BethG what you want to accomplish..."
-                                required
-                                maxlength="10000"
-                                autocomplete="off"
-                            ></textarea>
-
-
-                            <button
-                                type="submit"
-                                class="btn btn-primary"
-                            >
-                                <i
-                                    class="fa-solid fa-paper-plane"
-                                    aria-hidden="true"
-                                ></i>
-
-                                <span>
-                                    Send
-                                </span>
-                            </button>
-
-                        </div>
-
-                    </form>
+                    <a href="{{ url_for('main.chat_page') }}" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none;">
+                        <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+                        <span>Open Chat</span>
+                    </a>
 
                 </section>
 

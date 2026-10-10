@@ -49,13 +49,24 @@ class ConversationRepository:
         finally:
             conn.close()
 
-    def add_message(self, conversation_id, role, content, provider=None, model=None):
+    def set_title(self, conversation_id, title):
+        conn = get_connection()
+        try:
+            conn.execute(
+                "UPDATE conversations SET title=? WHERE id=?",
+                (title, conversation_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def add_message(self, conversation_id, role, content, provider=None, model=None, tokens_in=None, tokens_out=None):
         conn = get_connection()
         try:
             cur = conn.execute(
-                "INSERT INTO messages(conversation_id, role, content, provider, model) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (conversation_id, role, content, provider, model),
+                "INSERT INTO messages(conversation_id, role, content, provider, model, tokens_in, tokens_out) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (conversation_id, role, content, provider, model, tokens_in, tokens_out),
             )
             conn.commit()
             return cur.lastrowid
@@ -71,5 +82,37 @@ class ConversationRepository:
                 (conversation_id, limit),
             ).fetchall()
             return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def usage_totals_for_user(self, user_id):
+        """
+        Real totals, summed directly from stored per-message token counts
+        (which themselves come straight from each provider's own API
+        response - see providers/*.py). Not an estimate.
+        """
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                """
+                SELECT m.provider, m.model,
+                       SUM(COALESCE(m.tokens_in, 0)) AS input_tokens,
+                       SUM(COALESCE(m.tokens_out, 0)) AS output_tokens,
+                       COUNT(*) AS message_count
+                FROM messages m
+                JOIN conversations c ON c.id = m.conversation_id
+                WHERE c.user_id = ? AND m.role = 'assistant'
+                GROUP BY m.provider, m.model
+                ORDER BY input_tokens + output_tokens DESC
+                """,
+                (user_id,),
+            ).fetchall()
+            by_model = [dict(r) for r in rows]
+            totals = {
+                "input_tokens": sum(r["input_tokens"] or 0 for r in by_model),
+                "output_tokens": sum(r["output_tokens"] or 0 for r in by_model),
+                "message_count": sum(r["message_count"] or 0 for r in by_model),
+            }
+            return {"totals": totals, "by_model": by_model}
         finally:
             conn.close()

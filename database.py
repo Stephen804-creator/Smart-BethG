@@ -49,8 +49,9 @@ def initialize_database():
         CREATE TABLE IF NOT EXISTS users(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
+            password_hash TEXT,
             status TEXT NOT NULL DEFAULT 'active',
+            role TEXT NOT NULL DEFAULT 'user',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -128,6 +129,20 @@ def initialize_database():
             FOREIGN KEY(conversation_id) REFERENCES conversations(id)
         );
 
+        -- Every provider call attempt (not just the one that ultimately
+        -- answered) - backs real model evaluation (T0504) instead of
+        -- guessed/assumed reliability.
+        CREATE TABLE IF NOT EXISTS provider_calls(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            provider TEXT NOT NULL,
+            model TEXT,
+            success INTEGER NOT NULL,
+            latency_ms INTEGER,
+            error TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
         -- ==================================================
         -- V1 capability foundations (storage only - see module docstring)
         -- ==================================================
@@ -166,8 +181,11 @@ def initialize_database():
         CREATE TABLE IF NOT EXISTS memory(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
+            scope TEXT NOT NULL DEFAULT 'user',
+            scope_ref TEXT,
             title TEXT,
             content TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'explicit',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -243,7 +261,44 @@ def initialize_database():
             message TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+
+        -- Knowledge base (T0901-T0904): chunked, optionally embedded
+        -- content from a user's uploaded files, searchable and injected
+        -- into chat as grounding context.
+        CREATE TABLE IF NOT EXISTS knowledge_chunks(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            file_id INTEGER NOT NULL,
+            workspace TEXT NOT NULL DEFAULT 'default',
+            chunk_index INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            embedding TEXT,
+            embedding_model TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(file_id) REFERENCES files(id)
+        );
         """
     )
     conn.commit()
+
+    # Idempotent migrations for databases created before these columns
+    # existed - CREATE TABLE IF NOT EXISTS above doesn't add columns to
+    # an already-existing table, so these are applied separately and
+    # ignored if the column is already there.
+    _add_column_if_missing(conn, "users", "oauth_provider", "TEXT")
+    _add_column_if_missing(conn, "users", "oauth_subject", "TEXT")
+    _add_column_if_missing(conn, "users", "role", "TEXT NOT NULL DEFAULT 'user'")
+    _add_column_if_missing(conn, "messages", "tokens_in", "INTEGER")
+    _add_column_if_missing(conn, "messages", "tokens_out", "INTEGER")
+    _add_column_if_missing(conn, "memory", "scope", "TEXT NOT NULL DEFAULT 'user'")
+    _add_column_if_missing(conn, "memory", "scope_ref", "TEXT")
+    _add_column_if_missing(conn, "memory", "source", "TEXT NOT NULL DEFAULT 'explicit'")
+
+    conn.commit()
     conn.close()
+
+
+def _add_column_if_missing(conn, table, column, coltype):
+    existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")

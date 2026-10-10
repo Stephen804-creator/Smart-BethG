@@ -16,6 +16,12 @@ import warnings
 ENVIRONMENT = os.getenv("SMART_BETHG_ENV", "development")
 IS_PRODUCTION = ENVIRONMENT.lower() == "production"
 
+# Canonical versioned prefix for the JSON API. New consumers should use
+# this; the same routes remain reachable at their original unprefixed
+# paths too, since the deployed frontend already calls those directly
+# (see main_fastapi.py for exactly which routers are dual-mounted).
+API_PREFIX = "/api/v1"
+
 # ---------------------------------------------------------------------------
 # Storage root (all persistent files/directories live under here)
 # ---------------------------------------------------------------------------
@@ -90,20 +96,29 @@ SESSION_HTTPS_ONLY = os.getenv("SMART_BETHG_SESSION_HTTPS_ONLY", "true" if IS_PR
 # AI providers (no key hardcoded; capability is honestly absent without one)
 # ---------------------------------------------------------------------------
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-20241022")
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
 # GOOGLE_API_KEY is the primary name; GEMINI_API_KEY is accepted as an
 # alias since Google's own docs use both names interchangeably.
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", os.getenv("GEMINI_API_KEY", ""))
-GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
+
+# Free, open-weight-model providers (no card required for either) - see
+# providers/groq_provider.py and providers/openrouter_provider.py.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 # Which provider chat uses when the user/request doesn't specify one.
 # If unset or not actually configured, falls back to priority order:
-# anthropic > openai > google.
+# anthropic > openai > google. See providers/model_catalog.py for the
+# actual model list and tiers used by Auto mode.
 DEFAULT_PROVIDER = os.getenv("SMART_BETHG_DEFAULT_PROVIDER", "")
+
+# ---------------------------------------------------------------------------
+# Google Sign-In (separate from the Gemini provider's GOOGLE_API_KEY above -
+# this is OAuth login, not an AI provider credential)
+# ---------------------------------------------------------------------------
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
+GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
 
 # ---------------------------------------------------------------------------
 # CORS (only relevant if a separate frontend origin is ever introduced)
@@ -124,3 +139,13 @@ REGISTRATION_INVITE_CODE = os.getenv("SMART_BETHG_INVITE_CODE", "")
 # use a shared store (e.g. Redis) instead if you scale beyond one.
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_MAX", "10"))
 AUTH_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_WINDOW", "300"))
+
+# ---------------------------------------------------------------------------
+# File uploads (T0701)
+# ---------------------------------------------------------------------------
+MAX_UPLOAD_SIZE_BYTES = int(os.getenv("SMART_BETHG_MAX_UPLOAD_BYTES", str(15 * 1024 * 1024)))  # 15 MB default
+
+# ---------------------------------------------------------------------------
+# Web search (T1001) - separate from the Gemini/AI provider keys above.
+# ---------------------------------------------------------------------------
+BRAVE_SEARCH_API_KEY = os.getenv("BRAVE_SEARCH_API_KEY", "")

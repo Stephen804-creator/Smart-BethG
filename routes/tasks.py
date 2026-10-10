@@ -5,6 +5,6 @@ router=APIRouter(prefix="/tasks",tags=["tasks"])
 class TaskRequest(BaseModel): request:str; workspace:str="default"
 @router.post("")
 def create_task(payload:TaskRequest,user=Depends(get_current_user),controller=Depends(get_controller)):
-    return controller.handle_request(payload.request, user_id=user["id"], workspace=payload.workspace)
+    return controller.handle_request(payload.request, user=user, workspace=payload.workspace)
 @router.get("")
 def list_tasks(user=Depends(get_current_user),service=Depends(get_task_service)): return service.list_tasks(user["id"])
