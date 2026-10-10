@@ -1,7 +1,7 @@
 # Smart BethG Whole-Repository Audit
 
 **Audit started:** 2026-10-10 UTC  
-**Last updated:** 2026-10-10 19:20 UTC  
+**Last updated:** 2026-10-10 19:21 UTC  
 **Status:** In progress — this is a living findings register, not a final sign-off. Historical findings below have been updated where the review branch now contains verified fixes; remaining items are explicitly open.  
 **Scope:** Initial source scan of 143 Python files, 7 HTML files, 6 JavaScript files, 1 CSS file, configuration, tests, and documentation (178 tracked files at the initial tree count for this audit pass). Subsequent commits add further files. The exact reviewed revision is recorded by Git commit history on `update/corrected-zip-2026-10-10`.
 
@@ -55,7 +55,7 @@ The most important distinction is between **code implemented**, **tests passing*
 
 **Changes started:** Added a PostgreSQL connection adapter, PostgreSQL schema compatibility, database-backed shared rate-limit events, a disposable PostgreSQL CI service, PostgreSQL smoke tests, and a fail-closed SQLite-to-PostgreSQL migration utility.
 
-**Verification status (2026-10-10):** PostgreSQL integration CI has passed user/conversation/approval/usage-budget/rate-limiter smoke tests. A new concurrent rate-limit test has been added and its latest CI run is still pending. The adapter translates a subset of SQLite-oriented SQL/schema and remains a migration boundary; all repository queries have not been proven against PostgreSQL. Add a versioned migration framework and broader PostgreSQL regression coverage before production data is trusted.
+**Verification status (2026-10-10):** PostgreSQL integration CI has passed user/conversation/approval/usage-budget/rate-limiter smoke tests. The new concurrent rate-limit test passed in PostgreSQL integration CI. The adapter translates a subset of SQLite-oriented SQL/schema and remains a migration boundary; all repository queries have not been proven against PostgreSQL. Add a versioned migration framework and broader PostgreSQL regression coverage before production data is trusted.
 
 ### P1.2 Single and multiple instances
 **Decision:** Use the same shared PostgreSQL database and database-backed limiter in both modes.
@@ -97,7 +97,7 @@ The most important distinction is between **code implemented**, **tests passing*
 **Still required:** Verify every versioned route, error shape, CORS preflight, session/CSRF behavior, and unauthorized response in HTTP tests. CORS is not authentication and is not a CSRF defense.
 
 ### P1.9 Rate limits and abuse controls
-**Updated status (2026-10-10):** Authentication rate-limit counters use shared database rows and PostgreSQL transaction-scoped advisory locks; raw limiter keys are hashed before persistence. A PostgreSQL concurrency test was added to prove only the configured number of simultaneous attempts succeed; its latest CI result is pending.
+**Updated status (2026-10-10):** Authentication rate-limit counters use shared database rows and PostgreSQL transaction-scoped advisory locks; raw limiter keys are hashed before persistence. A PostgreSQL concurrency test was added to prove only the configured number of simultaneous attempts succeed; the concurrency test passed in PostgreSQL integration CI.
 
 **Still required:** Add suitable per-user and global limits for chat/provider calls, uploads, searches, tools, file extraction, and costly automation. Confirm trusted-proxy behavior so all users behind a reverse proxy are not accidentally treated as one IP, and do not trust arbitrary forwarded headers.
 
@@ -136,8 +136,8 @@ Knowledge/memory management, notification workflows, password reset, account del
 
 | Area | Current state | What would prove completion |
 |---|---|---|
-| Python unit suite | 290 tests passed on the completed approval-recovery baseline; current run after the newest concurrency test is pending | Latest CI job green with test count and no skips hiding required tests |
-| PostgreSQL | Smoke tests passed; latest run after the concurrency test is pending | Latest PostgreSQL CI green plus broad repository query coverage |
+| Python unit suite | 292 tests passed, including approval-decision recovery; a newer CI run is underway after workflow action upgrades | Latest CI job green with test count and no skips hiding required tests |
+| PostgreSQL | Smoke tests passed, including concurrent rate-limit enforcement; a newer CI run is underway after workflow action upgrades | latest completed PostgreSQL integration green; broader repository query coverage still required |
 | Approval resume | End-to-end Git operation and approval-decision recovery tests passed on the completed baseline | Keep regression coverage green and add expiry/rejection/concurrent-click/crash-reconciliation cases |
 | Workspace isolation | Code/test changes added; full route audit pending | Owner-isolation tests across all resource APIs |
 | CORS | Wired; test coverage added | Latest HTTP tests green with allowed and denied origins |
