@@ -19,7 +19,7 @@ class CredentialVaultError(RuntimeError):
 
 class CredentialVault:
     def __init__(self, key=None):
-        raw = key or os.getenv("SMART_BETHG_TOKEN_ENCRYPTION_KEY", "")
+        raw = os.getenv("SMART_BETHG_TOKEN_ENCRYPTION_KEY", "") if key is None else key
         if not raw:
             raise CredentialVaultError("Connector token encryption key is not configured.")
         try:
