@@ -18,11 +18,12 @@
 - Artifact output supports text, Markdown, JSON, Python, JavaScript, HTML, CSV, and YAML text formats, verifies SHA-256 when reading, and uses a storage abstraction with local and S3-compatible backends.
 - Added a dry-run-first local-to-object-storage migration script. It verifies checksum before and after upload and updates the database only after verification.
 - Added connector catalog metadata for Facebook Pages, Instagram Professional, YouTube, LinkedIn, and X. Missing publisher adapters fail closed instead of reporting false success.
+- Added a separate durable worker that claims due PostgreSQL jobs with leases, verifies approval and account state, persists confirmed provider post IDs, blocks missing adapters, and marks unknown outcomes indeterminate instead of blindly retrying. The worker must be run as a separate process; the web app does not silently spawn it.
 - Added unit tests for ownership, timezone validation, schedule limits, atomic plan creation, AI JSON failure, artifact format/integrity, and connector fail-closed behavior.
 
 ## Explicitly not complete yet
 
-This is not yet the end-to-end autonomous social publisher. Provider-specific OAuth and real publishing adapters have not been implemented; the connector catalog reports them as planned. No post will be published by this branch until an approved platform adapter and active account connection exist. A durable worker with leases, bounded concurrency, provider-specific retry/reconciliation, and multi-instance behavior remains required before the user can close the browser and trust scheduled publication.
+This is not yet the end-to-end autonomous social publisher. Provider-specific OAuth and real publishing adapters have not been implemented; the connector catalog reports them as planned. No post will be published by this branch until an approved platform adapter and active account connection exist. The worker is a first durable queue runner, but production rollout still needs bounded concurrency, provider-specific retry/reconciliation, metrics/alerts, process supervision, and multi-instance load tests before the user can close the browser and trust scheduled publication.
 
 Campaign reference URLs are stored and supplied to the generation prompt, but this implementation does not fetch or verify their contents. The generated content therefore must not claim to have read them. Research/citation verification is a separate integration task.
 
