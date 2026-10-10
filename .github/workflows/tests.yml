@@ -35,6 +35,7 @@ jobs:
         run: |
           node --check static/js/workspace-dashboard.js
           node --check static/js/social-campaigns.js
+          node --check static/js/artifacts.js
       - name: Run unit tests
         env:
           SMART_BETHG_ENV: test
