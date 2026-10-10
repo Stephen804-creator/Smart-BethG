@@ -11,7 +11,9 @@
 
 Smart BethG has moved beyond a prototype in several important areas: the branch now has HTTP-level security tests, per-user workspace roots, persistent owner-scoped approvals, an execution path that resumes the saved approved operation, database-backed rate limiting, per-user and global usage budgets, PostgreSQL production wiring, dependency scanning, secret scanning, and dated product/legal decision documents.
 
-The most recent completed CI baseline before the newest approval-recovery regression test reported **290 unit tests passing**, PostgreSQL integration tests passing, dependency vulnerability audit passing, and Gitleaks secret scanning passing. The new approval-recovery regression test was added after that baseline and must pass CI before this report can be treated as current-green. A green CI run proves only the checks it ran; it is not a public-launch certification.
+The most recent completed CI baseline before the newest PostgreSQL rate-limit concurrency test reported **290 unit tests passing**, PostgreSQL integration tests passing, dependency vulnerability audit passing, and Gitleaks secret scanning passing. The approval-recovery regression test was included in that passing unit-test run. The newer PostgreSQL rate-limit concurrency test is now in CI and must pass before the report can be treated as current-green. A green CI run proves only the checks it ran; it is not a public-launch certification.
+
+**Why the Actions page showed many red runs:** changes were committed one file at a time through the repository connector, and each intermediate commit triggered CI. Some of those intermediate commits genuinely failed while the test assertion, PostgreSQL workflow setup, and vulnerable dependency pins were being corrected. Those historical failures remain in GitHub's run history; they do not by themselves mean the latest branch head is failing. Use the checks for the current head SHA, not an older intermediate run, to judge the current state.
 
 ## Findings by priority
 
