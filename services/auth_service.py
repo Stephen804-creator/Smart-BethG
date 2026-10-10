@@ -11,7 +11,7 @@ def authenticate_user(username, password):
             "SELECT id, username, password_hash, status, role FROM users WHERE username=? LIMIT 1",
             (username,),
         ).fetchone()
-        if not row or row["status"] != "active" or not check_password_hash(row["password_hash"], password):
+        if not row or row["status"] != "active" or not row["password_hash"] or not check_password_hash(row["password_hash"], password):
             return None
         return {"id": row["id"], "username": row["username"], "role": row["role"]}
     finally:
@@ -37,6 +37,8 @@ def create_user(username, password):
     username = (username or "").strip()
     if not username or not password or len(password) < 8:
         raise ValueError("Username is required and password must be at least 8 characters.")
+    if len(username) > 254 or len(password) > 1024:
+        raise ValueError("Username or password exceeds the configured length limit.")
 
     conn = get_connection()
     try:
@@ -74,17 +76,23 @@ def find_or_create_oauth_user(email, provider, subject, allow_create=False):
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT id, username, status, role FROM users WHERE oauth_provider=? AND oauth_subject=? LIMIT 1",
+            "SELECT id, username, status, role FROM users WHERE oauth_provider=? AND oauth_subject=? AND status='active' LIMIT 1",
             (provider, subject),
         ).fetchone()
         if row:
             return {"id": row["id"], "username": row["username"], "role": row["role"]}
 
         row = conn.execute(
-            "SELECT id, username, status, role, oauth_provider FROM users WHERE username=? LIMIT 1",
+            "SELECT id, username, status, role, oauth_provider, oauth_subject FROM users WHERE username=? LIMIT 1",
             (email,),
         ).fetchone()
         if row:
+            if row["status"] != "active":
+                raise PermissionError("This account is inactive.")
+            if row["oauth_provider"] and (
+                row["oauth_provider"] != provider or row["oauth_subject"] != subject
+            ):
+                raise PermissionError("This account is already linked to a different external identity.")
             if not row["oauth_provider"]:
                 conn.execute(
                     "UPDATE users SET oauth_provider=?, oauth_subject=? WHERE id=?",
