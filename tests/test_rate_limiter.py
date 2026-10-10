@@ -1,21 +1,27 @@
 import unittest
 
 import config
-from services.rate_limiter import check_rate_limit, _hits
+from database import get_connection
+from services.rate_limiter import check_rate_limit
+from tests.base import SmartBethGTestCase
 
 
-class TestRateLimiter(unittest.TestCase):
+class TestRateLimiter(SmartBethGTestCase):
     def setUp(self):
+        super().setUp()
         self._orig_max = config.AUTH_RATE_LIMIT_MAX_ATTEMPTS
         self._orig_window = config.AUTH_RATE_LIMIT_WINDOW_SECONDS
         config.AUTH_RATE_LIMIT_MAX_ATTEMPTS = 3
         config.AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
-        _hits.clear()
+        conn = get_connection()
+        conn.execute("DELETE FROM auth_rate_limit_events")
+        conn.commit()
+        conn.close()
 
     def tearDown(self):
         config.AUTH_RATE_LIMIT_MAX_ATTEMPTS = self._orig_max
         config.AUTH_RATE_LIMIT_WINDOW_SECONDS = self._orig_window
-        _hits.clear()
+        super().tearDown()
 
     def test_allows_up_to_the_limit(self):
         key = "login:1.2.3.4"
@@ -31,5 +37,8 @@ class TestRateLimiter(unittest.TestCase):
     def test_different_keys_are_independent(self):
         for _ in range(3):
             check_rate_limit("login:1.1.1.1")
-        # A different IP must not be affected by the first one's limit.
         self.assertTrue(check_rate_limit("login:2.2.2.2"))
+
+
+if __name__ == "__main__":
+    unittest.main()
