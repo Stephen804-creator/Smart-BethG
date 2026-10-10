@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+import config
+from services.rate_limiter import check_rate_limit
 
 from api.dependencies import get_current_user
 from services.chat_service import ChatService
@@ -17,10 +20,10 @@ def get_chat_service():
 
 
 class ChatMessage(BaseModel):
-    message: str
-    conversation_id: int | None = None
+    message: str = Field(min_length=1, max_length=config.MAX_CHAT_MESSAGE_CHARS)
+    conversation_id: int | None = Field(default=None, ge=1)
     # "auto" (default), "<provider>", or "<provider>:<model_id>"
-    selection: str | None = None
+    selection: str | None = Field(default=None, max_length=256)
 
 
 @router.post("")
@@ -34,6 +37,13 @@ def send_message(payload: ChatMessage, user=Depends(get_current_user)):
     ever be handled by the AI provider making something up, never by
     actually checking. Now it can genuinely run git.read.
     """
+    if not check_rate_limit(
+        f"chat-user:{user['id']}",
+        max_attempts=config.CHAT_RATE_LIMIT_MAX_ATTEMPTS,
+        window_seconds=config.CHAT_RATE_LIMIT_WINDOW_SECONDS,
+    ):
+        raise HTTPException(status_code=429, detail="Chat rate limit reached. Please wait before sending another request.")
+
     agent_request = AgentRequest(
         text=payload.message,
         user=user,
