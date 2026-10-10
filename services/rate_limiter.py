@@ -15,13 +15,16 @@ from database import get_connection
 _cleanup_counter = 0
 
 
-def check_rate_limit(key: str) -> bool:
+def check_rate_limit(key: str, max_attempts=None, window_seconds=None) -> bool:
     """Record one attempt and return whether the key remains under its limit."""
     global _cleanup_counter
     key_hash = hashlib.sha256(str(key).encode("utf-8")).hexdigest()
     now = time.time()
-    cutoff = now - config.AUTH_RATE_LIMIT_WINDOW_SECONDS
-    limit = config.AUTH_RATE_LIMIT_MAX_ATTEMPTS
+    window = int(window_seconds or config.AUTH_RATE_LIMIT_WINDOW_SECONDS)
+    limit = int(max_attempts or config.AUTH_RATE_LIMIT_MAX_ATTEMPTS)
+    if limit < 1 or window < 1:
+        raise ValueError("Rate-limit attempts and window must be positive.")
+    cutoff = now - window
     database_url = (config.DATABASE_URL or "").strip()
     is_postgres = database_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://"))
 
@@ -53,7 +56,7 @@ def check_rate_limit(key: str) -> bool:
         if _cleanup_counter % 100 == 0:
             conn.execute(
                 "DELETE FROM auth_rate_limit_events WHERE hit_epoch < ?",
-                (now - max(config.AUTH_RATE_LIMIT_WINDOW_SECONDS * 2, 600),),
+                (now - max(window * 2, 600),),
             )
         conn.commit()
         return allowed
