@@ -41,3 +41,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 @media (max-width:1000px) { .social-grid { grid-template-columns:1fr; } }
 @media (max-width:650px) { .social-content { padding:16px; } .social-heading { flex-direction:column; } .social-card { padding:14px; } .form-two, .platform-options { grid-template-columns:1fr; } }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+
+.connector-actions { display:flex; flex-wrap:wrap; gap:8px; }
