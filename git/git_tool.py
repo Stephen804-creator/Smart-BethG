@@ -52,8 +52,23 @@ def _run(args, cwd, timeout=30):
             "-c", "core.fsmonitor=false",
             "-c", "commit.gpgSign=false",
             "-c", "diff.external=",
-            *args,
         ]
+        if args and args[0] == "commit":
+            # Global Git config is disabled for safety. Respect repository-local
+            # author identity when present, otherwise use a clearly identified
+            # application identity so commits do not fail on fresh workspaces.
+            for key, fallback in (
+                ("user.name", "Smart BethG"),
+                ("user.email", "smartbethg@users.noreply.github.com"),
+            ):
+                identity = subprocess.run(
+                    ["git", "config", "--local", "--get", key],
+                    cwd=cwd, capture_output=True, text=True, timeout=5,
+                    check=False, env=env,
+                )
+                if identity.returncode != 0 or not identity.stdout.strip():
+                    command.extend(["-c", f"{key}={fallback}"])
+        command.extend(args)
         try:
             completed = subprocess.run(
                 command, cwd=cwd, capture_output=True, text=True,
