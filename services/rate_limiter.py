@@ -31,11 +31,21 @@ def check_rate_limit(key: str, max_attempts=None, window_seconds=None) -> bool:
     conn = get_connection()
     try:
         if is_postgres:
-            # The lock is held until commit/rollback and coordinates replicas.
-            conn.execute("SELECT pg_advisory_xact_lock(hashtext(?))", (key_hash,))
+            # The UPSERT acquires a PostgreSQL row lock held until commit.
+            # Unlike an in-process mutex, it serializes requests across replicas.
+            conn.execute(
+                "INSERT INTO auth_rate_limit_locks(key_hash, last_seen_epoch) VALUES (?, ?) "
+                "ON CONFLICT(key_hash) DO UPDATE SET last_seen_epoch=excluded.last_seen_epoch",
+                (key_hash, now),
+            )
         else:
             # Serialize read-count-insert on the local SQLite database.
             conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO auth_rate_limit_locks(key_hash, last_seen_epoch) VALUES (?, ?) "
+                "ON CONFLICT(key_hash) DO UPDATE SET last_seen_epoch=excluded.last_seen_epoch",
+                (key_hash, now),
+            )
 
         conn.execute(
             "DELETE FROM auth_rate_limit_events WHERE key_hash=? AND hit_epoch < ?",
@@ -54,9 +64,16 @@ def check_rate_limit(key: str, max_attempts=None, window_seconds=None) -> bool:
 
         _cleanup_counter += 1
         if _cleanup_counter % 100 == 0:
+            stale_before = now - max(window * 2, 600)
             conn.execute(
                 "DELETE FROM auth_rate_limit_events WHERE hit_epoch < ?",
-                (now - max(window * 2, 600),),
+                (stale_before,),
+            )
+            conn.execute(
+                "DELETE FROM auth_rate_limit_locks WHERE last_seen_epoch < ? "
+                "AND NOT EXISTS (SELECT 1 FROM auth_rate_limit_events e "
+                "WHERE e.key_hash=auth_rate_limit_locks.key_hash)",
+                (stale_before,),
             )
         conn.commit()
         return allowed
