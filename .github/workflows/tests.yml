@@ -31,6 +31,8 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
       - name: Compile Python files
         run: python -m compileall -q .
+      - name: Check workspace dashboard JavaScript syntax
+        run: node --check static/js/workspace-dashboard.js
       - name: Run unit tests
         env:
           SMART_BETHG_ENV: test
