@@ -95,9 +95,13 @@
       <section class="social-card">
         <div class="section-heading">
           <div><p class="eyebrow">CONNECTORS</p><h2>Social accounts and integrations</h2></div>
-          <button type="button" class="btn" id="refreshConnectors">Refresh</button>
+          <div class="connector-actions">
+            <button type="button" class="btn btn-primary" id="connectFacebook" hidden>Connect Facebook Pages</button>
+            <button type="button" class="btn" id="refreshConnectors">Refresh</button>
+          </div>
         </div>
         <p class="muted">Connections must use each platform's official authorization flow. Never paste an access token or password into this page.</p>
+        <p id="connectorSetup" class="status-message" aria-live="polite"></p>
         <div id="connectorList" class="connector-list"><p class="muted">Loading connector status…</p></div>
         <h3 class="subheading">Connected accounts</h3>
         <div id="connectedAccounts" class="connector-list"><p class="muted">Loading connected accounts…</p></div>
