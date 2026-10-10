@@ -48,7 +48,7 @@ class TestAuthService(SmartBethGTestCase):
         self.assertIsNone(get_user_by_id(999999))
 
     def test_oauth_user_created_on_first_login(self):
-        user = find_or_create_oauth_user("person@gmail.com", "google", "sub-1")
+        user = find_or_create_oauth_user("person@gmail.com", "google", "sub-1", allow_create=True)
         self.assertEqual(user["username"], "person@gmail.com")
 
     def test_oauth_user_is_stable_across_logins(self):
@@ -58,11 +58,11 @@ class TestAuthService(SmartBethGTestCase):
 
     def test_oauth_links_to_existing_password_account_by_email(self):
         pw_user = create_user("person@gmail.com", "password123")
-        oauth_user = find_or_create_oauth_user("person@gmail.com", "google", "sub-2")
+        oauth_user = find_or_create_oauth_user("person@gmail.com", "google", "sub-2", allow_create=True)
         self.assertEqual(pw_user["id"], oauth_user["id"])
         # Password login must still work after linking.
         self.assertIsNotNone(authenticate_user("person@gmail.com", "password123"))
 
     def test_oauth_missing_email_raises(self):
         with self.assertRaises(ValueError):
-            find_or_create_oauth_user("", "google", "sub-3")
+            find_or_create_oauth_user("", "google", "sub-3", allow_create=True)
