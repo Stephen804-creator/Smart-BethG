@@ -63,6 +63,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     register_error_handlers(app)
+    # Add this before user middleware so security headers, request logging,
+    # sessions, and CORS can wrap the bounded-body rejection response.
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_body_bytes=config.MAX_REQUEST_BODY_BYTES,
+    )
 
     @app.middleware("http")
     async def enforce_csrf_for_cookie_authenticated_mutations(request: Request, call_next):
@@ -145,13 +151,6 @@ def create_app() -> FastAPI:
         https_only=config.SESSION_HTTPS_ONLY,
         same_site="lax",
         max_age=config.SESSION_MAX_AGE_SECONDS,
-    )
-
-    # This outer ASGI middleware limits both declared and streamed request
-    # bodies before multipart parsing can consume unbounded disk/memory.
-    app.add_middleware(
-        RequestBodyLimitMiddleware,
-        max_body_bytes=config.MAX_REQUEST_BODY_BYTES,
     )
 
     app.mount(
