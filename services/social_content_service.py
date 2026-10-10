@@ -54,7 +54,7 @@ class SocialContentService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT id, user_id, platform, title, content, hashtags, status, version, "
+                "SELECT id, user_id, platform, topic AS title, caption AS content, hashtags, status, version, "
                 "external_post_id, published_at, created_at, updated_at FROM social_content "
                 "WHERE id=? AND user_id=? LIMIT 1",
                 (content_id, user_id),
