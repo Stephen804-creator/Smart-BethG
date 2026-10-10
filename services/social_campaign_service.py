@@ -250,6 +250,8 @@ class SocialCampaignService:
             return None
         if campaign["status"] in {"active", "paused", "completed", "cancelled"}:
             raise ValueError("Pause or create a new campaign before generating more posts.")
+        if campaign.get("posts"):
+            raise ValueError("This campaign already has posts. Add a separate batch instead of duplicating the calendar.")
         cadence = campaign.get("cadence") or {}
         interval_days = cadence.get("interval_days", 1)
         local_time = cadence.get("local_time", "09:00")
@@ -442,7 +444,7 @@ class SocialCampaignService:
             if status == "cancelled":
                 conn.execute(
                     "UPDATE social_publish_jobs SET status='cancelled', updated_at=CURRENT_TIMESTAMP "
-                    "WHERE user_id=? AND campaign_id=? AND status IN ('queued','awaiting_approval','blocked')",
+                    "WHERE user_id=? AND campaign_id=? AND status IN ('queued','awaiting_approval','awaiting_connection','blocked')",
                     (user_id, campaign_id),
                 )
             conn.commit()
