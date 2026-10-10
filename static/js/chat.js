@@ -15,6 +15,84 @@
   const SELECTION_KEY = "sbg:selection";
   let conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
 
+  async function loadApprovals() {
+    const panel = document.getElementById("approvalPanel");
+    const list = document.getElementById("approvalList");
+    const status = document.getElementById("approvalStatus");
+    if (!panel || !list) return;
+
+    try {
+      const res = await fetch("/approvals", { credentials: "same-origin" });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) throw new Error("Unable to load pending approvals.");
+      const approvals = await res.json();
+      list.replaceChildren();
+      panel.style.display = approvals.length ? "block" : "none";
+      if (status) status.textContent = "";
+
+      approvals.forEach((approval) => {
+        const card = document.createElement("article");
+        card.style.cssText = "padding:12px; border:1px solid var(--border); border-radius:10px;";
+        const title = document.createElement("strong");
+        title.textContent = approval.action || "Restricted action";
+        const resource = document.createElement("p");
+        resource.style.cssText = "margin:6px 0 10px; font-size:13px; overflow-wrap:anywhere;";
+        resource.textContent = "Resource: " + (approval.resource || "not specified");
+        const actions = document.createElement("div");
+        actions.style.cssText = "display:flex; gap:8px; flex-wrap:wrap;";
+        const approve = document.createElement("button");
+        approve.type = "button";
+        approve.className = "btn";
+        approve.textContent = "Approve";
+        const reject = document.createElement("button");
+        reject.type = "button";
+        reject.className = "btn";
+        reject.textContent = "Reject";
+        reject.style.background = "var(--surface-hover, transparent)";
+        reject.addEventListener("click", () => decideApproval(approval.id, false));
+        approve.addEventListener("click", () => decideApproval(approval.id, true));
+        actions.append(approve, reject);
+        card.append(title, resource, actions);
+        list.appendChild(card);
+      });
+    } catch (err) {
+      panel.style.display = "block";
+      list.replaceChildren();
+      if (status) status.textContent = "Could not load approvals. Refresh the page and try again.";
+    }
+  }
+
+  async function decideApproval(approvalId, approved) {
+    const status = document.getElementById("approvalStatus");
+    if (status) status.textContent = "Saving your decision…";
+    try {
+      const res = await fetch("/approvals/" + encodeURIComponent(approvalId), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved }),
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        if (status) status.textContent = data.detail || data.error || "Could not save your decision.";
+        return;
+      }
+      if (status) status.textContent = approved
+        ? "Approval recorded. The action has not necessarily run yet."
+        : "Action rejected.";
+      await loadApprovals();
+    } catch (err) {
+      if (status) status.textContent = "Could not reach the server. Your decision may not have been saved.";
+    }
+  }
+
   async function loadConversationList() {
     if (!conversationListEl) return;
     try {
@@ -206,6 +284,7 @@
       window.localStorage.setItem(STORAGE_KEY, conversationId);
       renderMessage("assistant", data.reply, buildNote(data));
       loadConversationList();
+      loadApprovals();
     } catch (err) {
       if (messagesEl.lastChild) messagesEl.lastChild.remove();
       renderNotice("Could not reach Smart BethG. Check your connection and try again.");
@@ -253,4 +332,5 @@
   loadProviders();
   loadHistory();
   loadConversationList();
+  loadApprovals();
 })();
