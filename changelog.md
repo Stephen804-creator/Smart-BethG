@@ -701,3 +701,12 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Do not treat this change log as proof of live deployment persistence, backups, legal approval, independent security review, or multi-instance file-storage readiness.
 - Still open: complete owner-isolation audit, end-to-end approval and crash-recovery tests, versioned schema migrations, per-user/global token-spend enforcement, shared file/workspace storage, durable background jobs, real sandboxing, dependency/secret scanning, CSRF/session hardening, password reset/MFA/account deletion, browser accessibility testing, and feature vertical slices for projects/missions/workflows/artifacts/social content/research/evidence.
 - Public launch remains **not approved** until the release gates in the dated audit report are verified.
+
+## 2026-10-10 — Whole-codebase audit continuation
+
+- Fixed a latent task ownership flaw: status updates now require the owning user ID and validate the allowed status values. Controller call sites now pass the authenticated owner; regression tests cover owner isolation and status validation.
+- Removed a placeholder Subresource Integrity hash from the home-page Font Awesome stylesheet and added a regression test to prevent the placeholder from returning.
+- Expanded PostgreSQL CI integration coverage to exercise the core capability services, including projects, missions, workflows, social-content drafts, research, evidence, memory, artifacts, and task status updates.
+- Replaced a host-specific native-app URL example with a provider-neutral deployment URL. Updated README launch gates to reflect what is implemented versus what remains incomplete.
+- Added dated architecture/decision records and draft Terms of Service and Privacy Policy documents. These are planning drafts and are not approved legal policies.
+- Latest confirmed checks at this point: dependency audit and Gitleaks passed on the branch; PostgreSQL smoke tests passed on the preceding capability-test commit. The newest combined unit/PostgreSQL run is still being checked before merge.
