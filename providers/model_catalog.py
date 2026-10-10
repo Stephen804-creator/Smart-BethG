@@ -1,12 +1,10 @@
 """
 Smart BethG - Model Catalog
 
-A curated list of real, currently-available models per provider, sourced
-from each provider's own documentation (not guessed). This will go
-stale - providers retire and rename models every few months (see the
-Gemini 2.0 Flash 404 this replaced). Treat this file as something that
-needs a periodic recheck against each provider's docs, not a
-set-once-and-forget list.
+A dated curated list of provider model IDs, checked against official model
+catalogs on 2026-10-10. Providers retire and rename models frequently; run
+the model-catalog smoke checks before release and refresh this file whenever
+a provider reports a model unavailable. Do not invent IDs from display names.
 
 Each model is tagged with a "tier" used only by Auto mode:
 - "fast":     cheapest/quickest, for simple, short exchanges
@@ -21,16 +19,16 @@ MODEL_CATALOG = {
     "anthropic": {
         "label": "Anthropic",
         "models": [
-            {"id": "claude-haiku-4-5-20251001", "label": "Claude Haiku 4.5", "tier": "fast"},
-            {"id": "claude-sonnet-5", "label": "Claude Sonnet 5", "tier": "balanced"},
-            {"id": "claude-opus-5", "label": "Claude Opus 5", "tier": "capable"},
+            {"id": "claude-haiku-5-5", "label": "Claude Haiku 5.5", "tier": "fast"},
+            {"id": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5", "tier": "balanced"},
+            {"id": "claude-opus-5-5", "label": "Claude Opus 5.5", "tier": "capable"},
         ],
     },
     "openai": {
         "label": "OpenAI",
         "models": [
-            {"id": "gpt-5.6-luna", "label": "GPT-5.6 Luna", "tier": "fast"},
-            {"id": "gpt-5.6-terra", "label": "GPT-5.6 Terra", "tier": "balanced"},
+            {"id": "gpt-6-luna", "label": "GPT-6 Luna", "tier": "fast"},
+            {"id": "gpt-6.1-sol", "label": "GPT-6.1 Sol", "tier": "balanced"},
             {"id": "gpt-6-astra", "label": "GPT-6 Astra", "tier": "capable"},
         ],
     },
@@ -39,14 +37,14 @@ MODEL_CATALOG = {
         "models": [
             {"id": "gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash-Lite", "tier": "fast"},
             {"id": "gemini-3.6-flash", "label": "Gemini 3.6 Flash", "tier": "balanced"},
-            {"id": "gemini-3.1-pro", "label": "Gemini 3.1 Pro", "tier": "capable"},
+            {"id": "gemini-3.1-pro-preview", "label": "Gemini 3.1 Pro (Preview)", "tier": "capable"},
         ],
     },
     "groq": {
         "label": "Groq (free, open-weight)",
         "models": [
             {"id": "openai/gpt-oss-20b", "label": "GPT-OSS 20B (Groq)", "tier": "fast"},
-            {"id": "qwen/qwen3.6-27b", "label": "Qwen3.6 27B (Groq)", "tier": "balanced"},
+            {"id": "qwen/qwen3.8-27b", "label": "Qwen3.8 27B (Groq)", "tier": "balanced"},
             {"id": "openai/gpt-oss-120b", "label": "GPT-OSS 120B (Groq)", "tier": "capable"},
         ],
     },
