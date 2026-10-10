@@ -226,7 +226,7 @@ class TestGitOperationsExtended(SmartBethGTestCase):
         super().tearDown()
 
     def _init_repo(self, name):
-        root = resolve_workspace_root(name)
+        root = resolve_workspace_root(self.user["id"], name)
         subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
         subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=root, check=True)
         subprocess.run(["git", "config", "user.name", "T"], cwd=root, check=True)
