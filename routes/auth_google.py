@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 import config
-from services.auth_service import find_or_create_oauth_user
+from services.auth_service import find_or_create_oauth_user, get_user_by_id
 from services.rate_limiter import check_rate_limit
 from logging_setup import get_logger
 
@@ -79,7 +79,11 @@ async def google_callback(request: Request):
             status_code=403,
             detail="Registration is closed. Use an existing linked account or password sign-in.",
         )
+    current_user = get_user_by_id(user["id"])
+    if not current_user:
+        raise HTTPException(status_code=403, detail="This account is not active.")
     request.session.clear()
-    request.session["user_id"] = user["id"]
+    request.session["user_id"] = current_user["id"]
+    request.session["session_version"] = current_user["session_version"]
     request.session["csrf_token"] = secrets.token_urlsafe(32)
     return RedirectResponse("/", status_code=302)
