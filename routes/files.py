@@ -6,7 +6,7 @@ from api.dependencies import get_current_user
 from services.rate_limiter import check_rate_limit
 from services.file_service import FileService
 
-router = APIRouter(prefix="/api/files", tags=["files"])
+router = APIRouter(prefix="/files", tags=["files"])
 
 
 def get_file_service():
