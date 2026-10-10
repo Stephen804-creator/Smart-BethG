@@ -11,9 +11,9 @@ class OpenRouterProvider(OpenAIProvider):
     OpenRouter's own auto-router that always resolves to *some* currently
     free model, built by them specifically to solve this problem.
 
-    A specific model can still be requested via the chat UI's model
-    picker/selection string if a user wants a named one instead of the
-    auto-router - see model_catalog.py.
+    Named models are selectable only after their exact IDs are added to
+    the reviewed model catalog. Unknown IDs fall back to the reviewed
+    default rather than being sent blindly to the provider.
     """
 
     name = "openrouter"
