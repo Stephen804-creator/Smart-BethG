@@ -3,11 +3,10 @@ from .openai_provider import OpenAIProvider
 
 class GroqProvider(OpenAIProvider):
     """
-    Groq hosts open-weight models (GPT-OSS, Qwen, Llama) on real
-    datacenter GPUs, free with no credit card (rate-limited, not
-    token-limited the way paid APIs are). Same request/response shape
-    as OpenAI, so this just points the shared client at Groq's endpoint
-    with Groq's own model catalog - see model_catalog.py.
+    Groq hosts open-weight models (GPT-OSS, Qwen, Llama) on datacenter GPUs.
+    Account quotas, rate limits, model availability, and any usage pricing
+    depend on the current Groq plan. This reuses the OpenAI-compatible client
+    but points it at Groq's endpoint and reviewed model catalog.
 
     Model IDs verified against Groq's own docs as of this writing;
     Groq retires models on a published deprecation schedule (they just
