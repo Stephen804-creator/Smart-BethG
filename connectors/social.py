@@ -12,6 +12,14 @@ class ConnectorNotConfigured(RuntimeError):
     """No production-ready publishing adapter is configured for this platform."""
 
 
+class ConnectorActionRejected(RuntimeError):
+    """Provider explicitly rejected an action; it should not be blindly retried."""
+
+
+class ConnectorOutcomeUnknown(RuntimeError):
+    """Provider outcome cannot be confirmed; reconcile before any retry."""
+
+
 @dataclass(frozen=True)
 class SocialConnectorInfo:
     platform: str
