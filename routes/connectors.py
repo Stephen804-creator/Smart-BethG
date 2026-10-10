@@ -116,6 +116,7 @@ def finish_meta_oauth(request: Request, user=Depends(get_current_user)):
         return RedirectResponse("/social?meta=not_configured", status_code=303)
     version = settings["api_version"]
     created_refs = []
+    old_refs = []
     conn = None
     try:
         token_response = requests.get(
@@ -190,7 +191,7 @@ def finish_meta_oauth(request: Request, user=Depends(get_current_user)):
                 (user["id"], page_id),
             ).fetchone()
             if existing and existing["credential_ref"]:
-                vault.revoke(existing["credential_ref"], user["id"], "meta")
+                old_refs.append(existing["credential_ref"])
             credential_ref = vault.store(
                 user["id"], "meta", page["access_token"], scopes=list(META_SCOPES),
             )
@@ -213,6 +214,11 @@ def finish_meta_oauth(request: Request, user=Depends(get_current_user)):
                 )
             stored += 1
         conn.commit()
+        for old_reference in old_refs:
+            try:
+                vault.revoke(old_reference, user["id"], "meta")
+            except CredentialVaultError:
+                logger.warning("Could not revoke replaced Meta credential for user_id=%s", user["id"])
         return RedirectResponse(f"/social?meta=pending&accounts={stored}", status_code=303)
     except CredentialVaultError:
         if conn:
