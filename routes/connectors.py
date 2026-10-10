@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 from api.dependencies import get_current_user
-from connectors.social import SocialConnectorRegistry
+from connectors.social import ConnectorNotConfigured, SocialConnectorRegistry
 from database import get_connection
 from services.credential_vault import CredentialVault, CredentialVaultError
 
@@ -288,6 +288,22 @@ def activate_social_account(connection_id: int, user=Depends(get_current_user)):
             "WHERE id=? AND user_id=?",
             (connection_id, user["id"]),
         )
+        try:
+            SocialConnectorRegistry().get_publisher(account["platform"])
+            publisher_ready = True
+        except ConnectorNotConfigured:
+            publisher_ready = False
+        if publisher_ready:
+            conn.execute(
+                "UPDATE social_publish_jobs SET status='queued', connection_id=?, error_code=NULL, "
+                "error_message=NULL, updated_at=CURRENT_TIMESTAMP "
+                "WHERE user_id=? AND platform=? AND status IN ('awaiting_connection','blocked') "
+                "AND error_code IN ('connection_revoked','connection_required','connector_not_configured') "
+                "AND content_id IN (SELECT s.id FROM social_content s "
+                "JOIN social_campaigns c ON c.id=s.campaign_id AND c.user_id=s.user_id "
+                "WHERE s.user_id=? AND s.platform=? AND s.status='approved' AND c.status='active')",
+                (connection_id, user["id"], account["platform"], user["id"], account["platform"]),
+            )
         conn.commit()
         return {"activated": True, "connection_id": connection_id, "platform": account["platform"]}
     finally:
@@ -319,7 +335,7 @@ def disconnect_social_account(connection_id: int, user=Depends(get_current_user)
         conn.execute(
             "UPDATE social_publish_jobs SET status='blocked', error_code='connection_revoked', "
             "error_message='The user disconnected this account.', updated_at=CURRENT_TIMESTAMP "
-            "WHERE user_id=? AND connection_id=? AND status IN ('queued','awaiting_connection','awaiting_approval')",
+            "WHERE user_id=? AND connection_id=? AND status IN ('queued','awaiting_connection')",
             (user["id"], connection_id),
         )
         conn.execute(
