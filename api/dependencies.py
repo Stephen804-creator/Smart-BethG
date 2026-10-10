@@ -88,3 +88,9 @@ from services.artifact_service import ArtifactService
 
 def get_artifact_service():
     return ArtifactService()
+
+from services.mission_service import MissionService
+
+
+def get_mission_service():
+    return MissionService()
