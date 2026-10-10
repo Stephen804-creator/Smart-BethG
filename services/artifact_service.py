@@ -1,16 +1,25 @@
-"""Owner-scoped artifact storage with generated, contained file paths."""
+"""Owner-scoped artifact storage with content integrity and pluggable backends."""
 import hashlib
-import os
+import json
 import re
 import uuid
-from pathlib import Path
 
-import config
 from database import get_connection
+from services.artifact_storage import get_artifact_storage
 
 
 class ArtifactService:
     MAX_CONTENT_BYTES = 1024 * 1024
+    TYPES = {
+        "text": (".txt", "text/plain; charset=utf-8"),
+        "markdown": (".md", "text/markdown; charset=utf-8"),
+        "json": (".json", "application/json; charset=utf-8"),
+        "python": (".py", "text/plain; charset=utf-8"),
+        "javascript": (".js", "text/plain; charset=utf-8"),
+        "html": (".html", "text/html; charset=utf-8"),
+        "csv": (".csv", "text/csv; charset=utf-8"),
+        "yaml": (".yaml", "text/plain; charset=utf-8"),
+    }
 
     def create(self, user_id, name, content, artifact_type="text", mission_id=None):
         name = (name or "").strip()
@@ -22,18 +31,22 @@ class ArtifactService:
         if len(encoded) > self.MAX_CONTENT_BYTES:
             raise ValueError("Artifact content exceeds the 1 MiB limit.")
         artifact_type = (artifact_type or "text").strip().lower()
-        if not re.fullmatch(r"[a-z0-9_-]{1,40}", artifact_type):
-            raise ValueError("Artifact type must use letters, numbers, underscores, or hyphens.")
+        if artifact_type not in self.TYPES:
+            raise ValueError("Unsupported artifact type.")
+        if artifact_type == "json":
+            try:
+                json.loads(content)
+            except json.JSONDecodeError as exc:
+                raise ValueError("JSON artifacts must contain valid JSON.") from exc
         if mission_id is not None and not self._owns_mission(user_id, mission_id):
             raise ValueError("Mission not found for this user.")
 
-        user_dir = os.path.join(config.STORAGE_DIRS["artifacts"], str(user_id))
-        os.makedirs(user_dir, exist_ok=True)
+        extension, content_type = self.TYPES[artifact_type]
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)[:120] or "artifact"
-        path = os.path.join(user_dir, f"{uuid.uuid4().hex}_{safe_name}.txt")
-        with open(path, "wb") as handle:
-            handle.write(encoded)
+        key = f"{user_id}/{uuid.uuid4().hex}_{safe_name}{extension}"
         digest = hashlib.sha256(encoded).hexdigest()
+        storage = get_artifact_storage()
+        storage.put(key, encoded)
 
         conn = get_connection()
         try:
@@ -41,14 +54,14 @@ class ArtifactService:
                 "INSERT INTO artifacts(mission_id, user_id, name, artifact_type, path, content_type, "
                 "size_bytes, checksum_sha256, status, updated_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ready', CURRENT_TIMESTAMP)",
-                (mission_id, user_id, name, artifact_type, path, "text/plain; charset=utf-8", len(encoded), digest),
+                (mission_id, user_id, name, artifact_type, key, content_type, len(encoded), digest),
             )
             artifact_id = cursor.lastrowid
             conn.commit()
         except Exception:
             try:
-                os.remove(path)
-            except OSError:
+                storage.delete(key)
+            except Exception:
                 pass
             raise
         finally:
@@ -85,13 +98,23 @@ class ArtifactService:
         record = self.get(user_id, artifact_id)
         if not record:
             return None, None
-        user_root = Path(os.path.join(config.STORAGE_DIRS["artifacts"], str(user_id))).resolve()
-        path = Path(record["path"]).resolve()
-        if user_root not in path.parents or not path.is_file():
+        key = record["path"]
+        if not isinstance(key, str) or not key.startswith(f"{user_id}/") or ".." in key.split("/"):
             return None, record
-        if path.stat().st_size > self.MAX_CONTENT_BYTES:
+        storage = get_artifact_storage()
+        try:
+            encoded = storage.get(key)
+        except FileNotFoundError:
+            return None, record
+        if len(encoded) > self.MAX_CONTENT_BYTES:
             raise ValueError("Stored artifact exceeds the configured read limit.")
-        return path.read_text(encoding="utf-8"), record
+        digest = hashlib.sha256(encoded).hexdigest()
+        if not record.get("checksum_sha256") or digest != record["checksum_sha256"]:
+            raise ValueError("Stored artifact failed its integrity check.")
+        try:
+            return encoded.decode("utf-8"), record
+        except UnicodeDecodeError as exc:
+            raise ValueError("Stored artifact is not valid UTF-8 text.") from exc
 
     def delete(self, user_id, artifact_id):
         record = self.get(user_id, artifact_id)
@@ -108,15 +131,14 @@ class ArtifactService:
         finally:
             conn.close()
         if deleted:
-            try:
-                path = Path(record["path"]).resolve()
-                root = Path(os.path.join(config.STORAGE_DIRS["artifacts"], str(user_id))).resolve()
-                if root in path.parents:
-                    path.unlink(missing_ok=True)
-            except OSError:
-                # The DB row is gone; an orphan file is safer than exposing a
-                # row that points at a missing file. Cleanup can retry later.
-                pass
+            key = record.get("path", "")
+            if isinstance(key, str) and key.startswith(f"{user_id}/") and ".." not in key.split("/"):
+                try:
+                    get_artifact_storage().delete(key)
+                except Exception:
+                    # DB row is gone; an orphan object is safer than an exposed
+                    # artifact row. A future orphan-cleanup job can retry.
+                    pass
         return deleted
 
     @staticmethod
