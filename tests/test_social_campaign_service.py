@@ -1,6 +1,7 @@
 from tests.base import SmartBethGTestCase
 from services.auth_service import create_user
 from services.social_campaign_service import SocialCampaignService
+from services.social_content_service import SocialContentService
 from unittest.mock import patch
 
 
@@ -149,6 +150,38 @@ class TestSocialCampaignService(SmartBethGTestCase):
             self.assertEqual(count, 0)
         finally:
             conn.close()
+
+    def test_editing_campaign_post_invalidates_previous_approval(self):
+        campaign = self.create_campaign()
+        planned = self.service.add_posts(self.owner["id"], campaign["id"], [{
+            "platform": "facebook", "title": "Original", "content": "Original content",
+            "scheduled_at": "2026-10-12T08:00:00+01:00",
+        }])
+        post_id = planned["posts"][0]["id"]
+        self.service.approve_post(self.owner["id"], campaign["id"], post_id)
+        content_service = SocialContentService()
+        content_service.transition(self.owner["id"], post_id, "in_review")
+        edited = content_service.update(self.owner["id"], post_id, {"content": "Changed after approval"})
+        self.assertEqual(edited["status"], "draft")
+        campaign = self.service.get(self.owner["id"], campaign["id"])
+        post = next(item for item in campaign["posts"] if item["id"] == post_id)
+        self.assertEqual(post["publish_status"], "awaiting_approval")
+        self.assertIsNone(post["publish_error_code"])
+        reapproved = self.service.approve_post(self.owner["id"], campaign["id"], post_id)
+        post = next(item for item in reapproved["posts"] if item["id"] == post_id)
+        self.assertEqual(post["status"], "approved")
+        self.assertEqual(post["publish_status"], "awaiting_connection")
+
+    def test_campaign_posts_cannot_bypass_campaign_approval_route(self):
+        campaign = self.create_campaign()
+        planned = self.service.add_posts(self.owner["id"], campaign["id"], [{
+            "platform": "facebook", "title": "Review", "content": "Needs campaign approval",
+            "scheduled_at": "2026-10-12T08:00:00+01:00",
+        }])
+        content_service = SocialContentService()
+        content_service.transition(self.owner["id"], planned["posts"][0]["id"], "in_review")
+        with self.assertRaisesRegex(ValueError, "campaign approval endpoint"):
+            content_service.transition(self.owner["id"], planned["posts"][0]["id"], "approved")
 
     def test_campaign_cannot_target_unselected_platform(self):
         campaign = self.create_campaign(platforms=["facebook"])
