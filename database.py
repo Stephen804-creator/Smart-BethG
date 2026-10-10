@@ -195,6 +195,36 @@ def initialize_database():
             hit_epoch REAL NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS usage_budget_counters(
+            period_start TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            scope_id TEXT NOT NULL,
+            reserved_tokens INTEGER NOT NULL DEFAULT 0,
+            actual_tokens INTEGER NOT NULL DEFAULT 0,
+            reserved_cost_micros INTEGER NOT NULL DEFAULT 0,
+            actual_cost_micros INTEGER NOT NULL DEFAULT 0,
+            requests INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY(period_start, scope, scope_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS usage_budget_reservations(
+            id TEXT PRIMARY KEY,
+            period_start TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            estimated_input_tokens INTEGER NOT NULL,
+            estimated_output_tokens INTEGER NOT NULL,
+            estimated_cost_micros INTEGER NOT NULL,
+            actual_input_tokens INTEGER,
+            actual_output_tokens INTEGER,
+            actual_cost_micros INTEGER,
+            status TEXT NOT NULL DEFAULT 'reserved',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT
+        );
+
         CREATE INDEX IF NOT EXISTS idx_auth_rate_limit_key_epoch
             ON auth_rate_limit_events(key_hash, hit_epoch);
 
