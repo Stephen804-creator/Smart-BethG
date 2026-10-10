@@ -105,8 +105,8 @@ class Controller:
             outcome = self.agent_executor.run(agent_request)
         except Exception:
             logger.exception("Task execution failed: task_id=%s user_id=%s", task["task_id"], user["id"])
-            self.task_service.update_status(task["task_id"], "failed")
+            self.task_service.update_status(user["id"], task["task_id"], "failed")
             return {**task, "status": "failed", "error": "The task failed unexpectedly. Please try again later."}
 
-        self.task_service.update_status(task["task_id"], outcome["status"])
+        self.task_service.update_status(user["id"], task["task_id"], outcome["status"])
         return {**task, **outcome}
