@@ -158,6 +158,8 @@ def export_campaign_artifact(
         artifact = artifacts.create(
             user["id"], campaign["name"] + " - content calendar",
             json.dumps(export_data, ensure_ascii=False, indent=2), "json",
+            source_type="campaign", source_id=str(campaign_id),
+            metadata={"export_schema_version": 1, "export_kind": "social_campaign_calendar"},
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
