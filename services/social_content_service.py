@@ -22,7 +22,7 @@ class SocialContentService:
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "INSERT INTO social_content(user_id, platform, title, content, hashtags, status, version, updated_at) "
+                "INSERT INTO social_content(user_id, platform, topic, caption, hashtags, status, version, updated_at) "
                 "VALUES (?, ?, ?, ?, ?, 'draft', 1, CURRENT_TIMESTAMP)",
                 (user_id, platform, title, content, tags_json),
             )
@@ -41,7 +41,7 @@ class SocialContentService:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, user_id, platform, title, content, hashtags, status, version, "
+                "SELECT id, user_id, platform, topic AS title, caption AS content, hashtags, status, version, "
                 "external_post_id, published_at, created_at, updated_at FROM social_content "
                 "WHERE user_id=? ORDER BY updated_at DESC, id DESC",
                 (user_id,),
@@ -95,7 +95,7 @@ class SocialContentService:
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "UPDATE social_content SET platform=?, title=?, content=?, hashtags=?, version=?, "
+                "UPDATE social_content SET platform=?, topic=?, caption=?, hashtags=?, version=?, "
                 "status='draft', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND version=?",
                 (platform, title, content, tags_json, version, content_id, user_id, current["version"]),
             )
