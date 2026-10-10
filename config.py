@@ -93,9 +93,7 @@ ALLOWED_ORIGINS = [
 
 # Development stays convenient, but production registration is closed unless
 # the operator explicitly opts in. Existing users can still log in.
-REGISTRATION_OPEN = os.getenv(
-    "SMART_BETHG_REGISTRATION_OPEN", "false" if IS_PRODUCTION else "true"
-).lower() == "true"
+REGISTRATION_OPEN = os.getenv("SMART_BETHG_REGISTRATION_OPEN", "false").lower() == "true"
 REGISTRATION_INVITE_CODE = os.getenv("SMART_BETHG_INVITE_CODE", "")
 
 # Per-process only; use a shared store before running multiple instances.
