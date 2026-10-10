@@ -1,7 +1,7 @@
 # Smart BethG Whole-Codebase Audit
 
 **Audit date:** 2026-10-10 UTC  
-**Last updated:** 2026-10-10 UTC  
+**Last updated:** 2026-10-10 19:21 UTC  
 **Branch reviewed:** `update/corrected-zip-2026-10-10`  
 **Target branch:** `main`  
 **Status:** Engineering audit in progress; public launch is not approved.  
@@ -11,9 +11,9 @@
 
 Smart BethG has moved beyond a prototype in several important areas: the branch now has HTTP-level security tests, per-user workspace roots, persistent owner-scoped approvals, an execution path that resumes the saved approved operation, database-backed rate limiting, per-user and global usage budgets, PostgreSQL production wiring, dependency scanning, secret scanning, and dated product/legal decision documents.
 
-The most recent completed CI baseline before the newest PostgreSQL rate-limit concurrency test reported **290 unit tests passing**, PostgreSQL integration tests passing, dependency vulnerability audit passing, and Gitleaks secret scanning passing. The approval-recovery regression test was included in that passing unit-test run. The newer PostgreSQL rate-limit concurrency test is now in CI and must pass before the report can be treated as current-green. A green CI run proves only the checks it ran; it is not a public-launch certification.
+The completed CI run for commit `a5bef0eb788aaa1791fc176aedaed72fd3ffc647` reported **292 unit tests passing**, PostgreSQL integration tests passing (including the concurrent rate-limit test), dependency vulnerability audit passing, and Gitleaks secret scanning passing. The approval-decision recovery regression test was included in that passing unit-test run. A newer CI run is underway after updating GitHub Actions to Node 24-compatible action releases and polishing audit documentation; those later changes do not alter application code. A green CI run proves only the checks it ran; it is not a public-launch certification.
 
-**Why the Actions page showed many red runs:** changes were committed one file at a time through the repository connector, and each intermediate commit triggered CI. Some of those intermediate commits genuinely failed while the test assertion, PostgreSQL workflow setup, and vulnerable dependency pins were being corrected. Those historical failures remain in GitHub's run history; they do not by themselves mean the latest branch head is failing. Use the checks for the current head SHA, not an older intermediate run, to judge the current state.
+**Why the Actions page showed many red runs:** changes were committed one file at a time through the repository connector, and each intermediate commit triggered CI. Some of those intermediate commits genuinely failed while the test assertion, PostgreSQL workflow setup, and vulnerable dependency pins were being corrected. Those historical failures remain in GitHub's run history; they do not by themselves mean the latest branch head is failing. The 292-test and security-scan baseline is green; wait for the latest-head workflow to finish before merge. Use the checks for the current head SHA, not an older intermediate run, to judge the current state.
 
 ## Findings by priority
 
