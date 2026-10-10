@@ -43,6 +43,7 @@ def login(payload: LoginRequest, request: Request):
     if not user:
         logger.info("Failed login attempt for username=%r", payload.username)
         return {"authenticated": False, "error": "Invalid credentials."}
+    request.session.clear()
     request.session["user_id"] = user["id"]
     logger.info("User %s logged in", user["id"])
     return {"authenticated": True, "user": user}
