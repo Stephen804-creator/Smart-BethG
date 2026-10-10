@@ -54,7 +54,7 @@ class TestAuditRecording(SmartBethGTestCase):
     def test_successful_execution_is_recorded(self):
         import subprocess
         from services.tool_service import resolve_workspace_root
-        root = resolve_workspace_root("proj3")
+        root = resolve_workspace_root(1, "proj3")
         subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
 
         self.service.execute(self.user, "git.read", workspace="proj3")
