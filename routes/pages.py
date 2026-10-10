@@ -1,5 +1,6 @@
 import os
 
+import config
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse, FileResponse
 
@@ -105,6 +106,17 @@ def social_page(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=302)
     return _render(request, "social.html", {"active_page": "social"})
+
+
+@router.get("/artifacts", name="main.artifacts_page")
+def artifacts_page(request: Request):
+    user = _require_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    return _render(
+        request, "artifacts.html",
+        {"active_page": "artifacts", "api_prefix": config.API_PREFIX},
+    )
 
 
 @router.get("/favicon.ico", include_in_schema=False)
