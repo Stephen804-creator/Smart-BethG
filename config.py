@@ -109,3 +109,9 @@ DOCKER_ALLOWED_IMAGES = {
     image.strip() for image in os.getenv("SMART_BETHG_DOCKER_ALLOWED_IMAGES", "").split(",")
     if image.strip()
 }
+
+# Host Python execution is for local development only. Production requires a real isolated job runner.
+ALLOW_DEV_PYTHON_EXECUTION = (
+    not IS_PRODUCTION
+    and os.getenv("SMART_BETHG_ALLOW_DEV_PYTHON_EXECUTION", "true").lower() == "true"
+)
