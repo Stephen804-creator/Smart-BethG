@@ -1,4 +1,5 @@
 from tests.base import SmartBethGTestCase
+import config
 import database
 
 
@@ -43,6 +44,20 @@ class TestDatabaseSchema(SmartBethGTestCase):
             conn.close()
         self.assertIn("oauth_provider", cols)
         self.assertIn("oauth_subject", cols)
+
+    def test_production_refuses_sqlite_or_missing_database_url(self):
+        original_production = config.IS_PRODUCTION
+        original_url = config.DATABASE_URL
+        try:
+            config.IS_PRODUCTION = True
+            for invalid_url in ("", "sqlite:///should-not-be-used.db"):
+                config.DATABASE_URL = invalid_url
+                with self.subTest(database_url=invalid_url):
+                    with self.assertRaisesRegex(RuntimeError, "requires DATABASE_URL.*PostgreSQL"):
+                        database.get_connection()
+        finally:
+            config.IS_PRODUCTION = original_production
+            config.DATABASE_URL = original_url
 
     def test_messages_migration_adds_token_columns(self):
         conn = database.get_connection()
