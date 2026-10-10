@@ -1,4 +1,5 @@
 """Smoke tests for the production PostgreSQL adapter (run by CI's PG service)."""
+import os
 import uuid
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -11,6 +12,10 @@ from services.rate_limiter import check_rate_limit
 from services.usage_budget_service import UsageBudgetService
 
 
+@unittest.skipUnless(
+    os.getenv("SMART_BETHG_RUN_POSTGRES_TESTS") == "1",
+    "Requires the dedicated PostgreSQL integration-test job",
+)
 class TestPostgreSQLIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
