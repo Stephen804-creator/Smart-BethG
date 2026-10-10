@@ -20,6 +20,13 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
         self.assertEqual(response.headers.get("x-frame-options"), "DENY")
         self.assertEqual(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin")
+        csp = response.headers.get("content-security-policy-report-only", "")
+        self.assertIn("default-src 'self'", csp)
+        self.assertIn("object-src 'none'", csp)
+        self.assertIn("frame-ancestors 'none'", csp)
+        self.assertIn("script-src 'self'", csp)
+        self.assertNotIn("'unsafe-eval'", csp)
+        self.assertNotIn("Content-Security-Policy", response.headers)  # report-only rollout
 
     def test_approvals_endpoint_requires_authentication(self):
         client = TestClient(create_app())
