@@ -5,6 +5,7 @@ FastAPI Application Entry Point
 import hmac
 import os
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,10 +44,22 @@ def create_app() -> FastAPI:
     config.ensure_storage_dirs()
     initialize_database()
 
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        app_logger.info(
+            "Smart BethG starting up (env=%s, providers=%s)",
+            config.ENVIRONMENT, config.DEFAULT_PROVIDER or "auto-detect",
+        )
+        try:
+            yield
+        finally:
+            app_logger.info("Smart BethG shutting down")
+
     app = FastAPI(
         title="Smart BethG",
         version="1.0.0",
         description="Smart BethG AI Agent Platform API",
+        lifespan=lifespan,
     )
     register_error_handlers(app)
 
@@ -162,17 +175,6 @@ def create_app() -> FastAPI:
             app.include_router(router)
             app.include_router(router, prefix=config.API_PREFIX)
 
-
-    @app.on_event("startup")
-    async def on_startup():
-        app_logger.info(
-            "Smart BethG starting up (env=%s, providers=%s)",
-            config.ENVIRONMENT, config.DEFAULT_PROVIDER or "auto-detect",
-        )
-
-    @app.on_event("shutdown")
-    async def on_shutdown():
-        app_logger.info("Smart BethG shutting down")
 
     return app
 
