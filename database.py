@@ -182,6 +182,15 @@ def initialize_database():
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS auth_rate_limit_events(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key_hash TEXT NOT NULL,
+            hit_epoch REAL NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_auth_rate_limit_key_epoch
+            ON auth_rate_limit_events(key_hash, hit_epoch);
+
         CREATE TABLE IF NOT EXISTS approvals(
             id TEXT PRIMARY KEY,
             user_id INTEGER NOT NULL,
