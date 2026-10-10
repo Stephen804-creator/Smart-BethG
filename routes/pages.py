@@ -99,6 +99,14 @@ def chat_page(request: Request):
     return _render(request, "chat.html")
 
 
+@router.get("/social", name="main.social_page")
+def social_page(request: Request):
+    user = _require_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "social.html", {"active_page": "social"})
+
+
 @router.get("/favicon.ico", include_in_schema=False)
 def favicon():
     """Avoids noisy 404s in logs for the browser's automatic favicon request."""
