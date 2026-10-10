@@ -146,6 +146,38 @@ class TestToolServiceExecution(SmartBethGTestCase):
         result = self.service.execute(self.admin, "git.write", workspace="proj7", message="test commit")
         self.assertEqual(result["status"], "approval_required")
 
+    def test_approved_saved_git_operation_executes_real_side_effect_once(self):
+        root = resolve_workspace_root(self.admin["id"], "approved-real-git")
+        subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+        with open(os.path.join(root, "approved.txt"), "w") as handle:
+            handle.write("approved content")
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+
+        pending = self.service.execute(
+            self.admin, "git.write", workspace="approved-real-git",
+            operation="commit", message="approved saved operation",
+        )
+        self.assertEqual(pending["status"], "approval_required")
+        self.service.approvals.decide(pending["approval_id"], self.admin["id"], True)
+        result = self.service.execute_approved(self.admin, pending["approval_id"])
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution_status"], "completed")
+
+        log = subprocess.run(
+            ["git", "log", "-1", "--pretty=%s"], cwd=root, capture_output=True, text=True, check=True
+        )
+        self.assertEqual(log.stdout.strip(), "approved saved operation")
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as caught:
+            self.service.execute_approved(self.admin, pending["approval_id"])
+        self.assertEqual(caught.exception.status_code, 409)
+        log_count = subprocess.run(
+            ["git", "rev-list", "--count", "HEAD"], cwd=root, capture_output=True, text=True, check=True
+        )
+        self.assertEqual(log_count.stdout.strip(), "1")
+
     def test_git_write_commits_real_change_once_authorized(self):
         """
         Exercises the real commit path directly (bypassing the approval
