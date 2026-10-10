@@ -3,12 +3,17 @@ import os
 import uuid
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
+from cryptography.fernet import Fernet
 
 import config
 from database import _run_postgres_migrations, get_connection, initialize_database
 from repositories.conversation_repository import ConversationRepository
 from services.approval_service import ApprovalService
 from services.auth_service import create_user
+from services.credential_vault import CredentialVault
+from services.social_campaign_service import SocialCampaignService
+from workers.social_publisher import SocialPublisherWorker
 from services.file_service import FileService
 from services.rate_limiter import check_rate_limit
 from services.usage_budget_service import BudgetExceededError, UsageBudgetService
@@ -110,6 +115,74 @@ class TestPostgreSQLIntegration(unittest.TestCase):
         self.assertIsNone(foreign_record)
         self.assertTrue(service.delete_file(owner["id"], record["id"]))
         self.assertIsNone(service.get_file(owner["id"], record["id"]))
+
+    def test_social_campaign_credential_vault_and_postgres_worker_claim(self):
+        suffix = uuid.uuid4().hex[:12]
+        user = create_user("pg-social-" + suffix, "test-password-123")
+        now = datetime.now(timezone.utc)
+        start = (now - timedelta(days=2)).isoformat(timespec="seconds")
+        end = (now + timedelta(days=3)).isoformat(timespec="seconds")
+        service = SocialCampaignService()
+        campaign = service.create(
+            user["id"], name="PG social " + suffix, objective="Verify durable queue",
+            platforms=["facebook"], timezone_name="Africa/Lagos",
+            start_at=start, end_at=end, daily_post_limit=2,
+        )
+        service.add_posts(user["id"], campaign["id"], [{
+            "platform": "facebook", "title": "Post", "content": "Post content",
+            "scheduled_at": start,
+        }])
+
+        vault = CredentialVault(key=Fernet.generate_key())
+        credential_ref = vault.store(user["id"], "meta", "integration-test-token")
+        self.assertEqual(vault.resolve(credential_ref, user["id"], "meta"), "integration-test-token")
+
+        conn = get_connection()
+        try:
+            conn.execute(
+                "UPDATE social_campaigns SET status='active' WHERE id=? AND user_id=?",
+                (campaign["id"], user["id"]),
+            )
+            conn.execute(
+                "UPDATE social_content SET status='approved' WHERE campaign_id=? AND user_id=?",
+                (campaign["id"], user["id"]),
+            )
+            conn.execute(
+                "INSERT INTO social_connections(user_id, platform, external_account_id, display_name, "
+                "credential_ref, scopes_json, status, connected_at) "
+                "VALUES (?, 'facebook', 'pg-page-" + suffix + "', 'PG Page', ?, '[]', 'active', CURRENT_TIMESTAMP)",
+                (user["id"], credential_ref),
+            )
+            connection = conn.execute(
+                "SELECT id FROM social_connections WHERE user_id=? AND platform='facebook' "
+                "AND external_account_id=?",
+                (user["id"], "pg-page-" + suffix),
+            ).fetchone()
+            job = conn.execute(
+                "SELECT id FROM social_publish_jobs WHERE user_id=? AND campaign_id=?",
+                (user["id"], campaign["id"]),
+            ).fetchone()
+            conn.execute(
+                "UPDATE social_publish_jobs SET status='queued', connection_id=? WHERE id=? AND user_id=?",
+                (connection["id"], job["id"], user["id"]),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        worker = SocialPublisherWorker(registry=object())
+        claimed = worker.claim_due_jobs()
+        self.assertIn(job["id"], claimed)
+        conn = get_connection()
+        try:
+            conn.execute(
+                "UPDATE social_publish_jobs SET status='blocked', lease_until=NULL, "
+                "error_code='test_cleanup' WHERE id=?",
+                (job["id"],),
+            )
+            conn.commit()
+        finally:
+            conn.close()
 
     def test_database_backed_rate_limiter(self):
         key = "pg-integration:" + uuid.uuid4().hex
