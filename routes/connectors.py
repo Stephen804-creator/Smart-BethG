@@ -46,6 +46,8 @@ def _meta_ready_for_oauth(settings):
         return False
     if config.IS_PRODUCTION and parsed.scheme != "https":
         return False
+    if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+        return False
     return parsed.scheme in {"http", "https"}
 
 
