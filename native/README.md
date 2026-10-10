@@ -22,8 +22,8 @@ Open your deployed URL in Chrome (Android) or Safari (iOS) → menu →
 ## Building the Android shell
 1. Install Node.js and Android Studio.
 2. `cd native && npm install`
-3. `SMART_BETHG_URL=https://your-app.onrender.com npx cap add android`
-4. `SMART_BETHG_URL=https://your-app.onrender.com npx cap sync`
+3. `SMART_BETHG_URL=https://your-deployment-host.example npx cap add android`
+4. `SMART_BETHG_URL=https://your-deployment-host.example npx cap sync`
 5. `npm run android` → build/run from Android Studio.
 
 ## Building the iOS shell (Mac only)
