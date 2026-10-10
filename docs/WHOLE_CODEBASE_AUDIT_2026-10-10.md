@@ -208,3 +208,14 @@ The prior implementation resolved and validated a destination hostname, then pas
 The review branch now uses a pinned-address HTTP(S) transport: it resolves the hostname, rejects the entire DNS answer set if any address is non-public, connects the TCP socket directly to one of the validated public IPs, and for HTTPS still verifies the certificate against the original hostname. Redirects are handled explicitly and revalidated as new destinations; proxy environment variables are not inherited. Response size, timeout, and redirect-count limits remain enforced. A regression test verifies that the connection uses the validated IP without a second DNS lookup, and existing tests cover private/mixed DNS answers and invalid permits.
 
 **Verification state:** this finding is not marked fully closed until the unit, PostgreSQL integration, dependency-audit, and secret-scan workflows finish successfully for the exact current branch head. This mitigation reduces the DNS-rebinding risk but is not a substitute for independent adversarial testing of URL parsing, IPv6 edge cases, redirects, TLS, and the full tool-execution boundary.
+
+
+## Tool-execution audit update — 2026-10-10 20:10 UTC
+
+**18. Generic terminal execution could bypass the hardened Git wrapper (mitigation implemented; current-head CI pending).**
+
+The generic `terminal.execute` path accepted `git` as an allowed program. Even with `shell=False`, arbitrary Git arguments can reach Git configuration and extension behavior that the dedicated `git/git_tool.py` wrapper is designed to restrict. Requiring human approval does not make an opaque or overbroad command safe by itself.
+
+The generic command runner no longer allows raw Git commands. Git actions must use the dedicated wrapper, which disables system/global configuration, prompts, hooks, and unsafe external filters. The tool service rejects raw Git requests before creating an approval record. Host Python execution remains a development-only capability; it is rejected before approval when disabled, including in production. Tests were added for both fail-closed paths.
+
+**Verification state:** the preceding revision passed unit tests, PostgreSQL integration, dependency auditing, and Gitleaks after the DNS-pinning mitigation. CI for the current terminal-execution change must finish successfully before this finding can be considered verified. Production terminal execution still requires a genuinely isolated worker/sandbox; this change intentionally does not pretend that the current host process is such a sandbox.
