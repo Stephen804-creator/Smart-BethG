@@ -102,6 +102,38 @@ class TestSocialPublisherWorker(SmartBethGTestCase):
         finally:
             conn.close()
 
+    def test_autonomous_publish_is_blocked_when_scope_does_not_cover_platform(self):
+        conn = get_connection()
+        try:
+            conn.execute(
+                "UPDATE social_campaigns SET autonomy_mode='auto_publish_after_campaign_approval', "
+                "autopublish_authorized_at=CURRENT_TIMESTAMP, authorization_scope_json=? "
+                "WHERE id=? AND user_id=?",
+                (json.dumps({
+                    "platforms": [],
+                    "start_at": self.campaign["start_at"],
+                    "end_at": self.campaign["end_at"],
+                    "daily_post_limit": 2,
+                }), self.campaign["id"], self.user["id"]),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        worker = SocialPublisherWorker(registry=FakeRegistry(FakePublisher()))
+        result = worker.run_once()
+        self.assertEqual(result[0]["status"], "blocked")
+        conn = get_connection()
+        try:
+            job = conn.execute(
+                "SELECT status, error_code FROM social_publish_jobs WHERE campaign_id=?",
+                (self.campaign["id"],),
+            ).fetchone()
+            self.assertEqual(job["status"], "blocked")
+            self.assertEqual(job["error_code"], "authorization_scope_invalid")
+        finally:
+            conn.close()
+
     def test_missing_connector_blocks_without_fake_success(self):
         from connectors.social import ConnectorNotConfigured
         worker = SocialPublisherWorker(registry=FakeRegistry(error=ConnectorNotConfigured("not ready")))
