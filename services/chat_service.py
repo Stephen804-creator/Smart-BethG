@@ -6,6 +6,7 @@ from providers.provider_manager import provider_manager
 from services.model_evaluation_service import ModelEvaluationService
 from services.memory_service import MemoryService
 from services.knowledge_service import KnowledgeService
+from services.usage_budget_service import UsageBudgetService, BudgetExceededError
 from logging_setup import get_logger
 
 logger = get_logger("chat")
@@ -25,11 +26,13 @@ class ChatService:
         eval_service: ModelEvaluationService = None,
         memory_service: MemoryService = None,
         knowledge_service: KnowledgeService = None,
+        budget_service: UsageBudgetService = None,
     ):
         self.repo = repo or ConversationRepository()
         self.eval_service = eval_service or ModelEvaluationService()
         self.memory_service = memory_service or MemoryService()
         self.knowledge_service = knowledge_service or KnowledgeService()
+        self.budget_service = budget_service or UsageBudgetService()
 
     def get_or_create_conversation(self, user_id, conversation_id=None):
         if conversation_id:
@@ -123,11 +126,14 @@ class ChatService:
         )
 
         if result is None:
-            reply = (
+            if isinstance(last_error, BudgetExceededError):
+                reply = "The daily usage budget has been reached. Your usage will reset at 00:00 UTC."
+            else:
+                reply = (
                 "Smart BethG could not reach a configured AI provider "
                 f"(attempted: {', '.join(attempted)}). Please try again later "
                 "or contact the operator if the problem continues."
-            )
+                )
             self.repo.add_message(conversation_id, "assistant", reply)
             self.repo.touch(conversation_id)
             return {
@@ -187,22 +193,62 @@ class ChatService:
         candidates = candidates[:max(1, config.MAX_PROVIDER_ATTEMPTS_PER_CHAT)]
 
         last_error = None
+        input_estimate = self.budget_service.estimate_input_tokens(
+            self._bound_context(provider_messages, config.MAX_CHAT_CONTEXT_CHARS)
+        )
         for name, candidate_provider, candidate_model in candidates:
+            if candidate_provider is None:
+                continue
+            try:
+                reservation = self.budget_service.reserve(
+                    user_id, name, candidate_model, input_estimate, config.CHAT_MAX_OUTPUT_TOKENS
+                )
+            except BudgetExceededError as exc:
+                last_error = exc
+                attempted.append(name)
+                logger.warning("Provider attempt blocked by usage budget (user=%s, provider=%s)", user_id, name)
+                break
+
             start = time.monotonic()
             try:
                 bounded_messages = self._bound_context(provider_messages, config.MAX_CHAT_CONTEXT_CHARS)
                 result = candidate_provider.generate(
                     bounded_messages, model=candidate_model, max_tokens=config.CHAT_MAX_OUTPUT_TOKENS
                 )
-                latency_ms = int((time.monotonic() - start) * 1000)
-                self.eval_service.record_call(user_id, name, candidate_model, True, latency_ms)
-                return result, name, candidate_model, attempted, last_error
             except Exception as exc:
                 latency_ms = int((time.monotonic() - start) * 1000)
-                self.eval_service.record_call(user_id, name, candidate_model, False, latency_ms, error=str(exc))
+                try:
+                    self.budget_service.mark_failed(reservation["id"])
+                except Exception:
+                    logger.exception("Could not finalize failed usage reservation")
+                try:
+                    self.eval_service.record_call(
+                        user_id, name, candidate_model, False, latency_ms, error=type(exc).__name__
+                    )
+                except Exception:
+                    logger.exception("Could not record failed provider telemetry")
                 last_error = exc
                 attempted.append(name)
-                logger.error("Provider call failed (user=%s, provider=%s, model=%s): %s", user_id, name, candidate_model, exc)
+                logger.error(
+                    "Provider call failed (user=%s, provider=%s, model=%s, error_type=%s)",
+                    user_id, name, candidate_model, type(exc).__name__,
+                )
+                continue
+
+            latency_ms = int((time.monotonic() - start) * 1000)
+            try:
+                self.budget_service.reconcile(
+                    reservation["id"], result.get("input_tokens"), result.get("output_tokens")
+                )
+            except Exception:
+                # The reservation remains counted at its conservative estimate;
+                # never retry a successful provider call because telemetry failed.
+                logger.exception("Could not reconcile provider usage reservation")
+            try:
+                self.eval_service.record_call(user_id, name, candidate_model, True, latency_ms)
+            except Exception:
+                logger.exception("Could not record successful provider telemetry")
+            return result, name, candidate_model, attempted, last_error
 
         return None, None, None, attempted, last_error
 
@@ -231,4 +277,6 @@ class ChatService:
         return entry["id"] if entry else None
 
     def usage(self, user_id):
-        return self.repo.usage_totals_for_user(user_id)
+        usage = self.repo.usage_totals_for_user(user_id)
+        usage["budget"] = self.budget_service.get_usage(user_id)
+        return usage
