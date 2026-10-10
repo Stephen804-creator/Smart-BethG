@@ -174,6 +174,7 @@ class TestSocialCampaignService(SmartBethGTestCase):
 
     def test_campaign_resume_does_not_reapprove_an_edited_auto_post(self):
         campaign = self.create_campaign(
+            platforms=["facebook"],
             autonomy_mode="auto_publish_after_campaign_approval",
             auto_publish_authorized=True,
         )
