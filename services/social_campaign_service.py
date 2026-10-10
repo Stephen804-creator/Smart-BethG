@@ -213,11 +213,21 @@ class SocialCampaignService:
                     "VALUES (?, ?, 1, ?, ?, ?)",
                     (content_id, user_id, title, content, tags_json),
                 )
+                auto_authorized = campaign["autonomy_mode"] == "auto_publish_after_campaign_approval"
+                initial_content_status = "approved" if auto_authorized else "draft"
+                initial_job_status = "awaiting_connection" if auto_authorized else "awaiting_approval"
+                conn.execute(
+                    "UPDATE social_content SET status=? WHERE id=? AND user_id=?",
+                    (initial_content_status, content_id, user_id),
+                )
                 conn.execute(
                     "INSERT INTO social_publish_jobs(user_id, campaign_id, content_id, platform, scheduled_at, "
-                    "status, idempotency_key, updated_at) VALUES (?, ?, ?, ?, ?, 'awaiting_approval', ?, CURRENT_TIMESTAMP)",
-                    (user_id, campaign_id, content_id, platform, scheduled,
-                     f"social-post:{user_id}:{campaign_id}:{content_id}"),
+                    "status, idempotency_key, error_code, error_message, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                    (user_id, campaign_id, content_id, platform, scheduled, initial_job_status,
+                     f"social-post:{user_id}:{campaign_id}:{content_id}",
+                     "connector_not_configured" if auto_authorized else None,
+                     "Platform connection and publisher must be configured before publishing." if auto_authorized else None),
                 )
             conn.execute(
                 "UPDATE social_campaigns SET status='planned', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
@@ -230,6 +240,101 @@ class SocialCampaignService:
         finally:
             conn.close()
         return self.get(user_id, campaign_id)
+
+    def generate_plan(self, user_id, campaign_id, count=30, selection=None):
+        """Use the configured AI provider to prepare a scheduled plan, not publish it."""
+        if not isinstance(count, int) or isinstance(count, bool) or not 1 <= count <= 30:
+            raise ValueError("Generate between 1 and 30 posts per request.")
+        campaign = self.get(user_id, campaign_id)
+        if not campaign:
+            return None
+        if campaign["status"] in {"active", "paused", "completed", "cancelled"}:
+            raise ValueError("Pause or create a new campaign before generating more posts.")
+        cadence = campaign.get("cadence") or {}
+        interval_days = cadence.get("interval_days", 1)
+        local_time = cadence.get("local_time", "09:00")
+        if not isinstance(interval_days, int) or isinstance(interval_days, bool) or not 1 <= interval_days <= 30:
+            raise ValueError("cadence.interval_days must be an integer from 1 to 30.")
+        if not isinstance(local_time, str) or not re.fullmatch(r"(?:[01]\\d|2[0-3]):[0-5]\\d", local_time):
+            raise ValueError("cadence.local_time must use 24-hour HH:MM format.")
+        zone = ZoneInfo(campaign["timezone"])
+        start_local = datetime.fromisoformat(campaign["start_at"]).astimezone(zone)
+        hour, minute = (int(part) for part in local_time.split(":"))
+        slots = []
+        for index in range(count):
+            day = start_local.date() + timedelta(days=index * interval_days)
+            local_slot = datetime.combine(day, time(hour=hour, minute=minute), tzinfo=zone)
+            if campaign["end_at"] and local_slot.astimezone(timezone.utc) > datetime.fromisoformat(campaign["end_at"]):
+                raise ValueError("The campaign end date is too early for the requested number of posts.")
+            slots.append({
+                "platform": campaign["platforms"][index % len(campaign["platforms"])],
+                "scheduled_at": local_slot.astimezone(timezone.utc).isoformat(timespec="seconds"),
+            })
+
+        generator = ChatService()
+        generated = []
+        batch_size = 3
+        references = campaign.get("reference_urls") or []
+        for offset in range(0, count, batch_size):
+            batch_slots = slots[offset:offset + batch_size]
+            target_lines = "\\n".join(
+                f"{i + 1}. platform={slot['platform']}; scheduled_at={slot['scheduled_at']}"
+                for i, slot in enumerate(batch_slots)
+            )
+            prompt = (
+                "You are Smart BethG's social campaign content planner. Return only a valid JSON array, "
+                "with exactly one object per requested slot. Each object must have string keys title, content "
+                "and array-of-strings hashtags. Do not wrap the JSON in markdown. Do not claim you read a "
+                "reference link unless its content is included in the prompt. Avoid invented statistics, "
+                "quotes, citations, and guarantees. Make every post distinct and suitable for its target platform. "
+                "Do not include a platform or schedule field; the server assigns those from the validated plan.\\n\\n"
+                f"Campaign objective: {campaign['objective']}\\n"
+                f"Target audience: {campaign.get('audience') or 'General audience'}\\n"
+                f"Tone/brand voice: {campaign.get('tone') or 'Clear and helpful'}\\n"
+                f"Content rules: {campaign.get('content_rules') or 'Be accurate, useful, original, and respectful.'}\\n"
+                f"Reference URLs supplied by the user (not fetched or verified here): {json.dumps(references)}\\n"
+                f"Slots:\\n{target_lines}\\n\\n"
+                "Keep each post concise (normally under 700 characters), use 0-8 relevant hashtags, and "
+                "make the post useful without unsupported factual claims."
+            )
+            result = generator.generate_task(user_id, prompt, selection=selection)
+            if not result.get("provider_configured"):
+                raise ValueError(result.get("error", "No AI provider is configured."))
+            if result.get("error"):
+                raise ValueError(result["error"])
+            raw = result["text"].strip()
+            if raw.startswith("```"):
+                raw = re.sub(r"^\\```(?:json)?\\s*|\\s*\\```$", "", raw, flags=re.I)
+            start_index, end_index = raw.find("["), raw.rfind("]")
+            if start_index < 0 or end_index <= start_index:
+                raise ValueError("The AI response was not a valid JSON array. No posts were saved; try again.")
+            try:
+                items = json.loads(raw[start_index:end_index + 1])
+            except json.JSONDecodeError as exc:
+                raise ValueError("The AI response contained invalid JSON. No posts were saved; try again.") from exc
+            if not isinstance(items, list) or len(items) != len(batch_slots):
+                raise ValueError("The AI returned the wrong number of posts. No posts were saved; try again.")
+            for item, slot in zip(items, batch_slots):
+                if not isinstance(item, dict):
+                    raise ValueError("The AI returned an invalid post object. No posts were saved; try again.")
+                title = item.get("title")
+                body = item.get("content")
+                hashtags = item.get("hashtags", [])
+                if not isinstance(title, str) or not title.strip() or len(title) > 200:
+                    raise ValueError("The AI returned an invalid post title. No posts were saved; try again.")
+                if not isinstance(body, str) or not body.strip() or len(body) > 20000:
+                    raise ValueError("The AI returned invalid post content. No posts were saved; try again.")
+                if not isinstance(hashtags, list) or len(hashtags) > 30 or any(not isinstance(tag, str) for tag in hashtags):
+                    raise ValueError("The AI returned invalid hashtags. No posts were saved; try again.")
+                generated.append({
+                    "platform": slot["platform"],
+                    "scheduled_at": slot["scheduled_at"],
+                    "title": title.strip(),
+                    "content": body.strip(),
+                    "hashtags": hashtags,
+                })
+        # Only persist after every batch passed validation, avoiding partial calendars.
+        return self.add_posts(user_id, campaign_id, generated)
 
     def approve_post(self, user_id, campaign_id, content_id):
         campaign = self.get(user_id, campaign_id)
