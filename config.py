@@ -2,9 +2,8 @@
 Smart BethG - Configuration
 
 Centralises environment-driven configuration so no module hardcodes a
-deployment location, secret, or storage path. Every setting here has a
-safe local-development default and can be overridden by an environment
-variable in any deployment target (Render, another host, or local).
+deployment location, secret, or storage path. Settings are environment-driven
+so the same application package can run locally or on any compatible host.
 """
 import os
 import secrets
@@ -35,7 +34,7 @@ def ensure_storage_dirs():
         os.makedirs(path, exist_ok=True)
 
 
-# SQLite only today; DATABASE_URL is a future migration boundary.
+# PostgreSQL is the production backend; SQLite is reserved for local development/tests.
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 
@@ -96,7 +95,7 @@ ALLOWED_ORIGINS = [
 REGISTRATION_OPEN = os.getenv("SMART_BETHG_REGISTRATION_OPEN", "false").lower() == "true"
 REGISTRATION_INVITE_CODE = os.getenv("SMART_BETHG_INVITE_CODE", "")
 
-# Per-process only; use a shared store before running multiple instances.
+# Database-backed rate limiting uses these limits across processes and replicas.
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_MAX", "10"))
 AUTH_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_WINDOW", "300"))
 
