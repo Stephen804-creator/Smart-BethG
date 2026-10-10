@@ -71,6 +71,11 @@ class SocialCampaignService:
         end = self._timestamp(end_at, "end_at") if end_at else None
         if end and end <= start:
             raise ValueError("end_at must be after start_at.")
+        if autonomy_mode == "auto_publish_after_campaign_approval":
+            if not end:
+                raise ValueError("Autonomous publishing requires an explicit campaign end date.")
+            if datetime.fromisoformat(end) - datetime.fromisoformat(start) > timedelta(days=90):
+                raise ValueError("Autonomous publishing is limited to a maximum 90-day authorization window.")
         if not isinstance(daily_post_limit, int) or isinstance(daily_post_limit, bool) or not 1 <= daily_post_limit <= 20:
             raise ValueError("daily_post_limit must be between 1 and 20.")
         if autonomy_mode not in self.AUTONOMY_MODES:
