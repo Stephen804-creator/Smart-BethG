@@ -19,7 +19,7 @@ TABLE_ORDER = [
     "files", "memory", "research", "evidence", "workflows", "artifacts",
     "social_content", "projects", "logs", "knowledge_chunks",
 ]
-EXCLUDED_TABLES = {"auth_rate_limit_events"}
+EXCLUDED_TABLES = {"auth_rate_limit_events", "auth_rate_limit_locks"}
 SAFE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
