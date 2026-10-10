@@ -37,3 +37,41 @@ jobs:
           SMART_BETHG_SECRET_KEY: ci-test-secret-key-not-for-production
           SMART_BETHG_STORAGE_ROOT: ${{ runner.temp }}/smart-bethg-storage
         run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: smartbethg
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: smartbethg_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smartbethg -d smartbethg_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SMART_BETHG_ENV: test
+      SMART_BETHG_SECRET_KEY: ci-test-secret-key-not-for-production
+      SMART_BETHG_STORAGE_ROOT: ${{ runner.temp }}/smart-bethg-postgres-storage
+      DATABASE_URL: postgresql://smartbethg:ci-only-password@localhost:5432/smartbethg_test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Compile Python files
+        run: python -m compileall -q .
+      - name: Run PostgreSQL integration tests
+        run: python -m unittest tests.test_postgres_integration -v
