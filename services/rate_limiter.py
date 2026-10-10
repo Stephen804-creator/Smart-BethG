@@ -31,8 +31,11 @@ def check_rate_limit(key: str, max_attempts=None, window_seconds=None) -> bool:
     conn = get_connection()
     try:
         if is_postgres:
-            # The UPSERT acquires a PostgreSQL row lock held until commit.
-            # Unlike an in-process mutex, it serializes requests across replicas.
+            # Explicit transaction-level advisory lock serializes the entire
+            # count-and-insert critical section across all PostgreSQL replicas.
+            # Keep the shared lock-row upsert for observability/cleanup, but do
+            # not rely on that upsert alone as the concurrency guarantee.
+            conn.execute("SELECT pg_advisory_xact_lock(hashtext(?))", (key_hash,))
             conn.execute(
                 "INSERT INTO auth_rate_limit_locks(key_hash, last_seen_epoch) VALUES (?, ?) "
                 "ON CONFLICT(key_hash) DO UPDATE SET last_seen_epoch=excluded.last_seen_epoch",
