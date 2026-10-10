@@ -83,6 +83,31 @@ class ToolService:
         workspace_root = resolve_workspace_root(user["id"], workspace)
         resource = f"workspace:{workspace}"
 
+        # Reject unsupported terminal programs before creating an approval.
+        # Raw Git argv bypasses the dedicated hardened GitTool wrapper, and
+        # host Python must never be offered in production without a sandboxed
+        # worker. These are capability gates, not approval decisions.
+        if action == "terminal.execute":
+            program = kwargs.get("program")
+            if program == "git":
+                return {
+                    "success": False,
+                    "status": "denied",
+                    "reason": "Use the dedicated git.read or git.write tool; raw Git commands are not permitted.",
+                }
+            if program == "python" and not config.ALLOW_DEV_PYTHON_EXECUTION:
+                return {
+                    "success": False,
+                    "status": "denied",
+                    "reason": "Host Python execution is disabled. Configure an isolated job runner before enabling terminal execution in production.",
+                }
+            if program != "python":
+                return {
+                    "success": False,
+                    "status": "denied",
+                    "reason": "This terminal program is not allowlisted.",
+                }
+
         context = build_security_context(user, workspace=workspace_root)
         request_id = str(uuid.uuid4())
         access_request = AccessRequest(
