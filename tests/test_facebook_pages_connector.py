@@ -19,6 +19,7 @@ class TestFacebookPagesPublisher(unittest.TestCase):
     @patch("connectors.facebook_pages.requests.post")
     def test_publishes_text_and_returns_provider_id(self, post):
         response = Mock()
+        response.status_code = 200
         response.json.return_value = {"id": "page_123_post_456"}
         response.raise_for_status.return_value = None
         post.return_value = response
@@ -44,6 +45,7 @@ class TestFacebookPagesPublisher(unittest.TestCase):
     @patch("connectors.facebook_pages.requests.post")
     def test_missing_provider_post_id_is_not_reported_as_success(self, post):
         response = Mock()
+        response.status_code = 200
         response.json.return_value = {"success": True}
         response.raise_for_status.return_value = None
         post.return_value = response
