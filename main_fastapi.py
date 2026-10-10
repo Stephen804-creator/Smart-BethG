@@ -2,6 +2,7 @@
 Smart BethG
 FastAPI Application Entry Point
 """
+import hmac
 import os
 import time
 
@@ -63,7 +64,7 @@ def create_app() -> FastAPI:
                 or not expected
                 or not isinstance(supplied, str)
                 or not supplied
-                or not __import__("hmac").compare_digest(expected, supplied)
+                or not hmac.compare_digest(expected, supplied)
             ):
                 from fastapi.responses import JSONResponse
                 return JSONResponse(
