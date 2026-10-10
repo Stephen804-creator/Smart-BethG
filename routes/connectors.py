@@ -251,18 +251,31 @@ def activate_social_account(connection_id: int, user=Depends(get_current_user)):
         ).fetchone()
         if not account:
             raise HTTPException(status_code=404, detail="Social account not found.")
-        try:
-            SocialConnectorRegistry().get_publisher(account["platform"])
-        except ConnectorNotConfigured as exc:
-            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        if account["platform"] != "facebook":
+            raise HTTPException(status_code=409, detail="This account activation flow is not implemented for the selected platform.")
         if not account["credential_ref"]:
             raise HTTPException(status_code=409, detail="Account has no credential reference.")
-        # Decrypt now so a bad key, revoked token, or invalid vault reference is
-        # detected before the account is marked active.
+        # Verify both decryption and the live Page token before activating the
+        # account. This does not enable publishing; the publisher adapter is a
+        # separate, explicit operator-controlled setting.
         try:
-            CredentialVault().resolve(account["credential_ref"], user["id"], "meta")
+            token = CredentialVault().resolve(account["credential_ref"], user["id"], "meta")
         except CredentialVaultError as exc:
             raise HTTPException(status_code=409, detail="Stored account credential is unavailable. Reconnect the account.") from exc
+        settings = _meta_config()
+        try:
+            verification = requests.get(
+                f"https://graph.facebook.com/{settings['api_version']}/{account['external_account_id']}",
+                params={"fields": "id,name"},
+                headers={"Authorization": "Bearer " + token},
+                timeout=15,
+            )
+            verification.raise_for_status()
+            verified_page = verification.json()
+        except Exception:
+            raise HTTPException(status_code=502, detail="Meta could not verify this Page token. Reconnect the account.")
+        if str(verified_page.get("id", "")) != str(account["external_account_id"]):
+            raise HTTPException(status_code=409, detail="Meta returned a different Page identity.")
         conn.execute(
             "UPDATE social_connections SET status='active', connected_at=CURRENT_TIMESTAMP, "
             "last_validated_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP "
