@@ -16,6 +16,13 @@ def _run(args, cwd, timeout=30):
     env["GIT_CONFIG_GLOBAL"] = os.devnull
     env["GIT_TERMINAL_PROMPT"] = "0"
     env["GIT_PAGER"] = "cat"
+    for key in list(env):
+        if key in {
+            "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS", "GIT_DIR", "GIT_WORK_TREE",
+            "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+            "GIT_COMMON_DIR",
+        } or key.startswith("GIT_CONFIG_KEY_") or key.startswith("GIT_CONFIG_VALUE_"):
+            env.pop(key, None)
 
     # Git filters can execute commands during add/checkout/status. Refuse any
     # repository that configures them instead of attempting to sandbox them.
@@ -94,7 +101,10 @@ class GitTool:
     def checkout(self, permit, cwd, branch, create=False):
         if permit.action != "git.write":
             raise PermissionError("Invalid permit.")
-        if not branch or not branch.strip():
-            raise ValueError("A branch name is required.")
+        if not branch or not branch.strip() or branch.startswith("-") or "\\x00" in branch:
+            raise ValueError("A valid branch name is required.")
+        checked = _run(["check-ref-format", "--branch", branch], cwd)
+        if checked["return_code"] != 0:
+            raise ValueError("Invalid Git branch name.")
         args = ["checkout", "-b", branch] if create else ["checkout", branch]
         return _run(args, cwd)
