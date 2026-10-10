@@ -99,9 +99,9 @@ def create_app() -> FastAPI:
         memory.router, knowledge.router,
     ]
     for router in api_routers:
-        if router is chat.router:
-            # Preserve the existing /api/chat UI endpoint while exposing the
-            # canonical versioned path as /api/v1/chat (not /api/v1/api/chat).
+        if router is chat.router or router is files.router:
+            # Preserve legacy /api/chat and /api/files endpoints while exposing
+            # canonical /api/v1/chat and /api/v1/files paths without double /api.
             app.include_router(router, prefix="/api")
             app.include_router(router, prefix=config.API_PREFIX)
         else:
