@@ -50,6 +50,18 @@ def create_app() -> FastAPI:
     register_error_handlers(app)
 
     @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+        if config.IS_PRODUCTION and config.SESSION_HTTPS_ONLY:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+    @app.middleware("http")
     async def log_requests(request: Request, call_next):
         start = time.monotonic()
         response = await call_next(request)
@@ -76,6 +88,7 @@ def create_app() -> FastAPI:
         session_cookie=config.SESSION_COOKIE_NAME,
         https_only=config.SESSION_HTTPS_ONLY,
         same_site="lax",
+        max_age=config.SESSION_MAX_AGE_SECONDS,
     )
 
     app.mount(
