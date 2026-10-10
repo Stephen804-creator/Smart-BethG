@@ -1,3 +1,4 @@
+import os
 import unittest
 import uuid
 
@@ -14,6 +15,10 @@ from services.auth_service import create_user
 from database import initialize_database
 
 
+@unittest.skipUnless(
+    os.getenv("SMART_BETHG_RUN_POSTGRES_TESTS") == "1",
+    "Requires the dedicated PostgreSQL integration-test job",
+)
 class TestPostgresCapabilityServices(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
