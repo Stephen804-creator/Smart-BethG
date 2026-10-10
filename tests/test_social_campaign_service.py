@@ -172,6 +172,40 @@ class TestSocialCampaignService(SmartBethGTestCase):
         self.assertEqual(post["status"], "approved")
         self.assertEqual(post["publish_status"], "awaiting_connection")
 
+    def test_campaign_resume_does_not_reapprove_an_edited_auto_post(self):
+        campaign = self.create_campaign(
+            autonomy_mode="auto_publish_after_campaign_approval",
+            auto_publish_authorized=True,
+        )
+        planned = self.service.add_posts(self.owner["id"], campaign["id"], [{
+            "platform": "facebook", "title": "Auto post", "content": "Original authorized content",
+            "scheduled_at": "2026-10-12T08:00:00+01:00",
+        }])
+        post_id = planned["posts"][0]["id"]
+        content_service = SocialContentService()
+        content_service.transition(self.owner["id"], post_id, "in_review")
+        content_service.update(self.owner["id"], post_id, {"content": "Edited content needs review"})
+        conn = __import__("database").get_connection()
+        try:
+            conn.execute(
+                "INSERT INTO social_connections(user_id, platform, external_account_id, display_name, "
+                "credential_ref, scopes_json, status, connected_at) "
+                "VALUES (?, 'facebook', 'page-auto-test', 'Test Page', 'vault:fake', '[]', 'active', CURRENT_TIMESTAMP)",
+                (self.owner["id"],),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        class ReadyRegistry:
+            def get_publisher(self, platform):
+                return object()
+        with patch("services.social_campaign_service.SocialConnectorRegistry", ReadyRegistry):
+            resumed = self.service.set_status(self.owner["id"], campaign["id"], "active")
+        post = next(item for item in resumed["posts"] if item["id"] == post_id)
+        self.assertEqual(post["status"], "draft")
+        self.assertEqual(post["publish_status"], "awaiting_approval")
+
     def test_campaign_posts_cannot_bypass_campaign_approval_route(self):
         campaign = self.create_campaign()
         planned = self.service.add_posts(self.owner["id"], campaign["id"], [{
