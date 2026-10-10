@@ -16,6 +16,11 @@ class TestPostgreSQLIntegration(unittest.TestCase):
     def setUpClass(cls):
         initialize_database()
 
+    def test_concurrent_app_startup_serializes_schema_migrations(self):
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(lambda _: initialize_database(), range(4)))
+        self.assertEqual(results, [None, None, None, None])
+
     def test_user_conversation_and_approval_round_trip(self):
         suffix = uuid.uuid4().hex[:12]
         user = create_user("pg-" + suffix, "test-password-123")
