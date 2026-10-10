@@ -134,6 +134,53 @@ class TestApprovalRouteExecution(SmartBethGTestCase):
         self.assertEqual(count.stdout.strip(), "1")
 
 
+    def test_rejected_operation_does_not_run(self):
+        csrf = self.client.get("/auth/csrf").json()["csrf_token"]
+        login = self.client.post(
+            "/auth/login",
+            headers={"X-CSRF-Token": csrf},
+            json={"username": "approval-route-admin", "password": "password123"},
+        )
+        self.assertEqual(login.status_code, 200, login.text)
+        csrf = self.client.get("/auth/csrf").json()["csrf_token"]
+
+        workspace = "rejected-approval-repo"
+        root = resolve_workspace_root(self.user["id"], workspace)
+        subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+        with open(os.path.join(root, "rejected.txt"), "w", encoding="utf-8") as handle:
+            handle.write("this must not be committed")
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+
+        pending = ToolService().execute(
+            {"id": self.user["id"], "role": "admin"},
+            "git.write",
+            workspace=workspace,
+            operation="commit",
+            message="must not execute after rejection",
+        )
+        self.assertEqual(pending["status"], "approval_required")
+
+        response = self.client.post(
+            f"/approvals/{pending['approval_id']}",
+            headers={"X-CSRF-Token": csrf},
+            json={"approved": False},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["approval"]["status"], "rejected")
+        self.assertIsNone(response.json()["execution"])
+        self.assertFalse(os.path.exists(os.path.join(root, ".git", "refs", "heads", "master")))
+        self.assertFalse(os.path.exists(os.path.join(root, ".git", "refs", "heads", "main")))
+
+        retry = self.client.post(
+            f"/approvals/{pending['approval_id']}",
+            headers={"X-CSRF-Token": csrf},
+            json={"approved": True},
+        )
+        self.assertEqual(retry.status_code, 409)
+
+
 if __name__ == "__main__":
     import unittest
     unittest.main()
