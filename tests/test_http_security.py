@@ -19,6 +19,13 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         response = client.get("/approvals")
         self.assertEqual(response.status_code, 401)
 
+    def test_chat_api_has_canonical_versioned_path(self):
+        client = TestClient(create_app())
+        canonical = client.get("/api/v1/chat/conversations")
+        old_wart = client.get("/api/v1/api/chat/conversations")
+        self.assertEqual(canonical.status_code, 401)
+        self.assertEqual(old_wart.status_code, 404)
+
     def test_registration_can_be_closed_by_operator(self):
         with patch.object(config, "REGISTRATION_OPEN", False):
             client = TestClient(create_app())
