@@ -25,6 +25,10 @@ class ArtifactService:
         "csv": (".csv", "text/csv; charset=utf-8"),
         "yaml": (".yaml", "text/plain; charset=utf-8"),
     }
+    SOURCE_TYPES = {
+        "user_created", "upload", "campaign", "mission", "research",
+        "provider_generation", "tool_execution", "export",
+    }
     BINARY_TYPES = {
         "image/png": (".png", "image/png"),
         "image/jpeg": (".jpg", "image/jpeg"),
@@ -37,7 +41,36 @@ class ArtifactService:
         "application/octet-stream": (".bin", "application/octet-stream"),
     }
 
-    def create(self, user_id, name, content, artifact_type="text", mission_id=None):
+    @classmethod
+    def _prepare_provenance(cls, source_type, source_id, provider, model, metadata):
+        source_type = (source_type or "user_created").strip().lower()
+        if source_type not in cls.SOURCE_TYPES:
+            raise ValueError("Unsupported artifact source type.")
+        source_id = None if source_id is None else str(source_id).strip()
+        if source_id is not None and (not source_id or len(source_id) > 160):
+            raise ValueError("Artifact source ID must be between 1 and 160 characters.")
+        provider = (provider or "").strip() or None
+        model = (model or "").strip() or None
+        if provider and len(provider) > 120:
+            raise ValueError("Artifact provider name is too long.")
+        if model and len(model) > 160:
+            raise ValueError("Artifact model name is too long.")
+        if metadata is None:
+            metadata = {}
+        if not isinstance(metadata, dict):
+            raise ValueError("Artifact metadata must be a JSON object.")
+        try:
+            metadata_json = json.dumps(metadata, ensure_ascii=False, separators=(",", ":"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Artifact metadata must contain JSON-compatible values.") from exc
+        if len(metadata_json.encode("utf-8")) > 16 * 1024:
+            raise ValueError("Artifact metadata exceeds the 16 KiB limit.")
+        return source_type, source_id, provider, model, metadata_json
+
+    def create(
+        self, user_id, name, content, artifact_type="text", mission_id=None, *,
+        source_type="user_created", source_id=None, provider=None, model=None, metadata=None,
+    ):
         name = (name or "").strip()
         if not name or len(name) > 160:
             raise ValueError("Artifact name must be between 1 and 160 characters.")
@@ -56,6 +89,9 @@ class ArtifactService:
                 raise ValueError("JSON artifacts must contain valid JSON.") from exc
         if mission_id is not None and not self._owns_mission(user_id, mission_id):
             raise ValueError("Mission not found for this user.")
+        if mission_id is not None and source_type == "user_created":
+            source_type, source_id = "mission", str(mission_id)
+        provenance = self._prepare_provenance(source_type, source_id, provider, model, metadata)
 
         extension, content_type = self.TYPES[artifact_type]
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)[:120] or "artifact"
@@ -68,9 +104,9 @@ class ArtifactService:
         try:
             cursor = conn.execute(
                 "INSERT INTO artifacts(mission_id, user_id, name, artifact_type, path, content_type, "
-                "size_bytes, checksum_sha256, status, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ready', CURRENT_TIMESTAMP)",
-                (mission_id, user_id, name, artifact_type, key, content_type, len(encoded), digest),
+                "size_bytes, checksum_sha256, source_type, source_id, provider, model, metadata_json, "
+                "status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', CURRENT_TIMESTAMP)",
+                (mission_id, user_id, name, artifact_type, key, content_type, len(encoded), digest, *provenance),
             )
             artifact_id = cursor.lastrowid
             conn.commit()
@@ -108,7 +144,10 @@ class ArtifactService:
         if not valid:
             raise ValueError("Binary content does not match its declared media type.")
 
-    def create_bytes(self, user_id, name, content, content_type, mission_id=None):
+    def create_bytes(
+        self, user_id, name, content, content_type, mission_id=None, *,
+        source_type="upload", source_id=None, provider=None, model=None, metadata=None,
+    ):
         """Store a bounded binary output (image, audio, video, PDF, or archive)."""
         name = (name or "").strip()
         if not name or len(name) > 160:
@@ -127,6 +166,7 @@ class ArtifactService:
         self._validate_binary_signature(encoded, safe_type)
         if mission_id is not None and not self._owns_mission(user_id, mission_id):
             raise ValueError("Mission not found for this user.")
+        provenance = self._prepare_provenance(source_type, source_id, provider, model, metadata)
 
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)[:120] or "artifact"
         if not safe_name.lower().endswith(extension):
@@ -140,9 +180,9 @@ class ArtifactService:
         try:
             cursor = conn.execute(
                 "INSERT INTO artifacts(mission_id, user_id, name, artifact_type, path, content_type, "
-                "size_bytes, checksum_sha256, status, updated_at) "
-                "VALUES (?, ?, ?, 'binary', ?, ?, ?, ?, 'ready', CURRENT_TIMESTAMP)",
-                (mission_id, user_id, safe_name, key, safe_type, len(encoded), digest),
+                "size_bytes, checksum_sha256, source_type, source_id, provider, model, metadata_json, "
+                "status, updated_at) VALUES (?, ?, ?, 'binary', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', CURRENT_TIMESTAMP)",
+                (mission_id, user_id, safe_name, key, safe_type, len(encoded), digest, *provenance),
             )
             artifact_id = cursor.lastrowid
             conn.commit()
@@ -200,11 +240,12 @@ class ArtifactService:
         try:
             rows = conn.execute(
                 "SELECT id, mission_id, user_id, name, artifact_type, content_type, size_bytes, "
-                "checksum_sha256, status, created_at, updated_at FROM artifacts "
+                "checksum_sha256, source_type, source_id, provider, model, metadata_json, "
+                "status, created_at, updated_at FROM artifacts "
                 "WHERE user_id=? ORDER BY created_at DESC, id DESC",
                 (user_id,),
             ).fetchall()
-            return [dict(row) for row in rows]
+            return [self._decode_provenance(row) for row in rows]
         finally:
             conn.close()
 
@@ -213,13 +254,25 @@ class ArtifactService:
         try:
             row = conn.execute(
                 "SELECT id, mission_id, user_id, name, artifact_type, path, content_type, size_bytes, "
-                "checksum_sha256, status, created_at, updated_at FROM artifacts "
+                "checksum_sha256, source_type, source_id, provider, model, metadata_json, "
+                "status, created_at, updated_at FROM artifacts "
                 "WHERE id=? AND user_id=? LIMIT 1",
                 (artifact_id, user_id),
             ).fetchone()
-            return dict(row) if row else None
+            return self._decode_provenance(row) if row else None
         finally:
             conn.close()
+
+    @staticmethod
+    def _decode_provenance(row):
+        item = dict(row)
+        raw = item.pop("metadata_json", None)
+        try:
+            metadata = json.loads(raw or "{}")
+            item["metadata"] = metadata if isinstance(metadata, dict) else {}
+        except (TypeError, json.JSONDecodeError):
+            item["metadata"] = {}
+        return item
 
     def read_content(self, user_id, artifact_id):
         record = self.get(user_id, artifact_id)
