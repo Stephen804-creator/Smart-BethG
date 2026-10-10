@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 import json
+from datetime import datetime, timezone
 
 from api.dependencies import get_current_user, get_artifact_service
 from services.social_campaign_service import SocialCampaignService
@@ -137,7 +138,7 @@ def export_campaign_artifact(
         raise HTTPException(status_code=404, detail="Campaign not found.")
     export_data = {
         "schema_version": 1,
-        "exported_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        "exported_at": datetime.now(timezone.utc).isoformat(),
         "campaign": {
             "id": campaign["id"],
             "name": campaign["name"],
