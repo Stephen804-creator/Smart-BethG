@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user
 from services.memory_service import MemoryService
 
-router = APIRouter(prefix="/api/memory", tags=["memory"])
+router = APIRouter(prefix="/memory", tags=["memory"])
 
 
 def get_memory_service():
@@ -12,9 +12,9 @@ def get_memory_service():
 
 
 class MemoryCreate(BaseModel):
-    content: str
-    scope: str = "user"
-    scope_ref: str | None = None
+    content: str = Field(min_length=1, max_length=10000)
+    scope: str = Field(default="user", min_length=1, max_length=40)
+    scope_ref: str | None = Field(default=None, max_length=200)
 
 
 @router.get("")
