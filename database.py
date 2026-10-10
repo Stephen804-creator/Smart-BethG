@@ -206,6 +206,12 @@ def _run_postgres_migrations(conn):
             continue
 
         sql = migration_path.read_text(encoding="utf-8")
+        # Strip full-line SQL comments before splitting statements; comments
+        # may contain semicolons that are not SQL statement delimiters.
+        sql = "\n".join(
+            line for line in sql.splitlines()
+            if not line.lstrip().startswith("--")
+        )
         statements = [statement.strip() for statement in sql.split(";") if statement.strip()]
         try:
             for statement in statements:
