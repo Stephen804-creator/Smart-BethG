@@ -44,7 +44,7 @@ class ResearchService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT id, user_id, mission_id, query, summary, source_urls, created_at "
+                "SELECT id, user_id, mission_id, topic AS query, summary, source_info AS source_urls, created_at "
                 "FROM research WHERE id=? AND user_id=? LIMIT 1",
                 (research_id, user_id),
             ).fetchone()
