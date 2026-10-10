@@ -92,12 +92,15 @@ class SocialPublisherWorker:
                     external_post_id=None, published_at=None):
         conn = get_connection()
         try:
-            conn.execute(
+            cursor = conn.execute(
                 "UPDATE social_publish_jobs SET status=?, error_code=?, error_message=?, "
                 "external_post_id=?, published_at=?, lease_until=NULL, updated_at=CURRENT_TIMESTAMP "
                 "WHERE id=? AND status='publishing'",
                 (status, error_code, error_message, external_post_id, published_at, job_id),
             )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                return False
             if status == "published":
                 row = conn.execute(
                     "SELECT content_id, user_id, external_post_id, published_at FROM social_publish_jobs WHERE id=?",
@@ -110,6 +113,7 @@ class SocialPublisherWorker:
                         (row["external_post_id"], row["published_at"], row["content_id"], row["user_id"]),
                     )
             conn.commit()
+            return True
         except Exception:
             conn.rollback()
             raise
@@ -170,8 +174,8 @@ class SocialPublisherWorker:
                     results.append({"job_id": job_id, "status": "indeterminate"})
                     continue
                 published_at = _utc_now()
-                self._update_job(job_id, "published", external_post_id=str(post_id), published_at=published_at)
-                results.append({"job_id": job_id, "status": "published"})
+                saved = self._update_job(job_id, "published", external_post_id=str(post_id), published_at=published_at)
+                results.append({"job_id": job_id, "status": "published" if saved else "indeterminate"})
             except Exception:
                 # Do not log tokens, provider response bodies, or post content.
                 logger.exception("Social publish job outcome unknown: job_id=%s platform=%s", job_id, job["platform"])
