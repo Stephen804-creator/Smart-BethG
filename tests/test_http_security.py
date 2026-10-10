@@ -1,10 +1,15 @@
+import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
 
 import config
+import database
 from main_fastapi import create_app
+from services.approval_service import ApprovalService
 
 
 class TestHttpSecurityBoundaries(unittest.TestCase):
@@ -43,6 +48,48 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
 
         self.assertEqual(allowed.headers.get("access-control-allow-origin"), "https://allowed.example")
         self.assertNotEqual(denied.headers.get("access-control-allow-origin"), "https://untrusted.example")
+
+
+class TestApprovalService(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.db_path_patch = patch.object(
+            database, "DB_PATH", os.path.join(self.temp_dir.name, "test.db")
+        )
+        self.db_path_patch.start()
+        database.initialize_database()
+        self.service = ApprovalService()
+
+    def tearDown(self):
+        self.db_path_patch.stop()
+        self.temp_dir.cleanup()
+
+    def test_pending_approval_is_persisted_and_scoped_to_owner(self):
+        created = self.service.create(10, "delete_file", "report.txt")
+        self.assertEqual(created["status"], "pending")
+        self.assertEqual(len(self.service.list_pending(10)), 1)
+        self.assertEqual(self.service.list_pending(11), [])
+
+    def test_other_user_cannot_decide_approval(self):
+        created = self.service.create(10, "send_email", "recipient@example.test")
+        with self.assertRaises(HTTPException) as caught:
+            self.service.decide(created["id"], 11, True)
+        self.assertEqual(caught.exception.status_code, 404)
+        self.assertFalse(self.service.is_approved(created["id"]))
+
+    def test_decision_is_persisted_and_cannot_be_changed(self):
+        created = self.service.create(10, "publish_post", "draft-1")
+        decided = self.service.decide(created["id"], 10, True)
+        self.assertEqual(decided["status"], "approved")
+        self.assertTrue(self.service.is_approved(created["id"]))
+        with self.assertRaises(HTTPException) as caught:
+            self.service.decide(created["id"], 10, False)
+        self.assertEqual(caught.exception.status_code, 409)
+
+    def test_missing_approval_returns_not_found(self):
+        with self.assertRaises(HTTPException) as caught:
+            self.service.decide("does-not-exist", 10, True)
+        self.assertEqual(caught.exception.status_code, 404)
 
 
 if __name__ == "__main__":
