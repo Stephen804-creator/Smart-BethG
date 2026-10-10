@@ -1,7 +1,7 @@
 # Smart BethG Architecture and Decisions
 
 **Status:** Active engineering decisions  
-**Last updated:** 2026-10-10 UTC  
+**Last updated:** 2026-10-10 20:10 UTC  
 **Decision history:** See `docs/DECISION_LOG.md`; the Git commit timestamp is the precise change record.
 
 ## Product goal and release posture
