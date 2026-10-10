@@ -42,17 +42,17 @@ def create_user(username, password):
 
     conn = get_connection()
     try:
-        existing = conn.execute(
-            "SELECT id FROM users WHERE username=? LIMIT 1", (username,)
-        ).fetchone()
-        if existing:
-            return None
         cur = conn.execute(
-            "INSERT INTO users(username, password_hash, status, role) VALUES (?, ?, 'active', 'user')",
+            "INSERT INTO users(username, password_hash, status, role) "
+            "VALUES (?, ?, 'active', 'user') ON CONFLICT(username) DO NOTHING RETURNING id",
             (username, generate_password_hash(password)),
         )
+        created = cur.fetchone()
+        if not created:
+            conn.rollback()
+            return None
         conn.commit()
-        return {"id": cur.lastrowid, "username": username, "role": "user"}
+        return {"id": created["id"], "username": username, "role": "user"}
     finally:
         conn.close()
 
@@ -69,7 +69,7 @@ def find_or_create_oauth_user(email, provider, subject, allow_create=False):
     that account will simply always fail, which is correct since they
     signed up via Google.
     """
-    email = (email or "").strip()
+    email = (email or "").strip().lower()
     if not email:
         raise ValueError("Google did not return an email address for this account.")
 
@@ -83,7 +83,8 @@ def find_or_create_oauth_user(email, provider, subject, allow_create=False):
             return {"id": row["id"], "username": row["username"], "role": row["role"]}
 
         row = conn.execute(
-            "SELECT id, username, status, role, oauth_provider, oauth_subject FROM users WHERE username=? LIMIT 1",
+            "SELECT id, username, status, role, oauth_provider, oauth_subject "
+            "FROM users WHERE LOWER(username)=? LIMIT 1",
             (email,),
         ).fetchone()
         if row:
@@ -94,11 +95,28 @@ def find_or_create_oauth_user(email, provider, subject, allow_create=False):
             ):
                 raise PermissionError("This account is already linked to a different external identity.")
             if not row["oauth_provider"]:
-                conn.execute(
-                    "UPDATE users SET oauth_provider=?, oauth_subject=? WHERE id=?",
+                linked = conn.execute(
+                    "UPDATE users SET oauth_provider=?, oauth_subject=? "
+                    "WHERE id=? AND oauth_provider IS NULL AND oauth_subject IS NULL",
                     (provider, subject, row["id"]),
                 )
-                conn.commit()
+                if linked.rowcount == 1:
+                    conn.commit()
+                    return {"id": row["id"], "username": row["username"], "role": row["role"]}
+                conn.rollback()
+                # Another callback may have linked this account concurrently.
+                refreshed = conn.execute(
+                    "SELECT id, username, status, role, oauth_provider, oauth_subject "
+                    "FROM users WHERE id=? LIMIT 1",
+                    (row["id"],),
+                ).fetchone()
+                if (
+                    not refreshed or refreshed["status"] != "active"
+                    or refreshed["oauth_provider"] != provider
+                    or refreshed["oauth_subject"] != subject
+                ):
+                    raise PermissionError("This account was linked to a different external identity.")
+                return {"id": refreshed["id"], "username": refreshed["username"], "role": refreshed["role"]}
             return {"id": row["id"], "username": row["username"], "role": row["role"]}
 
         if not allow_create:
@@ -107,10 +125,23 @@ def find_or_create_oauth_user(email, provider, subject, allow_create=False):
         placeholder_hash = generate_password_hash(secrets.token_urlsafe(32))
         cur = conn.execute(
             "INSERT INTO users(username, password_hash, status, role, oauth_provider, oauth_subject) "
-            "VALUES (?, ?, 'active', 'user', ?, ?)",
+            "VALUES (?, ?, 'active', 'user', ?, ?) "
+            "ON CONFLICT DO NOTHING RETURNING id",
             (email, placeholder_hash, provider, subject),
         )
-        conn.commit()
-        return {"id": cur.lastrowid, "username": email, "role": "user"}
+        created = cur.fetchone()
+        if created:
+            conn.commit()
+            return {"id": created["id"], "username": email, "role": "user"}
+        conn.rollback()
+        # A concurrent callback may have created or linked this identity.
+        row = conn.execute(
+            "SELECT id, username, status, role FROM users "
+            "WHERE oauth_provider=? AND oauth_subject=? AND status='active' LIMIT 1",
+            (provider, subject),
+        ).fetchone()
+        if row:
+            return {"id": row["id"], "username": row["username"], "role": row["role"]}
+        raise PermissionError("An account with this email already exists. Sign in and link the account first.")
     finally:
         conn.close()
