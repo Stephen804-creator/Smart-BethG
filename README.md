@@ -79,7 +79,9 @@ The command prompts for a username and password. Run it only in a trusted enviro
 
 ## SQLite to PostgreSQL migration
 
-The repository includes a fail-closed migration utility:
+PostgreSQL schema changes are applied through ordered SQL files in `migrations/postgresql/`, tracked in `schema_migrations`. The initial baseline migration is idempotent to support a controlled adoption of the previous initializer; future changes must be added as new numbered migrations. CI verifies the baseline on a fresh PostgreSQL service, but upgrades from real prior production schemas still require rehearsal.
+
+The repository also includes a fail-closed SQLite-to-PostgreSQL data migration utility:
 
 ```bash
 DATABASE_URL="postgresql://..." python scripts/migrate_sqlite_to_postgres.py /path/to/smart_bethg.db --dry-run
@@ -100,7 +102,7 @@ A passing CI run covers only the tests that ran. It is not a penetration test, l
 
 ## Current limitations and launch gates
 
-See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). Current open items include a versioned PostgreSQL migration system and broader PostgreSQL regression coverage; shared object storage for multiple instances; a durable isolated job runner; a finished user-facing workspace for the capability APIs; session revocation and password recovery; account data export/deletion; CSP/CSRF adversarial verification; independent tool-security review; legal review; monitoring/load tests; and backup/restore drills. The approval execution path, database-backed rate limiting, per-user/global usage budgets, dependency audit, secret scan, and core PostgreSQL smoke tests have implementation and CI coverage, but still require deeper production validation.
+See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). Current open items include broader PostgreSQL regression coverage and rehearsed upgrades from prior schemas; shared object storage for multiple instances; a durable isolated job runner; a finished user-facing workspace for the capability APIs; password recovery and account-management flows; account data export/deletion; CSP/CSRF adversarial verification; independent tool-security review; legal review; monitoring/load tests; and backup/restore drills. Server-side session-version checks now invalidate copied signed cookies after logout, with regression tests; confirm the current CI run before merging. The approval execution path, database-backed rate limiting, per-user/global usage budgets, dependency audit, secret scan, and core PostgreSQL smoke tests have implementation and CI coverage, but still require deeper production validation.
 
 ## Security reporting
 
