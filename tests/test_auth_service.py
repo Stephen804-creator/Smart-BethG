@@ -63,6 +63,10 @@ class TestAuthService(SmartBethGTestCase):
         # Password login must still work after linking.
         self.assertIsNotNone(authenticate_user("person@gmail.com", "password123"))
 
+    def test_oauth_creation_is_blocked_when_registration_is_closed(self):
+        with self.assertRaises(PermissionError):
+            find_or_create_oauth_user("new-person@example.test", "google", "sub-closed")
+
     def test_oauth_missing_email_raises(self):
         with self.assertRaises(ValueError):
             find_or_create_oauth_user("", "google", "sub-3", allow_create=True)
