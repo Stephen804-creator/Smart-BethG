@@ -38,3 +38,8 @@ Draft Terms of Service and Privacy Policy now, during development, and obtain qu
 ## 2026-10-10 — Documentation timestamps
 **Status:** Active  
 Architecture decisions, audit reports, migration plans, release gates, and legal drafts must carry a date/last-updated field. Changelog entries should include dates and link to the relevant commits or PR. Git commit timestamps are the precise source of truth; never invent a correction history after the fact.
+
+
+## 2026-10-10 — Logout invalidates previously copied sessions
+**Status:** Implemented on review branch; CI verification pending  
+The signed cookie is bound to a server-side session version. Logout increments the user's version and therefore revokes all sessions issued with the previous version, across devices and replicas. This deliberately favors security over keeping other devices logged in. A stale cookie must be rejected before the route returns user data. The regression tests and current-head CI run are the verification gate.
