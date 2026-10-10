@@ -2,6 +2,7 @@ import os
 from tests.base import SmartBethGTestCase
 from services.auth_service import create_user
 from services.artifact_service import ArtifactService
+from services.artifact_storage import LocalArtifactStorage
 import config
 
 
@@ -81,6 +82,19 @@ class TestArtifactService(SmartBethGTestCase):
         )
         with self.assertRaisesRegex(ValueError, "download"):
             self.service.read_content(self.owner["id"], artifact["id"])
+
+    def test_local_storage_rejects_owner_path_traversal(self):
+        storage = LocalArtifactStorage(config.STORAGE_DIRS["artifacts"])
+        with self.assertRaises(ValueError):
+            storage.put("../2/secret.txt", b"private")
+
+    def test_local_storage_rejects_symlinked_owner_directory(self):
+        root = config.STORAGE_DIRS["artifacts"]
+        os.makedirs(os.path.join(root, "2"), exist_ok=True)
+        os.symlink(os.path.join(root, "2"), os.path.join(root, "1"))
+        storage = LocalArtifactStorage(root)
+        with self.assertRaisesRegex(ValueError, "symlink"):
+            storage.put("1/secret.txt", b"private")
 
     def test_artifact_content_limit_is_enforced(self):
         with self.assertRaises(ValueError):
