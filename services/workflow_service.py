@@ -12,12 +12,15 @@ class WorkflowService:
         if not name or len(name) > 120:
             raise ValueError("Workflow name must be between 1 and 120 characters.")
         steps = self.validate_steps(steps or [], require_nonempty=False)
+        definition_json = json.dumps(steps, ensure_ascii=False)
+        if len(definition_json) > 100000:
+            raise ValueError("Workflow definition exceeds the 100000-character limit.")
         conn = get_connection()
         try:
             cursor = conn.execute(
                 "INSERT INTO workflows(user_id, name, description, definition_json, version, status) "
                 "VALUES (?, ?, ?, ?, 1, 'draft')",
-                (user_id, name, description, json.dumps(steps, ensure_ascii=False)),
+                (user_id, name, description, definition_json),
             )
             workflow_id = cursor.lastrowid
             conn.commit()
@@ -60,12 +63,15 @@ class WorkflowService:
         if not name or len(name) > 120:
             raise ValueError("Workflow name must be between 1 and 120 characters.")
         steps = self.validate_steps(steps, require_nonempty=False)
+        definition_json = json.dumps(steps, ensure_ascii=False)
+        if len(definition_json) > 100000:
+            raise ValueError("Workflow definition exceeds the 100000-character limit.")
         conn = get_connection()
         try:
             cursor = conn.execute(
                 "UPDATE workflows SET name=?, description=?, definition_json=?, version=version+1, "
                 "status='draft', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND version=?",
-                (name, description, json.dumps(steps, ensure_ascii=False), workflow_id, user_id, current["version"]),
+                (name, description, definition_json, workflow_id, user_id, current["version"]),
             )
             if cursor.rowcount != 1:
                 conn.rollback()
