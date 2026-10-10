@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 from services.health_service import check_database, check_providers, check_background_worker
 
@@ -16,7 +17,7 @@ def health():
     """
     db = check_database()
 
-    return {
+    payload = {
         "status": "ok" if db["status"] == "ok" else "degraded",
         "service": "Smart BethG",
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -26,3 +27,4 @@ def health():
             "background_worker": check_background_worker(),
         },
     }
+    return JSONResponse(status_code=200 if db["status"] == "ok" else 503, content=payload)
