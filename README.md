@@ -98,7 +98,7 @@ The Terms of Service and Privacy Policy under `docs/` are **drafts, not final or
 
 ## Files, artifacts, and social automation
 
-The current feature branch includes the first Artifact Library UI and API for text/code outputs plus bounded binary artifacts (images, audio/video, PDF, ZIP, and generic files). It verifies SHA-256 on reads and supports local development storage or an S3-compatible artifact backend. Binary uploads are currently limited to 25 MiB; large media streaming, direct persistence from every generation provider, unified shared storage for uploads/workspaces, quotas, and restore-tested object storage remain open.
+The current feature branch includes the first Artifact Library UI and API for text/code outputs plus bounded binary artifacts (images, audio/video, PDF, ZIP, and generic files). It verifies SHA-256 on reads, records source/provider/model provenance and bounded metadata, and supports local development storage or an S3-compatible artifact backend. Binary uploads are currently limited to 25 MiB; large media streaming, direct persistence from every generation provider, unified shared storage for uploads/workspaces, quotas, and restore-tested object storage remain open.
 
 - [Stage 3 files and artifacts acceptance record](docs/STAGE3_FILES_AND_ARTIFACTS_ACCEPTANCE_2026-10-10.md)
 - [Artifact storage and migration runbook](docs/ARTIFACT_STORAGE_RUNBOOK_2026-10-10.md)
