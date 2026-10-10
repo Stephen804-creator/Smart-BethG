@@ -57,7 +57,8 @@ def read_artifact(artifact_id: int, user=Depends(get_current_user), service=Depe
                     "text": ".txt", "markdown": ".md", "json": ".json",
                     "python": ".py", "javascript": ".js", "html": ".html",
                     "csv": ".csv", "yaml": ".yaml",
-                }.get(record.get("artifact_type"), ".txt")
+                }.get(record.get("artifact_type"), ".txt"),
+                safe="",
             ),
             "X-Content-Type-Options": "nosniff",
             "Cache-Control": "private, no-store",
