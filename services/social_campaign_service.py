@@ -242,10 +242,16 @@ class SocialCampaignService:
     @staticmethod
     def _decode(row):
         item = dict(row)
-        for key in ("platforms_json", "cadence_json"):
+        for key in ("platforms_json", "cadence_json", "authorization_scope_json"):
             raw = item.pop(key, None)
+            target = {
+                "platforms_json": "platforms",
+                "cadence_json": "cadence",
+                "authorization_scope_json": "authorization_scope",
+            }[key]
+            fallback = "[]" if key == "platforms_json" else "{}"
             try:
-                item["platforms" if key == "platforms_json" else "cadence"] = json.loads(raw or ("[]" if key == "platforms_json" else "{}"))
+                item[target] = json.loads(raw or fallback) if raw is not None else (None if key == "authorization_scope_json" else json.loads(fallback))
             except (TypeError, json.JSONDecodeError):
-                item["platforms" if key == "platforms_json" else "cadence"] = [] if key == "platforms_json" else {}
+                item[target] = [] if key == "platforms_json" else (None if key == "authorization_scope_json" else {})
         return item
