@@ -49,15 +49,15 @@ MODEL_CATALOG = {
         ],
     },
     "openrouter": {
-        "label": "OpenRouter (free, open-weight)",
+        "label": "OpenRouter (free router)",
         "models": [
             # OpenRouter's named free models change on the order of weeks
             # (tracked in their own public changelog). "openrouter/free" is
             # their own auto-router that always resolves to something
             # currently free, which is why it's used for all three tiers
             # here rather than three separate named models that could each
-            # 404 independently. A user who wants a specific named model
-            # can still type "openrouter:<exact-id>" directly.
+            # 404 independently. Named models must be added to the reviewed
+            # catalog before the UI will allow selecting them.
             {"id": "openrouter/free", "label": "Auto (free, fast)", "tier": "fast", "pricing_usd_per_million": {"input": 0, "output": 0}},
             {"id": "openrouter/free", "label": "Auto (free, balanced)", "tier": "balanced", "pricing_usd_per_million": {"input": 0, "output": 0}},
             {"id": "openrouter/free", "label": "Auto (free, capable)", "tier": "capable", "pricing_usd_per_million": {"input": 0, "output": 0}},
