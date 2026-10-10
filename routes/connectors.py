@@ -5,7 +5,6 @@ import logging
 import os
 import re
 import secrets
-from datetime import datetime, timezone
 from urllib.parse import urlencode, urlsplit
 
 import requests
@@ -194,7 +193,7 @@ def finish_meta_oauth(request: Request, user=Depends(get_current_user)):
         eligible = [
             page for page in pages
             if page.get("id") and page.get("access_token")
-            and any(task in {"CREATE_CONTENT", "MANAGE", "ADMINISTER"} for task in page.get("tasks", []))
+            and any(task in {"CREATE_CONTENT", "MANAGE", "ADMINISTER"} for task in (page.get("tasks") or []))
         ]
         if not eligible:
             return RedirectResponse("/social?meta=no_pages", status_code=303)
@@ -236,7 +235,7 @@ def finish_meta_oauth(request: Request, user=Depends(get_current_user)):
         for old_reference in old_refs:
             try:
                 vault.revoke(old_reference, user["id"], "meta")
-            except CredentialVaultError:
+            except Exception:
                 logger.warning("Could not revoke replaced Meta credential for user_id=%s", user["id"])
         return RedirectResponse(f"/social?meta=pending&accounts={stored}", status_code=303)
     except CredentialVaultError:
