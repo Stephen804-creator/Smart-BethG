@@ -26,7 +26,7 @@ class SocialConnectorInfo:
 class SocialPublisher(Protocol):
     info: SocialConnectorInfo
 
-    def publish(self, *, account_ref: str, content: dict[str, Any], idempotency_key: str) -> dict[str, str]:
+    def publish(self, *, account: dict[str, Any], content: dict[str, Any], idempotency_key: str) -> dict[str, str]:
         """Publish one post and return a provider post ID and canonical URL."""
         ...
 
@@ -83,7 +83,33 @@ class SocialConnectorRegistry:
     )
 
     def __init__(self, adapters=None):
-        self._adapters = dict(adapters or {})
+        if adapters is not None:
+            self._adapters = dict(adapters)
+        else:
+            self._adapters = self._load_configured_adapters()
+
+    @staticmethod
+    def _load_configured_adapters():
+        import os
+        adapters = {}
+        # Publishing is opt-in only after the operator has completed provider
+        # app setup/review and configured the token-encryption key.
+        enabled = os.getenv("SMART_BETHG_META_PUBLISHING_ENABLED", "").strip().lower() == "true"
+        required = (
+            os.getenv("SMART_BETHG_META_APP_ID", "").strip(),
+            os.getenv("SMART_BETHG_META_APP_SECRET", "").strip(),
+            os.getenv("SMART_BETHG_META_REDIRECT_URI", "").strip(),
+            os.getenv("SMART_BETHG_TOKEN_ENCRYPTION_KEY", "").strip(),
+        )
+        if enabled and all(required):
+            try:
+                from connectors.facebook_pages import FacebookPagesPublisher
+                adapters["facebook"] = FacebookPagesPublisher()
+            except Exception:
+                # Never log configuration values or tokens; an absent adapter
+                # is surfaced as not-ready and the worker fails closed.
+                adapters.pop("facebook", None)
+        return adapters
 
     def catalog(self):
         result = []
