@@ -1,6 +1,7 @@
 from tests.base import SmartBethGTestCase
 from services.auth_service import create_user
 from services.social_campaign_service import SocialCampaignService
+from unittest.mock import patch
 
 
 class TestSocialCampaignService(SmartBethGTestCase):
@@ -78,6 +79,52 @@ class TestSocialCampaignService(SmartBethGTestCase):
         ]
         with self.assertRaisesRegex(ValueError, "daily post limit"):
             self.service.add_posts(self.owner["id"], campaign["id"], posts)
+        import database
+        conn = database.get_connection()
+        try:
+            count = conn.execute(
+                "SELECT COUNT(*) AS n FROM social_content WHERE user_id=? AND campaign_id=?",
+                (self.owner["id"], campaign["id"]),
+            ).fetchone()["n"]
+            self.assertEqual(count, 0)
+        finally:
+            conn.close()
+
+    def test_generate_plan_batches_ai_output_and_saves_only_after_validation(self):
+        campaign = self.create_campaign(daily_post_limit=2)
+        class FakeGenerator:
+            def __init__(self):
+                self.calls = 0
+            def generate_task(self, user_id, prompt, selection=None):
+                self.calls += 1
+                count = 3 if self.calls == 1 else 1
+                import json
+                return {
+                    "provider_configured": True,
+                    "text": json.dumps([
+                        {"title": f"Post {self.calls}-{i}", "content": f"Useful post {self.calls}-{i}",
+                         "hashtags": ["education"]}
+                        for i in range(count)
+                    ]),
+                }
+        with patch("services.social_campaign_service.ChatService", FakeGenerator):
+            result = self.service.generate_plan(self.owner["id"], campaign["id"], count=4)
+        self.assertEqual(len(result["posts"]), 4)
+        self.assertEqual(len({post["scheduled_at"] for post in result["posts"]}), 4)
+
+    def test_invalid_ai_output_does_not_create_partial_campaign_posts(self):
+        campaign = self.create_campaign()
+        class FakeGenerator:
+            def __init__(self):
+                self.calls = 0
+            def generate_task(self, user_id, prompt, selection=None):
+                self.calls += 1
+                if self.calls == 1:
+                    return {"provider_configured": True, "text": '[{"title":"A","content":"A","hashtags":[]},{"title":"B","content":"B","hashtags":[]},{"title":"C","content":"C","hashtags":[]}]'}
+                return {"provider_configured": True, "text": "not json"}
+        with patch("services.social_campaign_service.ChatService", FakeGenerator):
+            with self.assertRaisesRegex(ValueError, "valid JSON array"):
+                self.service.generate_plan(self.owner["id"], campaign["id"], count=4)
         import database
         conn = database.get_connection()
         try:
