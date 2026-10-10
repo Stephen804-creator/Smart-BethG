@@ -100,7 +100,7 @@ A passing CI run covers only the tests that ran. It is not a penetration test, l
 
 ## Current limitations and launch gates
 
-See [the dated repository audit](docs/REPOSITORY_AUDIT_2026-10-10.md). Key items include the full PostgreSQL regression suite, approval execution end-to-end coverage, shared storage for multiple instances, a real isolated job runner, durable missions/workflows/artifacts/social-content vertical slices, per-user and global provider-spend budgets, CSRF protections, dependency/secret scanning, password reset/account recovery, legal review, and backup/restore verification.
+See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). Current open items include a versioned PostgreSQL migration system and broader PostgreSQL regression coverage; shared object storage for multiple instances; a durable isolated job runner; a finished user-facing workspace for the capability APIs; session revocation and password recovery; account data export/deletion; CSP/CSRF adversarial verification; independent tool-security review; legal review; monitoring/load tests; and backup/restore drills. The approval execution path, database-backed rate limiting, per-user/global usage budgets, dependency audit, secret scan, and core PostgreSQL smoke tests have implementation and CI coverage, but still require deeper production validation.
 
 ## Security reporting
 
