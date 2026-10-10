@@ -1,43 +1,87 @@
 """
-Minimal in-memory rate limiter.
+Shared, database-backed authentication rate limiter.
 
-Scope and honest limitations:
-- Per-process only. If you run more than one instance/replica behind a
-  load balancer, each instance tracks its own counters independently -
-  this will NOT correctly rate-limit an attacker spread across
-  instances. Replace with a shared store (e.g. Redis) before scaling
-  horizontally.
-- Counters are never evicted proactively; a background sweep trims old
-  entries on each call so memory stays bounded for realistic traffic,
-  but this is not built for high request volume.
+PostgreSQL is the production backend, so all application replicas share the
+same counters. PostgreSQL transaction-scoped advisory locks serialize updates
+for one hashed key; SQLite uses BEGIN IMMEDIATE for local development/tests.
+No client IP or raw limiter key is persisted, only a SHA-256 digest.
 """
+import hashlib
 import time
-import threading
 
 import config
+from database import get_connection
 
-_lock = threading.Lock()
-_hits: dict[str, list[float]] = {}
+_cleanup_counter = 0
 
 
-def check_rate_limit(key: str) -> bool:
-    """
-    Record a hit for `key` (e.g. "login:203.0.113.4") and return True if
-    the caller is still within the allowed rate, False if they have
-    exceeded it and should be rejected.
-    """
-    now = time.monotonic()
-    window = config.AUTH_RATE_LIMIT_WINDOW_SECONDS
-    limit = config.AUTH_RATE_LIMIT_MAX_ATTEMPTS
+def check_rate_limit(key: str, max_attempts=None, window_seconds=None) -> bool:
+    """Record one attempt and return whether the key remains under its limit."""
+    global _cleanup_counter
+    key_hash = hashlib.sha256(str(key).encode("utf-8")).hexdigest()
+    now = time.time()
+    window = int(window_seconds or config.AUTH_RATE_LIMIT_WINDOW_SECONDS)
+    limit = int(max_attempts or config.AUTH_RATE_LIMIT_MAX_ATTEMPTS)
+    if limit < 1 or window < 1:
+        raise ValueError("Rate-limit attempts and window must be positive.")
+    cutoff = now - window
+    database_url = (config.DATABASE_URL or "").strip()
+    is_postgres = database_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://"))
 
-    with _lock:
-        timestamps = _hits.setdefault(key, [])
-        cutoff = now - window
-        while timestamps and timestamps[0] < cutoff:
-            timestamps.pop(0)
+    conn = get_connection()
+    try:
+        if is_postgres:
+            # Explicit transaction-level advisory lock serializes the entire
+            # count-and-insert critical section across all PostgreSQL replicas.
+            # Keep the shared lock-row upsert for observability/cleanup, but do
+            # not rely on that upsert alone as the concurrency guarantee.
+            conn.execute("SELECT pg_advisory_xact_lock(hashtext(?))", (key_hash,))
+            conn.execute(
+                "INSERT INTO auth_rate_limit_locks(key_hash, last_seen_epoch) VALUES (?, ?) "
+                "ON CONFLICT(key_hash) DO UPDATE SET last_seen_epoch=excluded.last_seen_epoch",
+                (key_hash, now),
+            )
+        else:
+            # Serialize read-count-insert on the local SQLite database.
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO auth_rate_limit_locks(key_hash, last_seen_epoch) VALUES (?, ?) "
+                "ON CONFLICT(key_hash) DO UPDATE SET last_seen_epoch=excluded.last_seen_epoch",
+                (key_hash, now),
+            )
 
-        if len(timestamps) >= limit:
-            return False
+        conn.execute(
+            "DELETE FROM auth_rate_limit_events WHERE key_hash=? AND hit_epoch < ?",
+            (key_hash, cutoff),
+        )
+        row = conn.execute(
+            "SELECT COUNT(*) AS hits FROM auth_rate_limit_events WHERE key_hash=? AND hit_epoch >= ?",
+            (key_hash, cutoff),
+        ).fetchone()
+        allowed = int(row["hits"] or 0) < limit
+        if allowed:
+            conn.execute(
+                "INSERT INTO auth_rate_limit_events(key_hash, hit_epoch) VALUES (?, ?)",
+                (key_hash, now),
+            )
 
-        timestamps.append(now)
-        return True
+        _cleanup_counter += 1
+        if _cleanup_counter % 100 == 0:
+            stale_before = now - max(window * 2, 600)
+            conn.execute(
+                "DELETE FROM auth_rate_limit_events WHERE hit_epoch < ?",
+                (stale_before,),
+            )
+            conn.execute(
+                "DELETE FROM auth_rate_limit_locks WHERE last_seen_epoch < ? "
+                "AND NOT EXISTS (SELECT 1 FROM auth_rate_limit_events e "
+                "WHERE e.key_hash=auth_rate_limit_locks.key_hash)",
+                (stale_before,),
+            )
+        conn.commit()
+        return allowed
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()

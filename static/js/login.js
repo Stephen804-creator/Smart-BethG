@@ -7,6 +7,14 @@
   const inviteCodeGroup = document.getElementById("inviteCodeGroup");
   let mode = "login";
 
+  async function getCsrfToken() {
+    const res = await fetch("/auth/csrf", { credentials: "same-origin", cache: "no-store" });
+    if (!res.ok) throw new Error("Could not obtain CSRF token.");
+    const data = await res.json();
+    if (!data.csrf_token) throw new Error("CSRF token missing.");
+    return data.csrf_token;
+  }
+
   function setMode(next) {
     mode = next;
     if (mode === "login") {
@@ -28,6 +36,19 @@
     setMode(mode === "login" ? "register" : "login");
   });
 
+  const toggleBtn = document.getElementById("togglePassword");
+  const passwordInput = document.getElementById("password");
+  if (toggleBtn && passwordInput) {
+    toggleBtn.addEventListener("click", () => {
+      const showing = passwordInput.type === "text";
+      passwordInput.type = showing ? "password" : "text";
+      toggleBtn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+      toggleBtn.innerHTML = showing
+        ? '<i class="fa-solid fa-eye" aria-hidden="true"></i>'
+        : '<i class="fa-solid fa-eye-slash" aria-hidden="true"></i>';
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     errorEl.textContent = "";
@@ -36,16 +57,18 @@
 
     submitBtn.disabled = true;
     try {
+      const csrfToken = await getCsrfToken();
       if (mode === "register") {
         const inviteCode = form.inviteCode.value.trim();
         const res = await fetch("/auth/register", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+          credentials: "same-origin",
           body: JSON.stringify({ username, password, invite_code: inviteCode || null }),
         });
         const data = await res.json();
         if (!res.ok) {
-          errorEl.textContent = data.detail || "Could not create account.";
+          errorEl.textContent = (data.error && data.error.message) || data.detail || "Could not create account.";
           return;
         }
       }
@@ -53,12 +76,12 @@
       const loginRes = await fetch("/auth/login", {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
         body: JSON.stringify({ username, password }),
       });
       const loginData = await loginRes.json();
       if (!loginRes.ok || !loginData.authenticated) {
-        errorEl.textContent = loginData.detail || loginData.error || "Invalid username or password.";
+        errorEl.textContent = (loginData.error && loginData.error.message) || loginData.detail || loginData.error || "Invalid username or password.";
         return;
       }
       window.location.href = "/";
@@ -70,4 +93,14 @@
   });
 
   setMode("login");
+
+  fetch("/auth/config")
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.google_oauth_enabled) {
+        document.getElementById("googleAuthDivider").style.display = "flex";
+        document.getElementById("googleAuthButton").style.display = "flex";
+      }
+    })
+    .catch(() => {});
 })();

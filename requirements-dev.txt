@@ -1,0 +1,5 @@
+# Optional - only needed if you prefer pytest's runner/output over the
+# standard library's unittest. The test suite itself uses unittest and
+# runs fine with zero extra dependencies via:
+#   python -m unittest discover -s tests -p "test_*.py"
+pytest>=9.0.3,<10.0

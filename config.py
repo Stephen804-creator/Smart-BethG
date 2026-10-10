@@ -2,25 +2,23 @@
 Smart BethG - Configuration
 
 Centralises environment-driven configuration so no module hardcodes a
-deployment location, secret, or storage path. Every setting here has a
-safe local-development default and can be overridden by an environment
-variable in any deployment target (Render, another host, or local).
+deployment location, secret, or storage path. Settings are environment-driven
+so the same application package can run locally or on any compatible host.
 """
 import os
 import secrets
 import warnings
 
-# ---------------------------------------------------------------------------
-# Environment
-# ---------------------------------------------------------------------------
-ENVIRONMENT = os.getenv("SMART_BETHG_ENV", "development")
-IS_PRODUCTION = ENVIRONMENT.lower() == "production"
+ENVIRONMENT = os.getenv("SMART_BETHG_ENV", "development").strip().lower()
+if ENVIRONMENT not in {"development", "test", "production"}:
+    raise RuntimeError(
+        "SMART_BETHG_ENV must be one of: development, test, production. "
+        "Refusing to silently treat an unknown environment as development."
+    )
+IS_PRODUCTION = ENVIRONMENT == "production"
+API_PREFIX = "/api/v1"
 
-# ---------------------------------------------------------------------------
-# Storage root (all persistent files/directories live under here)
-# ---------------------------------------------------------------------------
 STORAGE_ROOT = os.getenv("SMART_BETHG_STORAGE_ROOT", "./storage")
-
 STORAGE_DIRS = {
     "uploads": os.path.join(STORAGE_ROOT, "uploads"),
     "memory": os.path.join(STORAGE_ROOT, "memory"),
@@ -41,13 +39,7 @@ def ensure_storage_dirs():
         os.makedirs(path, exist_ok=True)
 
 
-# ---------------------------------------------------------------------------
-# Database
-# ---------------------------------------------------------------------------
-# DATABASE_URL is retained as a configuration boundary for a future
-# database-engine migration. Only sqlite:/// and plain file paths are
-# currently supported; anything else fails fast rather than being passed
-# to sqlite3.connect() silently.
+# PostgreSQL is the production backend; SQLite is reserved for local development/tests.
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 
@@ -56,18 +48,15 @@ def resolve_sqlite_path() -> str:
     if DATABASE_URL:
         if DATABASE_URL.startswith("sqlite:///"):
             return DATABASE_URL.replace("sqlite:///", "", 1)
-        raise ValueError(
-            f"Unsupported DATABASE_URL scheme for V1 (SQLite only): {DATABASE_URL!r}"
-        )
+        if DATABASE_URL.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
+            return os.path.join(STORAGE_DIRS["db"], "smart_bethg.db")
+        raise ValueError(f"Unsupported DATABASE_URL scheme: {DATABASE_URL!r}")
     legacy = os.getenv("SMART_BETHG_DB")
     if legacy:
         return legacy
     return os.path.join(STORAGE_DIRS["db"], "smart_bethg.db")
 
 
-# ---------------------------------------------------------------------------
-# Sessions / security
-# ---------------------------------------------------------------------------
 _SECRET_KEY = os.getenv("SMART_BETHG_SECRET_KEY", "")
 if not _SECRET_KEY:
     if IS_PRODUCTION:
@@ -84,43 +73,92 @@ if not _SECRET_KEY:
 SECRET_KEY = _SECRET_KEY
 
 SESSION_COOKIE_NAME = os.getenv("SMART_BETHG_SESSION_COOKIE", "smart_bethg_session")
-SESSION_HTTPS_ONLY = os.getenv("SMART_BETHG_SESSION_HTTPS_ONLY", "true" if IS_PRODUCTION else "false").lower() == "true"
+SESSION_HTTPS_ONLY = os.getenv(
+    "SMART_BETHG_SESSION_HTTPS_ONLY", "true" if IS_PRODUCTION else "false"
+).lower() == "true"
 
-# ---------------------------------------------------------------------------
-# AI providers (no key hardcoded; capability is honestly absent without one)
-# ---------------------------------------------------------------------------
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-20241022")
-
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
-# GOOGLE_API_KEY is the primary name; GEMINI_API_KEY is accepted as an
-# alias since Google's own docs use both names interchangeably.
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", os.getenv("GEMINI_API_KEY", ""))
-GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
-
-# Which provider chat uses when the user/request doesn't specify one.
-# If unset or not actually configured, falls back to priority order:
-# anthropic > openai > google.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 DEFAULT_PROVIDER = os.getenv("SMART_BETHG_DEFAULT_PROVIDER", "")
 
-# ---------------------------------------------------------------------------
-# CORS (only relevant if a separate frontend origin is ever introduced)
-# ---------------------------------------------------------------------------
-ALLOWED_ORIGINS = [o.strip() for o in os.getenv("SMART_BETHG_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
+GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
 
-# ---------------------------------------------------------------------------
-# Registration / abuse controls
-# ---------------------------------------------------------------------------
-# Open by default so a single operator can create their own account while
-# testing pre-domain. Set to "false" before a public launch, or set
-# REGISTRATION_INVITE_CODE to require a shared code at signup.
-REGISTRATION_OPEN = os.getenv("SMART_BETHG_REGISTRATION_OPEN", "true").lower() == "true"
+# Comma-separated exact origins. Empty means no cross-origin browser access.
+ALLOWED_ORIGINS = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("SMART_BETHG_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+# Development stays convenient, but production registration is closed unless
+# the operator explicitly opts in. Existing users can still log in.
+REGISTRATION_OPEN = os.getenv("SMART_BETHG_REGISTRATION_OPEN", "false").lower() == "true"
 REGISTRATION_INVITE_CODE = os.getenv("SMART_BETHG_INVITE_CODE", "")
 
-# Simple in-memory rate limits (per process, per IP). Fine for a single
-# instance; will not coordinate across multiple instances/replicas -
-# use a shared store (e.g. Redis) instead if you scale beyond one.
+# Database-backed rate limiting uses these limits across processes and replicas.
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_MAX", "10"))
 AUTH_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_WINDOW", "300"))
+
+MAX_UPLOAD_SIZE_BYTES = int(
+    os.getenv("SMART_BETHG_MAX_UPLOAD_BYTES", str(15 * 1024 * 1024))
+)
+BRAVE_SEARCH_API_KEY = os.getenv("BRAVE_SEARCH_API_KEY", "")
+
+# Docker execution is opt-in and restricted to exact, operator-approved image tags.
+DOCKER_ALLOWED_IMAGES = {
+    image.strip() for image in os.getenv("SMART_BETHG_DOCKER_ALLOWED_IMAGES", "").split(",")
+    if image.strip()
+}
+
+# Host Python execution is for local development only. Production requires a real isolated job runner.
+ALLOW_DEV_PYTHON_EXECUTION = (
+    not IS_PRODUCTION
+    and os.getenv("SMART_BETHG_ALLOW_DEV_PYTHON_EXECUTION", "true").lower() == "true"
+)
+
+CHAT_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_CHAT_RATE_LIMIT_MAX", "30"))
+CHAT_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_CHAT_RATE_LIMIT_WINDOW", "60"))
+UPLOAD_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_UPLOAD_RATE_LIMIT_MAX", "20"))
+UPLOAD_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_UPLOAD_RATE_LIMIT_WINDOW", "3600"))
+TASK_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_TASK_RATE_LIMIT_MAX", "20"))
+TASK_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_TASK_RATE_LIMIT_WINDOW", "300"))
+MAX_CHAT_MESSAGE_CHARS = int(os.getenv("SMART_BETHG_MAX_CHAT_MESSAGE_CHARS", "20000"))
+MAX_PROVIDER_ATTEMPTS_PER_CHAT = int(os.getenv("SMART_BETHG_MAX_PROVIDER_ATTEMPTS_PER_CHAT", "3"))
+
+MAX_CHAT_CONTEXT_CHARS = int(os.getenv("SMART_BETHG_MAX_CHAT_CONTEXT_CHARS", "60000"))
+CHAT_MAX_OUTPUT_TOKENS = int(os.getenv("SMART_BETHG_CHAT_MAX_OUTPUT_TOKENS", "2048"))
+
+# Conservative daily budgets. Dollar amounts are estimates based on the
+# dated model-catalog rates; also configure provider-side spend limits.
+USER_DAILY_TOKEN_BUDGET = int(os.getenv("SMART_BETHG_USER_DAILY_TOKEN_BUDGET", "100000"))
+GLOBAL_DAILY_TOKEN_BUDGET = int(os.getenv("SMART_BETHG_GLOBAL_DAILY_TOKEN_BUDGET", "1000000"))
+USER_DAILY_SPEND_USD = float(os.getenv("SMART_BETHG_USER_DAILY_SPEND_USD", "2.0"))
+GLOBAL_DAILY_SPEND_USD = float(os.getenv("SMART_BETHG_GLOBAL_DAILY_SPEND_USD", "25.0"))
+USER_DAILY_REQUEST_BUDGET = int(os.getenv("SMART_BETHG_USER_DAILY_REQUEST_BUDGET", "100"))
+GLOBAL_DAILY_REQUEST_BUDGET = int(os.getenv("SMART_BETHG_GLOBAL_DAILY_REQUEST_BUDGET", "2000"))
+UNKNOWN_MODEL_INPUT_USD_PER_MILLION = float(os.getenv("SMART_BETHG_UNKNOWN_MODEL_INPUT_USD_PER_MILLION", "20.0"))
+UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION = float(os.getenv("SMART_BETHG_UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION", "100.0"))
+
+SESSION_MAX_AGE_SECONDS = int(os.getenv("SMART_BETHG_SESSION_MAX_AGE_SECONDS", "43200"))
+
+KNOWLEDGE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_KNOWLEDGE_SEARCH_RATE_LIMIT_MAX", "20"))
+KNOWLEDGE_SEARCH_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_KNOWLEDGE_SEARCH_RATE_LIMIT_WINDOW", "60"))
+
+MAX_EXTRACTED_TEXT_CHARS = int(os.getenv("SMART_BETHG_MAX_EXTRACTED_TEXT_CHARS", "1000000"))
+MAX_FILE_SEARCH_CHARS = int(os.getenv("SMART_BETHG_MAX_FILE_SEARCH_CHARS", "1000000"))
+MAX_PDF_PAGES = int(os.getenv("SMART_BETHG_MAX_PDF_PAGES", "500"))
+FILE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_FILE_SEARCH_RATE_LIMIT_MAX", "60"))
+FILE_SEARCH_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_FILE_SEARCH_RATE_LIMIT_WINDOW", "60"))
+FILE_EXTRACT_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_FILE_EXTRACT_RATE_LIMIT_MAX", "30"))
+FILE_EXTRACT_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_FILE_EXTRACT_RATE_LIMIT_WINDOW", "300"))
+FILE_INGEST_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_FILE_INGEST_RATE_LIMIT_MAX", "10"))
+FILE_INGEST_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_FILE_INGEST_RATE_LIMIT_WINDOW", "300"))
+
+MAX_KNOWLEDGE_CHARS_PER_FILE = int(os.getenv("SMART_BETHG_MAX_KNOWLEDGE_CHARS_PER_FILE", "160000"))
+MAX_KNOWLEDGE_CHUNKS_PER_FILE = int(os.getenv("SMART_BETHG_MAX_KNOWLEDGE_CHUNKS_PER_FILE", "200"))
+EMBEDDING_BATCH_SIZE = int(os.getenv("SMART_BETHG_EMBEDDING_BATCH_SIZE", "16"))

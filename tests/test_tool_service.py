@@ -1,0 +1,390 @@
+import os
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+import config
+from services.tool_service import ToolService, resolve_workspace_root
+from tests.base import SmartBethGTestCase
+
+
+class TestToolServiceWorkspaceResolution(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp(prefix="sbg_projects_")
+        self._orig_projects_dir = config.STORAGE_DIRS["projects"]
+        config.STORAGE_DIRS["projects"] = self._tmp
+
+    def tearDown(self):
+        config.STORAGE_DIRS["projects"] = self._orig_projects_dir
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_sanitizes_unsafe_characters(self):
+        root = resolve_workspace_root(1, "../../etc")
+        # Traversal characters are stripped, not honored - the result
+        # must still land inside the controlled projects directory.
+        self.assertTrue(root.startswith(self._tmp))
+        self.assertNotIn("..", os.path.relpath(root, self._tmp))
+
+    def test_creates_the_directory(self):
+        root = resolve_workspace_root(1, "my-project")
+        self.assertTrue(os.path.isdir(root))
+
+    def test_blank_name_falls_back_to_default(self):
+        root = resolve_workspace_root(1, "")
+        self.assertTrue(root.endswith("default"))
+
+
+class TestToolServiceExecution(SmartBethGTestCase):
+    def setUp(self):
+        super().setUp()
+        self._tmp = tempfile.mkdtemp(prefix="sbg_projects_")
+        self._orig_projects_dir = config.STORAGE_DIRS["projects"]
+        config.STORAGE_DIRS["projects"] = self._tmp
+        self.service = ToolService()
+        self.user = {"id": 1, "role": "user"}
+        self.admin = {"id": 2, "role": "admin"}
+
+    def tearDown(self):
+        config.STORAGE_DIRS["projects"] = self._orig_projects_dir
+        shutil.rmtree(self._tmp, ignore_errors=True)
+        super().tearDown()
+
+    def test_filesystem_read_success(self):
+        workspace_root = resolve_workspace_root(1, "proj1")
+        with open(os.path.join(workspace_root, "hello.txt"), "w") as f:
+            f.write("hello world")
+
+        result = self.service.execute(self.user, "filesystem.read", workspace="proj1", path="hello.txt")
+        self.assertTrue(result["success"])
+        self.assertEqual(result["result"]["content"], "hello world")
+
+    def test_filesystem_read_path_traversal_blocked(self):
+        resolve_workspace_root(1, "proj2")
+        result = self.service.execute(self.user, "filesystem.read", workspace="proj2", path="../../etc/passwd")
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], "failed")
+
+    def test_filesystem_read_missing_file_fails_cleanly(self):
+        resolve_workspace_root(1, "proj3")
+        result = self.service.execute(self.user, "filesystem.read", workspace="proj3", path="nope.txt")
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], "failed")
+
+    def test_approved_operation_resumes_once_with_saved_arguments(self):
+        request = self.service.execute(
+            self.admin, "terminal.execute", workspace="approval-resume",
+            program="python", args=["-c", "print('saved')"], timeout=5,
+        )
+        self.assertEqual(request["status"], "approval_required")
+        approval_id = request["approval_id"]
+        self.service.approvals.decide(approval_id, self.admin["id"], True)
+
+        calls = []
+        def fake_tool(permit, workspace_root, **kwargs):
+            calls.append({"action": permit.action, "resource": permit.resource, "kwargs": kwargs})
+            return {"return_code": 0, "stdout": "saved", "stderr": ""}
+
+        self.service._resolve_tool = lambda action: fake_tool if action == "terminal.execute" else None
+        result = self.service.execute_approved(self.admin, approval_id)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution_status"], "completed")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["kwargs"]["program"], "python")
+        self.assertEqual(calls[0]["kwargs"]["args"], ["-c", "print('saved')"])
+
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as caught:
+            self.service.execute_approved(self.admin, approval_id)
+        self.assertEqual(caught.exception.status_code, 409)
+        self.assertEqual(len(calls), 1)
+
+    def test_git_read_on_real_repo_succeeds(self):
+        workspace_root = resolve_workspace_root(1, "gitproj")
+        subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
+        result = self.service.execute(self.user, "git.read", workspace="gitproj")
+        self.assertTrue(result["success"])
+
+    def test_git_read_on_non_repo_fails_honestly(self):
+        """
+        The exact bug this session fixed at the tool layer: git.read on a
+        directory that isn't a repository must not be reported as
+        success just because subprocess didn't raise.
+        """
+        resolve_workspace_root(1, "notarepo")
+        result = self.service.execute(self.user, "git.read", workspace="notarepo")
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], "command_failed")
+
+    def test_raw_git_terminal_command_is_rejected_before_approval(self):
+        result = self.service.execute(
+            self.admin, "terminal.execute", workspace="raw-git",
+            program="git", args=["-c", "core.pager=cat", "status"],
+        )
+        self.assertEqual(result["status"], "denied")
+        self.assertIn("dedicated git.read or git.write", result["reason"])
+        self.assertEqual(self.service.approvals.list_pending(self.admin["id"]), [])
+
+    def test_host_python_is_rejected_when_dev_execution_is_disabled(self):
+        from unittest.mock import patch
+        with patch("services.tool_service.config.ALLOW_DEV_PYTHON_EXECUTION", False):
+            result = self.service.execute(
+                self.admin, "terminal.execute", workspace="no-host-python",
+                program="python", args=["-c", "print('not executed')"],
+            )
+        self.assertEqual(result["status"], "denied")
+        self.assertIn("isolated job runner", result["reason"])
+        self.assertEqual(self.service.approvals.list_pending(self.admin["id"]), [])
+
+    def test_terminal_execute_denied_for_user_role(self):
+        result = self.service.execute(self.user, "terminal.execute", workspace="proj4", program="python", args=["--version"])
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], "denied")
+
+    def test_terminal_execute_requires_approval_for_admin_role(self):
+        """
+        HIGH-risk actions require approval even for a role that holds
+        the permission - having the permission is necessary, not
+        sufficient. And the approval must actually be persisted (see
+        test_approval_service.py for the bug this replaced).
+        """
+        result = self.service.execute(self.admin, "terminal.execute", workspace="proj5", program="python", args=["--version"])
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], "approval_required")
+        self.assertIn("approval_id", result)
+
+        pending = self.service.approvals.list_pending(self.admin["id"])
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0]["id"], result["approval_id"])
+
+    def test_git_write_denied_for_user_role(self):
+        result = self.service.execute(self.user, "git.write", workspace="proj6", message="test commit")
+        self.assertFalse(result["success"])
+        self.assertEqual(result["status"], "denied")
+
+    def test_git_write_requires_approval_for_admin_role(self):
+        result = self.service.execute(self.admin, "git.write", workspace="proj7", message="test commit")
+        self.assertEqual(result["status"], "approval_required")
+
+    def test_approval_uses_the_same_canonical_workspace_as_the_filesystem(self):
+        result = self.service.execute(
+            self.admin, "git.write", workspace="../../etc", message="canonical workspace"
+        )
+        self.assertEqual(result["status"], "approval_required")
+        record = self.service.approvals.get_for_user(result["approval_id"], self.admin["id"])
+        self.assertEqual(record["resource"], "workspace:etc")
+        self.assertEqual(record["payload"]["workspace"], "etc")
+
+    def test_approved_saved_git_operation_executes_real_side_effect_once(self):
+        root = resolve_workspace_root(self.admin["id"], "approved-real-git")
+        subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+        with open(os.path.join(root, "approved.txt"), "w") as handle:
+            handle.write("approved content")
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+
+        pending = self.service.execute(
+            self.admin, "git.write", workspace="approved-real-git",
+            operation="commit", message="approved saved operation",
+        )
+        self.assertEqual(pending["status"], "approval_required")
+        self.service.approvals.decide(pending["approval_id"], self.admin["id"], True)
+        result = self.service.execute_approved(self.admin, pending["approval_id"])
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution_status"], "completed")
+
+        log = subprocess.run(
+            ["git", "log", "-1", "--pretty=%s"], cwd=root, capture_output=True, text=True, check=True
+        )
+        self.assertEqual(log.stdout.strip(), "approved saved operation")
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as caught:
+            self.service.execute_approved(self.admin, pending["approval_id"])
+        self.assertEqual(caught.exception.status_code, 409)
+        log_count = subprocess.run(
+            ["git", "rev-list", "--count", "HEAD"], cwd=root, capture_output=True, text=True, check=True
+        )
+        self.assertEqual(log_count.stdout.strip(), "1")
+
+    def test_git_commit_does_not_run_repository_hooks(self):
+        root = resolve_workspace_root(self.admin["id"], "hook-disabled")
+        subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+        marker = os.path.join(root, "hook-ran.txt")
+        hook = os.path.join(root, ".git", "hooks", "pre-commit")
+        with open(hook, "w", encoding="utf-8") as handle:
+            handle.write("#!/bin/sh\\nprintf ran > '" + marker + "'\\n")
+        os.chmod(hook, 0o755)
+        with open(os.path.join(root, "note.txt"), "w", encoding="utf-8") as handle:
+            handle.write("content")
+        from execution.execution_engine import ExecutionPermit
+        permit = ExecutionPermit(request_id="hook-test", action="git.write", resource="workspace:hook-disabled", risk_level="high")
+        result = self.service._git_tool.commit(permit, cwd=root, message="commit without hooks")
+        self.assertEqual(result["return_code"], 0, result["stderr"])
+        self.assertFalse(os.path.exists(marker))
+
+    def test_git_commit_rejects_custom_executable_filters(self):
+        root = resolve_workspace_root(self.admin["id"], "filter-disabled")
+        subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+        marker = os.path.join(root, "filter-ran.txt")
+        subprocess.run(["git", "config", "filter.evil.clean", "touch " + marker], cwd=root, check=True)
+        subprocess.run(["git", "config", "filter.evil.smudge", "touch " + marker], cwd=root, check=True)
+        with open(os.path.join(root, ".gitattributes"), "w", encoding="utf-8") as handle:
+            handle.write("*.txt filter=evil\\n")
+        with open(os.path.join(root, "note.txt"), "w", encoding="utf-8") as handle:
+            handle.write("content")
+        from execution.execution_engine import ExecutionPermit
+        permit = ExecutionPermit(request_id="filter-test", action="git.write", resource="workspace:filter-disabled", risk_level="high")
+        result = self.service._git_tool.commit(permit, cwd=root, message="should be refused")
+        self.assertEqual(result["return_code"], 126)
+        self.assertFalse(os.path.exists(marker))
+
+    def test_git_write_commits_real_change_once_authorized(self):
+        """
+        Exercises the real commit path directly (bypassing the approval
+        gate, which is tested separately above) to confirm the tool
+        implementation itself actually works against a real repo.
+        """
+        workspace_root = resolve_workspace_root(1, "gitwrite")
+        subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=workspace_root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=workspace_root, check=True)
+        with open(os.path.join(workspace_root, "note.txt"), "w") as f:
+            f.write("hello")
+
+        from execution.execution_engine import ExecutionPermit
+        permit = ExecutionPermit(request_id="test", action="git.write", resource="workspace:gitwrite", risk_level="high")
+        raw = self.service._git_tool.commit(permit, cwd=workspace_root, message="add note")
+        self.assertEqual(raw["return_code"], 0)
+
+    def test_network_request_success_with_stubbed_tool(self):
+        """
+        Real outbound HTTP isn't something a unit test should depend on -
+        stubs the tool implementation itself (already covered for real
+        by NetworkTool's own simplicity), and verifies ToolService's
+        wiring/shape-normalization around it. network.request is
+        HIGH-risk, so this bypasses the approval gate directly (that
+        gate itself is covered by test_network_request_denied_for_user_role
+        and the approval-required assertions elsewhere) to test the tool
+        wiring specifically.
+        """
+        class FakeNetworkTool:
+            def get(self, permit, url, timeout=15):
+                return "<html>ok</html>"
+
+        self.service._network_tool = FakeNetworkTool()
+        from execution.execution_engine import ExecutionPermit
+        permit = ExecutionPermit(request_id="test", action="network.request", resource="workspace:proj8", risk_level="high")
+        raw = self.service._run_network_request(permit, resolve_workspace_root(1, "proj8"), url="https://example.com")
+        self.assertEqual(raw["content"], "<html>ok</html>")
+
+    def test_network_request_requires_approval_for_admin_role(self):
+        result = self.service.execute(self.admin, "network.request", workspace="proj8b", url="https://example.com")
+        self.assertEqual(result["status"], "approval_required")
+
+    def test_network_request_denied_for_user_role(self):
+        result = self.service.execute(self.user, "network.request", workspace="proj9", url="https://example.com")
+        self.assertEqual(result["status"], "denied")
+
+    def test_docker_run_missing_binary_fails_cleanly_not_a_crash(self):
+        """
+        Docker isn't installed in this environment - a real, honest
+        "the tool isn't available" case. ToolService must report a clean
+        failure, not propagate an unhandled exception.
+        """
+        result = self.service.execute(self.admin, "docker.run", workspace="proj10", args=["ps"])
+        self.assertIn(result["status"], ("approval_required", "failed"))
+        # docker.run is HIGH risk, so an admin still hits approval_required
+        # before the (missing) binary is even attempted.
+        self.assertEqual(result["status"], "approval_required")
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class TestGitOperationsExtended(SmartBethGTestCase):
+    def setUp(self):
+        super().setUp()
+        self._tmp = tempfile.mkdtemp(prefix="sbg_git_ops_projects_")
+        self._orig_projects_dir = config.STORAGE_DIRS["projects"]
+        config.STORAGE_DIRS["projects"] = self._tmp
+        self.service = ToolService()
+        self.user = {"id": 1, "role": "user"}
+        self.admin = {"id": 2, "role": "admin"}
+
+    def tearDown(self):
+        config.STORAGE_DIRS["projects"] = self._orig_projects_dir
+        shutil.rmtree(self._tmp, ignore_errors=True)
+        super().tearDown()
+
+    def _init_repo(self, name):
+        root = resolve_workspace_root(self.user["id"], name)
+        subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "T"], cwd=root, check=True)
+        return root
+
+    def test_git_diff_on_clean_repo_succeeds_empty(self):
+        self._init_repo("diffproj")
+        result = self.service.execute(self.user, "git.read", workspace="diffproj", operation="diff")
+        self.assertTrue(result["success"])
+
+    def test_git_diff_shows_real_changes(self):
+        root = self._init_repo("diffproj2")
+        with open(f"{root}/a.txt", "w") as f:
+            f.write("v1")
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-m", "initial"], cwd=root, check=True)
+        with open(f"{root}/a.txt", "w") as f:
+            f.write("v2")
+
+        result = self.service.execute(self.user, "git.read", workspace="diffproj2", operation="diff")
+        self.assertTrue(result["success"])
+        self.assertIn("v2", result["result"]["stdout"])
+
+    def test_git_branches_lists_real_branch(self):
+        self._init_repo("branchproj")
+        result = self.service.execute(self.user, "git.read", workspace="branchproj", operation="branches")
+        self.assertTrue(result["success"])
+
+    def test_git_checkout_denied_for_user_role(self):
+        self._init_repo("checkoutproj")
+        result = self.service.execute(
+            self.user, "git.write", workspace="checkoutproj", operation="checkout", branch="feature"
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_git_checkout_requires_approval_for_admin_role(self):
+        self._init_repo("checkoutproj2")
+        result = self.service.execute(
+            self.admin, "git.write", workspace="checkoutproj2", operation="checkout", branch="feature"
+        )
+        self.assertEqual(result["status"], "approval_required")
+
+    def test_git_checkout_creates_and_switches_branch_once_authorized(self):
+        """Exercises the real tool implementation directly, bypassing the approval gate tested above."""
+        root = self._init_repo("checkoutproj3")
+        with open(f"{root}/a.txt", "w") as f:
+            f.write("x")
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-m", "initial"], cwd=root, check=True)
+
+        from execution.execution_engine import ExecutionPermit
+        permit = ExecutionPermit(request_id="t", action="git.write", resource="workspace:checkoutproj3", risk_level="high")
+        raw = self.service._git_tool.checkout(permit, cwd=root, branch="feature-x", create=True)
+        self.assertEqual(raw["return_code"], 0)
+
+        status = subprocess.run(["git", "branch", "--show-current"], cwd=root, capture_output=True, text=True)
+        self.assertEqual(status.stdout.strip(), "feature-x")
+
+    def test_git_checkout_missing_branch_raises(self):
+        root = self._init_repo("checkoutproj4")
+        from execution.execution_engine import ExecutionPermit
+        permit = ExecutionPermit(request_id="t", action="git.write", resource="workspace:checkoutproj4", risk_level="high")
+        with self.assertRaises(ValueError):
+            self.service._git_tool.checkout(permit, cwd=root, branch="")

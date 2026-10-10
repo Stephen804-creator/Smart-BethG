@@ -13,7 +13,7 @@ class RiskLevel(str, Enum):
 class RiskEngine:
     LEVELS = {
         "filesystem.read": RiskLevel.LOW,
-        "filesystem.write": RiskLevel.MEDIUM,
+        "filesystem.write": RiskLevel.HIGH,
         "terminal.execute": RiskLevel.HIGH,
         "git.read": RiskLevel.LOW,
         "git.write": RiskLevel.HIGH,
