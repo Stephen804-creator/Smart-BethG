@@ -84,6 +84,30 @@ class ArtifactService:
             conn.close()
         return self.get(user_id, artifact_id)
 
+    @staticmethod
+    def _validate_binary_signature(content, content_type):
+        valid = True
+        if content_type == "image/png":
+            valid = content.startswith(b"\x89PNG\r\n\x1a\n")
+        elif content_type == "image/jpeg":
+            valid = content.startswith(b"\xff\xd8\xff")
+        elif content_type == "image/webp":
+            valid = len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP"
+        elif content_type == "application/pdf":
+            valid = content.startswith(b"%PDF-")
+        elif content_type == "application/zip":
+            valid = content.startswith((b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"))
+        elif content_type == "audio/wav":
+            valid = len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WAVE"
+        elif content_type == "audio/mpeg":
+            valid = content.startswith(b"ID3") or (
+                len(content) >= 2 and content[0] == 0xFF and (content[1] & 0xE0) == 0xE0
+            )
+        elif content_type == "video/mp4":
+            valid = len(content) >= 12 and content[4:8] == b"ftyp"
+        if not valid:
+            raise ValueError("Binary content does not match its declared media type.")
+
     def create_bytes(self, user_id, name, content, content_type, mission_id=None):
         """Store a bounded binary output (image, audio, video, PDF, or archive)."""
         name = (name or "").strip()
@@ -100,6 +124,7 @@ class ArtifactService:
         extension, safe_type = self.BINARY_TYPES.get(
             supplied_type, self.BINARY_TYPES["application/octet-stream"]
         )
+        self._validate_binary_signature(encoded, safe_type)
         if mission_id is not None and not self._owns_mission(user_id, mission_id):
             raise ValueError("Mission not found for this user.")
 
