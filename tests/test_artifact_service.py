@@ -48,6 +48,34 @@ class TestArtifactService(SmartBethGTestCase):
         with self.assertRaisesRegex(ValueError, "integrity check"):
             self.service.read_content(self.owner["id"], artifact["id"])
 
+    def test_binary_artifact_round_trip_and_owner_isolation(self):
+        payload = b"\\x89PNG\\r\\n\\x1a\\n" + b"sample-image-data"
+        artifact = self.service.create_bytes(
+            self.owner["id"], "generated-preview.png", payload, "image/png"
+        )
+        self.assertEqual(artifact["artifact_type"], "binary")
+        self.assertEqual(artifact["content_type"], "image/png")
+        self.assertEqual(artifact["size_bytes"], len(payload))
+        self.assertIsNone(self.service.get(self.other["id"], artifact["id"]))
+        content, record = self.service.read_bytes(self.owner["id"], artifact["id"])
+        self.assertEqual(content, payload)
+        self.assertEqual(record["checksum_sha256"], __import__("hashlib").sha256(payload).hexdigest())
+        self.assertTrue(self.service.delete(self.owner["id"], artifact["id"]))
+
+    def test_binary_artifact_rejects_oversized_payload(self):
+        with self.assertRaisesRegex(ValueError, "25 MiB"):
+            self.service.create_bytes(
+                self.owner["id"], "too-large.mp4",
+                b"x" * (self.service.MAX_BINARY_BYTES + 1), "video/mp4"
+            )
+
+    def test_binary_artifact_cannot_be_read_as_utf8_text(self):
+        artifact = self.service.create_bytes(
+            self.owner["id"], "image.png", b"\\x89PNG\\x00", "image/png"
+        )
+        with self.assertRaisesRegex(ValueError, "download"):
+            self.service.read_content(self.owner["id"], artifact["id"])
+
     def test_artifact_content_limit_is_enforced(self):
         with self.assertRaises(ValueError):
             self.service.create(self.owner["id"], "too-large", "x" * (self.service.MAX_CONTENT_BYTES + 1))
