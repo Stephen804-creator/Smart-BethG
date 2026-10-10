@@ -20,7 +20,7 @@ A migration utility and a tested backup/restore procedure are required before mo
 
 One application instance and multiple application instances must use the same production architecture: shared PostgreSQL, server-side authorization, and shared rate-limit records. Scaling from one instance to several should not require replacing SQLite or rewriting rate limiting.
 
-The database-backed authentication limiter uses transaction-scoped PostgreSQL advisory locks to coordinate attempts across replicas. SQLite's transaction lock is for local development/tests only. Future high-volume traffic may justify a dedicated shared rate-limit service, but a per-process in-memory counter must not be used in production.
+The database-backed authentication limiter uses shared PostgreSQL row locks in the auth_rate_limit_locks table to serialize attempts across replicas. SQLite's transaction lock is for local development/tests only. Future high-volume traffic may justify a dedicated shared rate-limit service, but a per-process in-memory counter must not be used in production.
 
 **Multi-instance limitation still requiring an explicit implementation:** local filesystem paths are not shared across app replicas. Before enabling multiple instances, file uploads, generated artifacts, and any workspace data that must be visible on every replica need a shared object-storage adapter or shared storage service. Do not assume PostgreSQL alone makes local files multi-instance safe. Provider calls and background work also need bounded concurrency, durable job state, cancellation semantics, and idempotency before worker replicas are scaled.
 
