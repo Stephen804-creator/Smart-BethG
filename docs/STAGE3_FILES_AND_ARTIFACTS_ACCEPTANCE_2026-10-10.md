@@ -18,7 +18,7 @@ Stage 3 is the private file and generated-output layer of Smart BethG. It is mor
 - Owner-scoped database queries and owner-prefixed storage keys; local storage rejects traversal and symlinked owner directories.
 - Local development adapter and S3-compatible adapter, including AWS S3, DigitalOcean Spaces, MinIO, and compatible object storage.
 - Bounded upload reads, 1 MiB text-output limit, and 25 MiB binary-artifact limit.
-- A home-page Artifact Library UI for creating text outputs, uploading a binary output, listing private artifacts, downloading, and deleting.
+- A dedicated Artifact Library page plus home-dashboard quick forms for creating text outputs, uploading binary files, listing private artifacts, previewing safe text, downloading, and deleting.
 - Social campaign calendar export to a versioned JSON artifact.
 - A dry-run-first local-to-object-storage migration utility with checksum/read-after-write verification and explicit retention of source files by default.
 
