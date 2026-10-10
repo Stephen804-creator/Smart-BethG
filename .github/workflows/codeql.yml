@@ -20,13 +20,9 @@ permissions:
   actions: read
 
 jobs:
-  private-repo-note:
-    if: github.event.repository.visibility != 'public' && vars.SMART_BETHG_CODEQL_PRIVATE_ENABLED != 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Explain CodeQL availability
-        run: echo "CodeQL is gated for this private repository. Enable it only when GitHub Code Security entitlement is confirmed and SMART_BETHG_CODEQL_PRIVATE_ENABLED=true; dependency audit, secret scanning, tests, and PostgreSQL integration tests remain active."
-
+  # CodeQL analysis is skipped for private repositories unless the repository
+  # owner confirms Code Security entitlement and enables the opt-in variable.
+  # This avoids turning an informational note into a failing status check.
   analyze:
     if: github.event.repository.visibility == 'public' || vars.SMART_BETHG_CODEQL_PRIVATE_ENABLED == 'true'
     name: Analyze ${{ matrix.language }}
