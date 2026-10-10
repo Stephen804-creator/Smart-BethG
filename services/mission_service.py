@@ -134,7 +134,11 @@ class MissionService:
             return None
         if run["status"] != "running" or mission["status"] != "running":
             raise ValueError("Only the active run can be completed or failed.")
-        result_json = json.dumps(result, ensure_ascii=False, default=str)[:100000] if result is not None else None
+        if error is not None and len(str(error)) > 4000:
+            raise ValueError("Run error description exceeds the 4000-character limit.")
+        result_json = json.dumps(result, ensure_ascii=False, default=str) if result is not None else None
+        if result_json is not None and len(result_json) > 100000:
+            raise ValueError("Run result exceeds the 100000-character limit.")
         mission_status = "completed" if status == "completed" else "failed"
         conn = get_connection()
         try:
