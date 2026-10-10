@@ -3,6 +3,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import secrets
 from datetime import datetime, timezone
 from urllib.parse import urlencode, urlsplit
@@ -36,7 +37,7 @@ def _meta_config():
 def _meta_ready_for_oauth(settings):
     if not (settings["app_id"] and settings["app_secret"] and settings["redirect_uri"]):
         return False
-    if not __import__("re").fullmatch(r"v\\d+\\.\\d+", settings["api_version"]):
+    if not re.fullmatch(r"v\d+\.\d+", settings["api_version"]):
         return False
     parsed = urlsplit(settings["redirect_uri"])
     if not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
