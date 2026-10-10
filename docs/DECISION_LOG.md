@@ -14,7 +14,7 @@ PostgreSQL is the production database for both single-instance and multi-instanc
 
 ## 2026-10-10 — Rate limiting must be shared
 **Status:** Active  
-Authentication rate-limit counters are stored in the database, not only in process memory. PostgreSQL advisory locks serialize attempts for the same hashed key across replicas. A dedicated shared limiter may be considered later for very high traffic, but no production instance may rely on independent per-process counters.
+Authentication rate-limit counters are stored in the database, not only in process memory. PostgreSQL row locks in the shared auth_rate_limit_locks table serialize attempts for the same hashed key across replicas. A dedicated shared limiter may be considered later for very high traffic, but no production instance may rely on independent per-process counters.
 
 ## 2026-10-10 — Single and multiple app instances share one architecture
 **Status:** Active, with remaining work  
