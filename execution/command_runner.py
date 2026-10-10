@@ -2,7 +2,9 @@
 
 LV: This is deliberately not an unrestricted shell. It requires an
 ExecutionPermit created by the authorization layer and uses shell=False.
-Only individually reviewed programs are allowed.
+Only explicitly reviewed programs are allowed. Git operations must use GitTool,
+which disables hooks and external filters; generic terminal execution must not
+be a back door around those controls.
 
 PV: Add programs one at a time after reviewing their argument and resource
 controls. Never turn this into subprocess(..., shell=True).
@@ -13,7 +15,9 @@ import config
 from execution.execution_engine import ExecutionPermit
 
 class CommandRunner:
-    ALLOWED_PROGRAMS = {"git"}
+    # Git has a dedicated hardened wrapper in git/git_tool.py. Allowing raw
+    # git argv here would bypass its hook/filter/config restrictions.
+    ALLOWED_PROGRAMS = frozenset()
 
     def run(self, permit: ExecutionPermit, program: str, args: list[str],
             cwd: str, timeout: int = 30):
