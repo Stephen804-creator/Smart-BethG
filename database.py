@@ -17,10 +17,9 @@ Table groups:
   artifacts, social_content, projects, logs
 
 IMPORTANT: creating these tables is schema/storage foundation only. It
-does NOT mean the corresponding intelligence (real web research, workflow
-execution, artifact generation, memory retrieval, etc.) is implemented.
-See v1_capabilities.md status vocabulary - these are STRUCTURALLY
-PREPARED, not IMPLEMENTED, until real logic reads/writes them.
+Schema presence is not proof that a feature is complete. The dated repository
+audit and the corresponding route/service tests are the source of truth for
+which capability slices are implemented and which execution paths remain open.
 """
 import os
 import re
@@ -67,6 +66,7 @@ class _PostgresConnection:
     """DB-API adapter for the repository's existing parameterized SQL."""
     def __init__(self, connection):
         self._connection = connection
+        self.is_postgres = True
 
     def execute(self, sql, params=()):
         statement = sql.strip()
