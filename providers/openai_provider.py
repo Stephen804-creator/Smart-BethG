@@ -12,8 +12,9 @@ class OpenAIProvider(ProviderBase):
     `API_BASE_URL` and `CATALOG_NAME` exist so this class can be reused
     for any OpenAI-API-compatible host (Groq, OpenRouter) by subclassing
     with a different base URL - see groq_provider.py / openrouter_provider.py.
-    Both of those are free-tier, open-weight-model hosts; this class
-    itself still defaults to OpenAI's own endpoint.
+    Those hosts use different pricing and capability limits; this class
+    defaults to OpenAI's endpoint and selects a compatible token-limit
+    parameter based on the provider subclass.
     """
 
     name = "openai"
@@ -40,11 +41,16 @@ class OpenAIProvider(ProviderBase):
             raise RuntimeError(
                 f"{self.name} provider has no API key configured."
             )
-        response = self._client.chat.completions.create(
-            model=model or self.model,
-            messages=messages,
-            max_tokens=kwargs.get("max_tokens", 1024),
-        )
+        token_limit = max(1, min(int(kwargs.get("max_tokens", 1024)), 8192))
+        request_args = {
+            "model": model or self.model,
+            "messages": messages,
+        }
+        if self.name == "openai":
+            request_args["max_completion_tokens"] = token_limit
+        else:
+            request_args["max_tokens"] = token_limit
+        response = self._client.chat.completions.create(**request_args)
         text = (response.choices[0].message.content or "").strip()
         usage = getattr(response, "usage", None)
         return {
