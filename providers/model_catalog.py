@@ -19,33 +19,33 @@ MODEL_CATALOG = {
     "anthropic": {
         "label": "Anthropic",
         "models": [
-            {"id": "claude-haiku-5-5", "label": "Claude Haiku 5.5", "tier": "fast"},
-            {"id": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5", "tier": "balanced"},
-            {"id": "claude-opus-5-5", "label": "Claude Opus 5.5", "tier": "capable"},
+            {"id": "claude-haiku-5-5", "label": "Claude Haiku 5.5", "tier": "fast", "pricing_usd_per_million": {"input": 0.1, "output": 0.5}},
+            {"id": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5", "tier": "balanced", "pricing_usd_per_million": {"input": 2, "output": 10}},
+            {"id": "claude-opus-5-5", "label": "Claude Opus 5.5", "tier": "capable", "pricing_usd_per_million": {"input": 4, "output": 20}},
         ],
     },
     "openai": {
         "label": "OpenAI",
         "models": [
-            {"id": "gpt-6-luna", "label": "GPT-6 Luna", "tier": "fast"},
-            {"id": "gpt-6.1-sol", "label": "GPT-6.1 Sol", "tier": "balanced"},
-            {"id": "gpt-6-astra", "label": "GPT-6 Astra", "tier": "capable"},
+            {"id": "gpt-6-luna", "label": "GPT-6 Luna", "tier": "fast", "pricing_usd_per_million": {"input": 0.1, "output": 0.5}},
+            {"id": "gpt-6.1-sol", "label": "GPT-6.1 Sol", "tier": "balanced", "pricing_usd_per_million": {"input": 2, "output": 10}},
+            {"id": "gpt-6-astra", "label": "GPT-6 Astra", "tier": "capable", "pricing_usd_per_million": {"input": 10, "output": 50}},
         ],
     },
     "google": {
         "label": "Google",
         "models": [
-            {"id": "gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash-Lite", "tier": "fast"},
-            {"id": "gemini-3.6-flash", "label": "Gemini 3.6 Flash", "tier": "balanced"},
-            {"id": "gemini-3.1-pro-preview", "label": "Gemini 3.1 Pro (Preview)", "tier": "capable"},
+            {"id": "gemini-3.5-flash-lite", "label": "Gemini 3.5 Flash-Lite", "tier": "fast", "pricing_usd_per_million": {"input": 0.3, "output": 2.5}},
+            {"id": "gemini-3.6-flash", "label": "Gemini 3.6 Flash", "tier": "balanced", "pricing_usd_per_million": {"input": 1.5, "output": 7.5}},
+            {"id": "gemini-3.1-pro-preview", "label": "Gemini 3.1 Pro (Preview)", "tier": "capable", "pricing_usd_per_million": {"input": 2, "output": 12}},
         ],
     },
     "groq": {
         "label": "Groq (free, open-weight)",
         "models": [
-            {"id": "openai/gpt-oss-20b", "label": "GPT-OSS 20B (Groq)", "tier": "fast"},
-            {"id": "qwen/qwen3.8-27b", "label": "Qwen3.8 27B (Groq)", "tier": "balanced"},
-            {"id": "openai/gpt-oss-120b", "label": "GPT-OSS 120B (Groq)", "tier": "capable"},
+            {"id": "openai/gpt-oss-20b", "label": "GPT-OSS 20B (Groq)", "tier": "fast", "pricing_usd_per_million": {"input": 0.075, "output": 0.3}},
+            {"id": "qwen/qwen3.8-27b", "label": "Qwen3.8 27B (Groq)", "tier": "balanced", "pricing_usd_per_million": {"input": 0.8, "output": 4}},
+            {"id": "openai/gpt-oss-120b", "label": "GPT-OSS 120B (Groq)", "tier": "capable", "pricing_usd_per_million": {"input": 0.15, "output": 0.6}},
         ],
     },
     "openrouter": {
@@ -58,9 +58,9 @@ MODEL_CATALOG = {
             # here rather than three separate named models that could each
             # 404 independently. A user who wants a specific named model
             # can still type "openrouter:<exact-id>" directly.
-            {"id": "openrouter/free", "label": "Auto (free, fast)", "tier": "fast"},
-            {"id": "openrouter/free", "label": "Auto (free, balanced)", "tier": "balanced"},
-            {"id": "openrouter/free", "label": "Auto (free, capable)", "tier": "capable"},
+            {"id": "openrouter/free", "label": "Auto (free, fast)", "tier": "fast", "pricing_usd_per_million": {"input": 0, "output": 0}},
+            {"id": "openrouter/free", "label": "Auto (free, balanced)", "tier": "balanced", "pricing_usd_per_million": {"input": 0, "output": 0}},
+            {"id": "openrouter/free", "label": "Auto (free, capable)", "tier": "capable", "pricing_usd_per_million": {"input": 0, "output": 0}},
         ],
     },
 }
