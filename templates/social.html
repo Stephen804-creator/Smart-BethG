@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Plan, review, and manage Smart BethG social campaigns.">
+  <meta name="theme-color" content="#08111f">
+  <title>Social campaigns · Smart BethG</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/social.css') }}">
+  <script src="{{ url_for('static', filename='js/social-campaigns.js') }}" defer></script>
+</head>
+<body>
+<div class="app social-app">
+  <aside class="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a href="/" class="logo"><span class="logo-mark" aria-hidden="true">SB</span><span>Smart BethG</span></a>
+    </div>
+    <nav class="sidebar-navigation">
+      <ul>
+        <li><a href="/"><span>Home</span></a></li>
+        <li><a href="/chat"><span>AI Assistant</span></a></li>
+        <li><a href="/social" aria-current="page" class="active"><span>Social campaigns</span></a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="content social-content">
+    <header class="social-heading">
+      <div>
+        <p class="eyebrow">SMART BETHG · WORKSPACE</p>
+        <h1>Social campaigns</h1>
+        <p class="muted">Brief the agent once. Build a calendar, generate platform-specific posts, and manage each campaign from this workspace.</p>
+      </div>
+      <a class="btn" href="/chat">Open AI assistant</a>
+    </header>
+
+    <section class="notice notice-warning" role="status">
+      <strong>Publishing integration is still being built.</strong>
+      Campaigns and schedules can be saved, and the configured AI provider can generate a plan. Posts will not publish to Facebook, Instagram, YouTube, LinkedIn, or X until their OAuth connection, approved platform adapter, and durable background worker are installed and verified. Smart BethG will not pretend a scheduled post was published.
+    </section>
+
+    <section class="social-grid">
+      <section class="social-card">
+        <div class="section-heading">
+          <div><p class="eyebrow">CAMPAIGN SETUP</p><h2>Create a campaign</h2></div>
+        </div>
+        <form id="campaignForm" class="social-form">
+          <label>Campaign name<input name="name" required maxlength="160" placeholder="30-day educational series"></label>
+          <label>Goal / purpose<textarea name="objective" required maxlength="4000" rows="3" placeholder="What should this campaign achieve?"></textarea></label>
+          <label>Target audience<input name="audience" maxlength="300" placeholder="Who are we speaking to?"></label>
+          <label>Voice and tone<input name="tone" maxlength="300" value="Clear, useful, practical, and trustworthy"></label>
+          <label>Reference links (one HTTPS URL per line)<textarea name="reference_urls" rows="2" placeholder="https://..."></textarea></label>
+          <label>Extra rules or exclusions<textarea name="content_rules" maxlength="4000" rows="2" placeholder="Topics to avoid, brand rules, language, source requirements..."></textarea></label>
+
+          <fieldset>
+            <legend>Target platforms</legend>
+            <div class="platform-options">
+              <label><input type="checkbox" name="platforms" value="facebook" checked> Facebook Pages</label>
+              <label><input type="checkbox" name="platforms" value="instagram"> Instagram Professional</label>
+              <label><input type="checkbox" name="platforms" value="youtube"> YouTube</label>
+              <label><input type="checkbox" name="platforms" value="linkedin"> LinkedIn</label>
+              <label><input type="checkbox" name="platforms" value="x"> X</label>
+            </div>
+          </fieldset>
+
+          <div class="form-two">
+            <label>Timezone<input name="timezone" required value="Africa/Lagos" placeholder="Africa/Lagos"></label>
+            <label>Posts per day maximum<input name="daily_post_limit" type="number" min="1" max="20" value="1" required></label>
+          </div>
+          <div class="form-two">
+            <label>Start date and time<input name="start_at" type="datetime-local" required></label>
+            <label>End date and time (optional)<input name="end_at" type="datetime-local"></label>
+          </div>
+          <div class="form-two">
+            <label>Post every N days<input name="interval_days" type="number" min="1" max="30" value="1" required></label>
+            <label>Local posting time<input name="local_time" type="time" value="09:00" required></label>
+          </div>
+          <label>Publishing authority
+            <select name="autonomy_mode" id="autonomyMode">
+              <option value="review_each_post">Review each post before publishing</option>
+              <option value="auto_publish_after_campaign_approval">Authorize this campaign for automatic publishing</option>
+            </select>
+          </label>
+          <label id="autoPublishConsent" class="consent-check" hidden>
+            <input type="checkbox" name="auto_publish_authorized">
+            I authorize Smart BethG to publish campaign posts automatically only to the selected platforms, within the campaign dates and daily limit. This does not authorize messages, deletions, spending, or account-setting changes.
+          </label>
+          <label class="generate-check"><input type="checkbox" name="generate_now" checked> Generate a 30-post plan after creating the campaign</label>
+          <button class="btn btn-primary" type="submit" id="createCampaignButton">Create campaign</button>
+          <p id="campaignFormStatus" class="status-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="social-card">
+        <div class="section-heading">
+          <div><p class="eyebrow">CONNECTORS</p><h2>Social accounts and integrations</h2></div>
+          <button type="button" class="btn" id="refreshConnectors">Refresh</button>
+        </div>
+        <p class="muted">Connections must use each platform's official authorization flow. Never paste an access token or password into this page.</p>
+        <div id="connectorList" class="connector-list"><p class="muted">Loading connector status…</p></div>
+        <h3 class="subheading">Connected accounts</h3>
+        <div id="connectedAccounts" class="connector-list"><p class="muted">Loading connected accounts…</p></div>
+      </section>
+    </section>
+
+    <section class="social-card campaign-list-card">
+      <div class="section-heading">
+        <div><p class="eyebrow">YOUR WORK</p><h2>Campaign calendar</h2></div>
+        <button type="button" class="btn" id="refreshCampaigns">Refresh campaigns</button>
+      </div>
+      <p id="campaignListStatus" class="status-message" aria-live="polite"></p>
+      <div id="campaignList" class="campaign-list"><p class="muted">Loading campaigns…</p></div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
