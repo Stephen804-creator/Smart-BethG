@@ -11,7 +11,7 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 
-from connectors.social import ConnectorNotConfigured, SocialConnectorRegistry
+from connectors.social import ConnectorActionRejected, ConnectorNotConfigured, SocialConnectorRegistry
 from database import get_connection
 
 logger = logging.getLogger("smart_bethg.social_worker")
@@ -223,6 +223,10 @@ class SocialPublisherWorker:
                 published_at = _utc_now()
                 saved = self._update_job(job_id, "published", external_post_id=str(post_id), published_at=published_at)
                 results.append({"job_id": job_id, "status": "published" if saved else "indeterminate"})
+            except ConnectorActionRejected as exc:
+                self._update_job(job_id, "blocked", error_code="provider_rejected",
+                                 error_message=str(exc))
+                results.append({"job_id": job_id, "status": "blocked"})
             except Exception:
                 # Do not log tokens, provider response bodies, or post content.
                 logger.exception("Social publish job outcome unknown: job_id=%s platform=%s", job_id, job["platform"])
