@@ -173,6 +173,47 @@ class ChatService:
             "fallback_used": fallback_used,
         }
 
+    def generate_task(self, user_id, prompt, selection=None, extra_context=None):
+        """Generate a structured task result with normal provider fallback and budget enforcement.
+
+        Unlike send(), this helper does not create a chat conversation or persist
+        the prompt as a user-facing chat message. Usage is still reserved and
+        reconciled by the same provider pipeline.
+        """
+        prompt = (prompt or "").strip()
+        if not prompt:
+            raise ValueError("Generation prompt must not be empty.")
+        if not selection or selection == "auto":
+            provider_name, model_id = provider_manager.choose_auto(prompt)
+        else:
+            provider_name, model_id = provider_manager.resolve_selection(selection)
+        if not provider_name:
+            return {"provider_configured": False, "error": "No AI provider is configured."}
+        provider = provider_manager.get(user_id, provider_name)
+        messages = []
+        if extra_context:
+            messages.append({"role": "user", "content": str(extra_context)})
+        messages.append({"role": "user", "content": prompt})
+        result, used_provider, used_model, attempted, last_error = self._generate_with_fallback(
+            provider, provider_name, model_id, messages, user_id,
+        )
+        if result is None:
+            return {
+                "provider_configured": True,
+                "error": "All configured AI providers failed or the usage budget was exhausted.",
+                "attempted": attempted,
+                "error_type": type(last_error).__name__ if last_error else "ProviderError",
+            }
+        return {
+            "provider_configured": True,
+            "text": result["text"],
+            "provider": used_provider,
+            "model": used_model,
+            "fallback_used": used_provider != provider_name,
+            "input_tokens": result.get("input_tokens"),
+            "output_tokens": result.get("output_tokens"),
+        }
+
     def _generate_with_fallback(self, provider, provider_name, model_id, provider_messages, user_id):
         """
         Tries the requested/auto-chosen provider first; if it raises,
