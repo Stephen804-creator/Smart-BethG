@@ -1,51 +1,67 @@
 # Smart BethG Architecture and Decisions
 
-Last reviewed: 2026-10-10. This records current decisions; deferred capabilities are not represented as implemented.
+**Status:** Active engineering decisions  
+**Last updated:** 2026-10-10 UTC  
+**Decision history:** See `docs/DECISION_LOG.md`; the Git commit timestamp is the precise change record.
 
-## Product boundary
-Until the owner explicitly chooses a public launch, operate Smart BethG as a personal / small trusted-group application. Do not invite strangers or advertise public registration before the security review, consent flow, privacy policy, and operational safeguards are complete. Registration defaults to closed in every environment; an operator must deliberately open it through SMART_BETHG_REGISTRATION_OPEN=true.
+## Product goal and release posture
+
+Smart BethG is being built for a public launch, not only for personal use or a small trusted group. Public launch is the target architecture; it is not yet a claim that the current application is safe or ready for unrestricted public access. Registration remains closed by default until the release gates in this document are met.
+
+## Database: PostgreSQL is the production standard
+
+PostgreSQL is the required database for production, whether the first deployment has one application instance or several. SQLite remains available only for local development and isolated unit tests. Production startup fails closed if DATABASE_URL does not point to PostgreSQL.
+
+The application code has begun moving behind a database compatibility boundary so repositories can continue to use parameterized queries while PostgreSQL becomes the shared production store. This adapter and its schema translation must be treated as an initial migration step, not as proof that every query is already production-verified. PostgreSQL integration CI must pass before merging or deploying this change. Any SQL behavior that differs between SQLite and PostgreSQL must be covered by regression tests.
+
+A migration utility and a tested backup/restore procedure are required before moving real user data. Do not point a new deployment at a database containing important data until a backup has been taken and the migration has been tested on a copy.
+
+## Single-instance and multi-instance operation
+
+One application instance and multiple application instances must use the same production architecture: shared PostgreSQL, server-side authorization, and shared rate-limit records. Scaling from one instance to several should not require replacing SQLite or rewriting rate limiting.
+
+The database-backed authentication limiter uses transaction-scoped PostgreSQL advisory locks to coordinate attempts across replicas. SQLite's transaction lock is for local development/tests only. Future high-volume traffic may justify a dedicated shared rate-limit service, but a per-process in-memory counter must not be used in production.
+
+**Multi-instance limitation still requiring an explicit implementation:** local filesystem paths are not shared across app replicas. Before enabling multiple instances, file uploads, generated artifacts, and any workspace data that must be visible on every replica need a shared object-storage adapter or shared storage service. Do not assume PostgreSQL alone makes local files multi-instance safe. Provider calls and background work also need bounded concurrency, durable job state, cancellation semantics, and idempotency before worker replicas are scaled.
 
 ## Planning and execution safety
-Keep the fixed-shape planner for now. It is auditable and predictable, while a general planner expands the action space and can chain unsafe or unintended operations. Do not add a general autonomous planner until each tool has explicit authorization, risk classification, approval enforcement, audit events, bounded execution, cancellation, and adversarial tests. Multi-step work should remain a small set of reviewed, named plan templates.
 
-## Token budgets
-Use per-user budgets as the primary fairness and abuse-control boundary, with a separate global platform spending ceiling as a circuit breaker. Enforce limits server-side and atomically before a provider call. Record provider/model, estimated input and output tokens, actual usage when available, and cost where known. Never rely on frontend-only counters. A global ceiling must stop new paid calls safely without corrupting user sessions or conversation data. Budget implementation is not complete until concurrent-request tests prove limits cannot be overspent.
+Keep the fixed-shape planner until tool authorization, action/resource binding, durable approvals, cancellation, bounded execution, audit events, and adversarial tests are enforced end to end. General autonomous planning is not a prerequisite for launch and must not bypass the security policy.
 
-## Database and deployment
-SQLite is acceptable only for the current single-instance personal/small-team deployment. DATABASE_URL is a migration boundary, not PostgreSQL support. Before multi-instance deployment, migrate to PostgreSQL and test migrations, transaction semantics, backups, restore, and connection handling. Do not run multiple application instances with SQLite as shared mutable state.
+## Approval workflow
 
-The storage root must point to a persistent mounted disk in the hosting provider. Database, uploads, and user-created artifacts must survive redeploys. Backups must be independent of that disk and periodically restore-tested. The deployment configuration has not been independently verified by this document.
+An approval must refer to one authenticated owner, one exact action, one exact resource/workspace, and a bounded set of arguments. On approval, the application should resume that saved operation once, after re-checking current permissions and validating the action/resource binding. It must reject changed payloads, expired approvals, rejected requests, and duplicate execution attempts.
 
-### Live deployment verification checklist
-Do not mark persistence as verified until these steps have been completed against the actual hosted service:
-1. In the host dashboard, confirm a persistent disk is attached and record its mount path.
-2. Set SMART_BETHG_STORAGE_ROOT to that exact mount path (for example, /var/data/smartbethg only if that is the configured mount path). Confirm the database resolves below this root; do not set a conflicting SMART_BETHG_DB path.
-3. Set SMART_BETHG_ENV=production, a long random SMART_BETHG_SECRET_KEY, SMART_BETHG_SESSION_HTTPS_ONLY=true, and SMART_BETHG_REGISTRATION_OPEN=false. Set SMART_BETHG_ALLOWED_ORIGINS only to the actual trusted frontend origins.
-4. Create a non-sensitive test record while signed in, deploy/restart the service, then confirm the record and login still work. Repeat after a redeploy, not only a process restart.
-5. Configure an independent backup destination and retention policy. Restore a backup into a separate test environment and document the result before storing real user data.
-6. Record the date, operator, deployed commit, disk path, backup location, and test outcome. Until this evidence exists, persistent storage and recovery remain unverified.
+A decision record by itself is not execution. The current branch has approval persistence and UI work, but the original interrupted operation is not yet resumed. Do not mark this requirement complete until the route, service, database state transition, audit trail, and end-to-end test all prove that approval executes the same saved request once and only once. If the process crashes during an external side effect, the system must report an indeterminate/recovery state rather than blindly replaying a potentially destructive action.
 
-## Scaling boundaries
-The in-process rate limiter and in-Python cosine similarity are single-instance-only. Before horizontal scaling, move rate-limit counters to a shared store and knowledge retrieval to a shared, indexed database/vector-search implementation. Do not assume increasing server size fixes cross-instance correctness.
+## Token budgets and spending
 
-## Workspace ownership boundary
-Tool workspaces are now rooted under a server-derived user ID before the sanitized workspace name, so one signed-in user cannot access another user's workspace simply by choosing the same workspace name. Existing directories created under the previous shared `projects/<workspace>` layout are not automatically migrated because their rightful owner cannot be inferred safely. Review and migrate any needed legacy files manually before relying on them; do not copy shared data into a user's workspace without confirming ownership.
+Use per-user budgets for fairness and abuse prevention plus a global spending ceiling as a platform circuit breaker. Limits must be enforced server-side and atomically before paid provider calls. Record provider/model, input/output token usage where available, and cost where known. Concurrent-request tests must demonstrate that limits cannot be overspent. Do not treat frontend counters as enforcement.
 
-## Approval workflow boundary
-Pending approval records are persisted and scoped to their owner, and the UI can record approve/reject decisions. Recording a decision does not yet resume or execute the interrupted operation. Never treat a recorded approval as authorization to run a tool unless the execution path checks the same approval record immediately before the side effect, validates its owner and action/resource binding, and safely handles expiry, rejection, cancellation, and duplicate execution.
+## Capability areas must become real features
 
-## Schema-only tables
-Do not delete tables solely because they are not yet used; removal may break future migrations or existing data. Treat missions, workflows, artifacts, social_content, and projects as deferred schema. Either implement a real vertical slice with tests and UI before marketing those features, or remove them in a deliberate versioned migration after checking all references and data. Keep them unadvertised meanwhile.
+The following tables are deliberate product foundations, not features to leave unused indefinitely: missions and mission runs, workflows, artifacts, social content, projects, research, evidence, files, memory, and logs. Build them as vertical slices, each with authenticated APIs, owner-scoped queries, validation, UI, audit events where appropriate, and tests. A table alone does not count as an implemented capability.
 
-## Security and privacy release gates
-Before public access:
-- Wire and test exact-origin CORS configuration.
-- Keep production registration closed unless intentionally enabled.
-- Publish reviewed Terms of Service and Privacy Policy.
-- Obtain explicit, revocable consent before conversations are eligible for training export; existing conversations are not automatically consented.
-- Add HTTP-level authentication, authorization, ownership-isolation, CSRF, and session tests; obtain an independent security review.
-- Run dependency vulnerability scanning and secret scanning in CI.
-- Document deletion, export, retention, and backup/restore behavior.
+Implementation order should favor the shared foundation first: projects/workspaces and files/artifacts; mission lifecycle and runs; reusable workflows; research/evidence attached to missions; social-content drafts and publishing lifecycle. Do not expose a feature as available in the product until its complete vertical slice works. Do not remove schema merely because the first implementation is incomplete; use versioned migrations after checking references and data.
 
-## Testing and delivery
-CI runs compilation and the existing unit suite, with HTTP boundary and approval-service regression tests being expanded on the review branch. This is a starting gate, not proof of end-to-end correctness. Add browser-flow tests, dependency scans, and deployment smoke tests. A green CI run must not be represented as a penetration test or live-deployment verification.
+## Storage and portability
+
+The application must not depend on Render-specific configuration, services, or deployment manifests. It should run locally and be deployable to any compatible Linux/Python host using documented environment variables and a standard ASGI entry point. Render may be used as a low-cost test target, but it is only one deployment option. Keep host-specific setup outside the application core.
+
+Local filesystem storage is for development and single-instance testing. Production must explicitly configure durable storage; multi-instance operation requires shared object storage or an equivalent shared service. Backups must be independent of primary storage and periodically restore-tested.
+
+## Security, privacy, and public-launch gates
+
+Before unrestricted public registration:
+- Complete authentication, session, CSRF, ownership-isolation, and authorization tests across every API route.
+- Keep registration closed by default and add abuse controls for registration, login, provider calls, uploads, and tool execution.
+- Publish reviewed Terms of Service and Privacy Policy; draft documents are tracked separately and are not legal approval.
+- Obtain explicit, informed, recorded, revocable consent before a user's conversation is eligible for training export. Admin permission is not user consent.
+- Run dependency and secret scanning in CI; remediate high/critical findings or document a time-bounded exception.
+- Verify rate limiting across multiple app instances against shared PostgreSQL.
+- Verify backups and restoration, durable file storage, deployment rollback, and health checks.
+- Obtain an independent security review and run end-to-end browser tests, including unauthorized cross-user access attempts.
+
+## CI and verification truth
+
+The CI suite must run the unit tests and PostgreSQL integration tests. A green run is evidence only for the tests that actually ran; it is not a penetration test, legal review, load test, or live deployment verification. Every significant decision and fix should be timestamped in the decision log/changelog, with the exact Git commit serving as the source of truth.
