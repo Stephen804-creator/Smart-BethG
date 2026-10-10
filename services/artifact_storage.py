@@ -30,9 +30,20 @@ class LocalArtifactStorage:
         path.unlink(missing_ok=True)
 
     def _resolve(self, key):
-        candidate = (self.root / key).resolve()
-        if self.root not in candidate.parents:
+        if not isinstance(key, str) or "\\\\" in key:
             raise ValueError("Invalid artifact storage key.")
+        parts = Path(key).parts
+        # Keys are owner-prefixed and intentionally flat after the owner ID:
+        # <user_id>/<opaque-id>_<safe-name>.<extension>.
+        if len(parts) != 2 or not parts[0].isdigit() or parts[1] in {"", ".", ".."}:
+            raise ValueError("Artifact storage keys must be owner-scoped.")
+        owner_root = self.root / parts[0]
+        if owner_root.is_symlink():
+            raise ValueError("Artifact owner directory cannot be a symlink.")
+        candidate = (self.root / key).resolve()
+        resolved_owner = owner_root.resolve()
+        if self.root not in resolved_owner.parents or resolved_owner not in candidate.parents:
+            raise ValueError("Artifact storage key escapes its owner directory.")
         return candidate
 
 
