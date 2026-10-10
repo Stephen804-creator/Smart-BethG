@@ -8,6 +8,7 @@ from database import _run_postgres_migrations, get_connection, initialize_databa
 from repositories.conversation_repository import ConversationRepository
 from services.approval_service import ApprovalService
 from services.auth_service import create_user
+from services.file_service import FileService
 from services.rate_limiter import check_rate_limit
 from services.usage_budget_service import UsageBudgetService
 
@@ -89,6 +90,25 @@ class TestPostgreSQLIntegration(unittest.TestCase):
         usage = budget.get_usage(user["id"])
         self.assertEqual(usage["actual_tokens"], 170)
         self.assertEqual(usage["requests"], 1)
+
+    def test_file_storage_round_trip_and_owner_isolation(self):
+        suffix = uuid.uuid4().hex[:12]
+        owner = create_user("pg-file-owner-" + suffix, "test-password-123")
+        other = create_user("pg-file-other-" + suffix, "test-password-123")
+        service = FileService()
+        record = service.save_upload(owner["id"], "note.txt", b"PostgreSQL file round trip\n", "text/plain")
+        self.assertIsNotNone(record)
+        self.assertEqual(service.list_files(owner["id"])[0]["id"], record["id"])
+
+        data, owned_record = service.read_bytes(owner["id"], record["id"])
+        self.assertEqual(data, b"PostgreSQL file round trip\n")
+        self.assertIsNotNone(owned_record)
+
+        foreign_data, foreign_record = service.read_bytes(other["id"], record["id"])
+        self.assertIsNone(foreign_data)
+        self.assertIsNone(foreign_record)
+        self.assertTrue(service.delete_file(owner["id"], record["id"]))
+        self.assertIsNone(service.get_file(owner["id"], record["id"]))
 
     def test_database_backed_rate_limiter(self):
         key = "pg-integration:" + uuid.uuid4().hex
