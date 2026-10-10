@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import requests
@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 from api.dependencies import get_current_user
-from connectors.social import ConnectorNotConfigured, SocialConnectorRegistry
+from connectors.social import SocialConnectorRegistry
 from database import get_connection
 from services.credential_vault import CredentialVault, CredentialVaultError
 
@@ -245,7 +245,7 @@ def activate_social_account(connection_id: int, user=Depends(get_current_user)):
     conn = get_connection()
     try:
         account = conn.execute(
-            "SELECT id, platform, credential_ref, status FROM social_connections "
+            "SELECT id, platform, external_account_id, credential_ref, status FROM social_connections "
             "WHERE id=? AND user_id=? LIMIT 1",
             (connection_id, user["id"]),
         ).fetchone()
