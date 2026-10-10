@@ -9,8 +9,13 @@ import os
 import secrets
 import warnings
 
-ENVIRONMENT = os.getenv("SMART_BETHG_ENV", "development")
-IS_PRODUCTION = ENVIRONMENT.lower() == "production"
+ENVIRONMENT = os.getenv("SMART_BETHG_ENV", "development").strip().lower()
+if ENVIRONMENT not in {"development", "test", "production"}:
+    raise RuntimeError(
+        "SMART_BETHG_ENV must be one of: development, test, production. "
+        "Refusing to silently treat an unknown environment as development."
+    )
+IS_PRODUCTION = ENVIRONMENT == "production"
 API_PREFIX = "/api/v1"
 
 STORAGE_ROOT = os.getenv("SMART_BETHG_STORAGE_ROOT", "./storage")
