@@ -150,8 +150,8 @@ class TestPostgreSQLIntegration(unittest.TestCase):
             conn.execute(
                 "INSERT INTO social_connections(user_id, platform, external_account_id, display_name, "
                 "credential_ref, scopes_json, status, connected_at) "
-                "VALUES (?, 'facebook', 'pg-page-" + suffix + "', 'PG Page', ?, '[]', 'active', CURRENT_TIMESTAMP)",
-                (user["id"], credential_ref),
+                "VALUES (?, 'facebook', ?, 'PG Page', ?, '[]', 'active', CURRENT_TIMESTAMP)",
+                (user["id"], "pg-page-" + suffix, credential_ref),
             )
             connection = conn.execute(
                 "SELECT id FROM social_connections WHERE user_id=? AND platform='facebook' "
