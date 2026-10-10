@@ -191,11 +191,19 @@ class TestPostgreSQLIntegration(unittest.TestCase):
         other = create_user("pg-artifact-other-" + suffix, "test-password-123")
         service = ArtifactService()
         payload = bytes([137]) + b"PNG" + bytes([13, 10, 26, 10]) + b"postgres-artifact"
-        artifact = service.create_bytes(owner["id"], "pg-image.png", payload, "image/png")
+        artifact = service.create_bytes(
+            owner["id"], "pg-image.png", payload, "image/png",
+            source_type="provider_generation", source_id="job-" + suffix,
+            provider="test-provider", model="test-model",
+            metadata={"generation_id": suffix},
+        )
         try:
             stored, record = service.read_bytes(owner["id"], artifact["id"])
             self.assertEqual(stored, payload)
             self.assertEqual(record["content_type"], "image/png")
+            self.assertEqual(record["source_type"], "provider_generation")
+            self.assertEqual(record["provider"], "test-provider")
+            self.assertEqual(record["metadata"]["generation_id"], suffix)
             foreign, foreign_record = service.read_bytes(other["id"], artifact["id"])
             self.assertIsNone(foreign)
             self.assertIsNone(foreign_record)
