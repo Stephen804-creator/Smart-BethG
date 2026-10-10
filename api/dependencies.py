@@ -82,3 +82,9 @@ from services.project_service import ProjectService
 
 def get_project_service():
     return ProjectService()
+
+from services.artifact_service import ArtifactService
+
+
+def get_artifact_service():
+    return ArtifactService()
