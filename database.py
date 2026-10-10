@@ -22,6 +22,8 @@ execution, artifact generation, memory retrieval, etc.) is implemented.
 See v1_capabilities.md status vocabulary - these are STRUCTURALLY
 PREPARED, not IMPLEMENTED, until real logic reads/writes them.
 """
+import os
+import re
 import sqlite3
 
 import config
@@ -29,10 +31,119 @@ import config
 DB_PATH = config.resolve_sqlite_path()
 
 
+class _EmptyCursor:
+    """No-op cursor for SQLite-only PRAGMAs on PostgreSQL."""
+    rowcount = 0
+    lastrowid = None
+
+    def fetchone(self):
+        return None
+
+    def fetchall(self):
+        return []
+
+
+class _PostgresCursor:
+    def __init__(self, cursor, lastrowid=None):
+        self._cursor = cursor
+        self.lastrowid = lastrowid
+        self.rowcount = cursor.rowcount
+
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+
+class _PostgresConnection:
+    """DB-API adapter for the repository's existing parameterized SQL."""
+    def __init__(self, connection):
+        self._connection = connection
+
+    def execute(self, sql, params=()):
+        statement = sql.strip()
+        if re.match(r"PRAGMA\s+foreign_keys\s*=\s*ON", statement, re.I):
+            return _EmptyCursor()
+        pragma = re.match(r"PRAGMA\s+table_info\(([^)]+)\)", statement, re.I)
+        if pragma:
+            table = pragma.group(1).strip().strip(chr(34) + "[]")
+            cursor = self._connection.execute(
+                "SELECT column_name AS name FROM information_schema.columns "
+                "WHERE table_schema = current_schema() AND table_name = %s "
+                "ORDER BY ordinal_position",
+                (table,),
+            )
+            return _PostgresCursor(cursor)
+
+        statement = statement.replace("?", "%s")
+        lastrowid = None
+        insert = re.match(
+            r"INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)",
+            statement,
+            re.I | re.S,
+        )
+        if insert and not re.search(r"\bRETURNING\b", statement, re.I):
+            columns = {part.strip().strip(chr(34)).lower() for part in insert.group(2).split(",")}
+            if "id" not in columns:
+                statement += " RETURNING id"
+                lastrowid = "__returning_id__"
+
+        cursor = self._connection.execute(statement, params)
+        if lastrowid == "__returning_id__":
+            row = cursor.fetchone()
+            lastrowid = row["id"] if row else None
+        return _PostgresCursor(cursor, lastrowid)
+
+    def executescript(self, script):
+        clean = "\n".join(
+            line for line in script.splitlines()
+            if not line.lstrip().startswith("--")
+        )
+        clean = re.sub(
+            r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT",
+            "BIGSERIAL PRIMARY KEY",
+            clean,
+            flags=re.I,
+        )
+        for statement in clean.split(";"):
+            if statement.strip():
+                self._connection.execute(statement)
+
+    def commit(self):
+        self._connection.commit()
+
+    def rollback(self):
+        self._connection.rollback()
+
+    def close(self):
+        self._connection.close()
+
+
 def get_connection():
-    import os
+    """PostgreSQL is required in production; SQLite is the local/test adapter."""
+    database_url = (config.DATABASE_URL or "").strip()
+    is_postgres = database_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://"))
+    if config.IS_PRODUCTION and not is_postgres:
+        raise RuntimeError(
+            "Production requires DATABASE_URL pointing to PostgreSQL. "
+            "SQLite is supported only for local development and tests."
+        )
+
+    if is_postgres:
+        try:
+            import psycopg
+            from psycopg.rows import dict_row
+        except ImportError as exc:
+            raise RuntimeError(
+                "PostgreSQL is configured but psycopg is not installed."
+            ) from exc
+        dsn = database_url.replace("postgres://", "postgresql://", 1)
+        dsn = dsn.replace("postgresql+psycopg://", "postgresql://", 1)
+        return _PostgresConnection(psycopg.connect(dsn, row_factory=dict_row))
+
     os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
