@@ -187,6 +187,11 @@ class UsageBudgetService:
         }
 
     def _pricing(self, provider, model):
+        # Embedding APIs have separate pricing from chat-completion models.
+        if model == "text-embedding-3-small":
+            return {"input": 0.02, "output": 0.0}
+        if model == "gemini-embedding-001":
+            return {"input": 0.15, "output": 0.0}
         for entry in self.pricing_catalog.get(provider, {}).get("models", []):
             if entry.get("id") == model and isinstance(entry.get("pricing_usd_per_million"), dict):
                 pricing = entry["pricing_usd_per_million"]
