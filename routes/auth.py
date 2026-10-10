@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+import secrets
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
 import config
 from services.auth_service import authenticate_user, create_user
 from services.rate_limiter import check_rate_limit
-from api.dependencies import get_current_user
+from api.dependencies import get_current_user, require_csrf
 from logging_setup import get_logger
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -33,8 +35,18 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+@router.get("/csrf")
+def csrf_token(request: Request, response: Response):
+    token = request.session.get("csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        request.session["csrf_token"] = token
+    response.headers["Cache-Control"] = "no-store"
+    return {"csrf_token": token}
+
+
 @router.post("/login")
-def login(payload: LoginRequest, request: Request):
+def login(payload: LoginRequest, request: Request, _csrf=Depends(require_csrf)):
     if not check_rate_limit(f"login:{_client_ip(request)}"):
         logger.warning("Login rate-limited for %s", _client_ip(request))
         raise HTTPException(status_code=429, detail="Too many login attempts. Please wait and try again.")
@@ -45,12 +57,14 @@ def login(payload: LoginRequest, request: Request):
         return {"authenticated": False, "error": "Invalid credentials."}
     request.session.clear()
     request.session["user_id"] = user["id"]
+    csrf = secrets.token_urlsafe(32)
+    request.session["csrf_token"] = csrf
     logger.info("User %s logged in", user["id"])
-    return {"authenticated": True, "user": user}
+    return {"authenticated": True, "user": user, "csrf_token": csrf}
 
 
 @router.post("/logout")
-def logout(request: Request):
+def logout(request: Request, _csrf=Depends(require_csrf)):
     user_id = request.session.get("user_id")
     request.session.clear()
     logger.info("User %s logged out", user_id)
@@ -58,7 +72,7 @@ def logout(request: Request):
 
 
 @router.post("/register")
-def register(payload: RegisterRequest, request: Request):
+def register(payload: RegisterRequest, request: Request, _csrf=Depends(require_csrf)):
     """
     Self-registration, gated by two independent operator controls:
 
