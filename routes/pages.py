@@ -57,8 +57,9 @@ def _real_system_status():
 def _real_capabilities():
     """
     Only lists capabilities that are actually wired up right now.
-    Deliberately does not list research, artifacts, workflows, etc. -
-    those have storage tables but no functional implementation yet.
+    Projects and missions are record-management features, not autonomous
+    background execution. Social campaigns and artifacts have their own
+    focused workspace pages and are linked from navigation.
     """
     return [
         {
