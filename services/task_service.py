@@ -3,4 +3,7 @@ class TaskService:
  def __init__(self): self.repo=TaskRepository()
  def create(self,user_id,request,workspace): return {"task_id":self.repo.create(user_id,request,"queued",workspace),"status":"queued"}
  def list_tasks(self,user_id): return self.repo.list(user_id)
- def update_status(self,task_id,status): self.repo.update_status(task_id,status)
+ def update_status(self,user_id,task_id,status):
+  if status not in {"queued","running","completed","failed","cancelled"}:
+   raise ValueError("Invalid task status")
+  return self.repo.update_status(user_id,task_id,status)
