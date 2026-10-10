@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Trusted-operator CLI for creating or promoting a Smart BethG administrator."""
 import getpass
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import get_connection, initialize_database
 from services.auth_service import create_user
