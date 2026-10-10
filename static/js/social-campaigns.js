@@ -5,6 +5,8 @@
   const formStatus = document.getElementById("campaignFormStatus");
   const connectorList = document.getElementById("connectorList");
   const connectedAccounts = document.getElementById("connectedAccounts");
+  const connectorSetup = document.getElementById("connectorSetup");
+  const connectFacebook = document.getElementById("connectFacebook");
   const autonomyMode = document.getElementById("autonomyMode");
   const consentRow = document.getElementById("autoPublishConsent");
   if (!form || !campaignList) return;
@@ -114,6 +116,41 @@
       const card = element("article", "connector-card");
       card.append(element("h3", "", account.display_name || account.external_account_id));
       card.append(element("p", "muted", account.platform + " · " + account.status));
+      const actions = element("div", "campaign-actions");
+      if (account.status === "pending" && account.platform === "facebook") {
+        const activate = element("button", "btn", "Activate this Page");
+        activate.type = "button";
+        activate.addEventListener("click", async () => {
+          activate.disabled = true;
+          try {
+            await api("/connectors/social-accounts/" + account.id + "/activate", { method: "POST" });
+            campaignStatus.textContent = "Facebook Page activated for this account.";
+            await loadConnectors();
+            await loadCampaigns();
+          } catch (error) {
+            campaignStatus.textContent = error.message;
+          } finally { activate.disabled = false; }
+        });
+        actions.append(activate);
+      }
+      if (account.status !== "revoked") {
+        const disconnect = element("button", "btn", "Disconnect");
+        disconnect.type = "button";
+        disconnect.addEventListener("click", async () => {
+          if (!window.confirm("Disconnect this account and block its pending publications?")) return;
+          disconnect.disabled = true;
+          try {
+            await api("/connectors/social-accounts/" + account.id, { method: "DELETE" });
+            campaignStatus.textContent = "Account disconnected. Pending jobs were blocked.";
+            await loadConnectors();
+            await loadCampaigns();
+          } catch (error) {
+            campaignStatus.textContent = error.message;
+          } finally { disconnect.disabled = false; }
+        });
+        actions.append(disconnect);
+      }
+      card.append(actions);
       connectedAccounts.append(card);
     });
   }
@@ -122,12 +159,19 @@
     connectorList.replaceChildren(element("p", "muted", "Loading connector status…"));
     connectedAccounts.replaceChildren(element("p", "muted", "Loading connected accounts…"));
     try {
-      const [catalog, accounts] = await Promise.all([
+      const [catalog, accounts, metaConfig] = await Promise.all([
         api("/connectors"),
         api("/connectors/social-accounts"),
+        api("/connectors/meta/configuration"),
       ]);
       renderConnectors(catalog.connectors || []);
       renderAccounts(accounts.accounts || []);
+      connectFacebook.hidden = !metaConfig.oauth_configured;
+      connectorSetup.textContent = metaConfig.oauth_configured
+        ? (metaConfig.publishing_enabled
+          ? "Meta OAuth is configured. Publishing remains limited to the adapter and permissions actually approved for this app."
+          : "Meta OAuth is configured for account selection. Publishing stays disabled until the Meta app is approved, tested, and explicitly enabled by the operator.")
+        : "To connect Facebook Pages, the operator must configure SMART_BETHG_META_APP_ID, SMART_BETHG_META_APP_SECRET, SMART_BETHG_META_REDIRECT_URI, and the registered callback URL.";
     } catch (error) {
       connectorList.replaceChildren(element("p", "status-message", error.message));
       connectedAccounts.replaceChildren(element("p", "status-message", error.message));
@@ -339,6 +383,7 @@
     } finally { button.disabled = false; }
   });
 
+  connectFacebook.addEventListener("click", () => { window.location.href = "/connectors/meta/start"; });
   $("#refreshConnectors").addEventListener("click", loadConnectors);
   $("#refreshCampaigns").addEventListener("click", loadCampaigns);
 
@@ -355,6 +400,22 @@
   end.setHours(23, 0, 0, 0);
   $('input[name="end_at"]', form).value = toLocalInput(end);
 
+  const metaResult = new URLSearchParams(window.location.search).get("meta");
+  const metaMessages = {
+    pending: "Meta authorization completed. Review the listed Pages and activate only the Pages you want Smart BethG to manage.",
+    state_error: "The Meta authorization state did not match. Restart the connection flow.",
+    cancelled: "Meta account connection was cancelled.",
+    not_configured: "Meta OAuth is not configured on this server.",
+    token_error: "Meta did not return a usable authorization token. Try connecting again.",
+    permissions_missing: "The required Meta Page permissions were not granted. No Page connection was activated.",
+    no_pages: "No eligible Facebook Pages with content-creation access were found.",
+    vault_not_configured: "Connector token encryption is not configured. No account was activated.",
+    provider_error: "Meta connection failed. Check the server's connector logs without exposing tokens.",
+  };
+  if (metaResult && metaMessages[metaResult]) {
+    campaignStatus.textContent = metaMessages[metaResult];
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
   loadConnectors();
   loadCampaigns();
 })();
