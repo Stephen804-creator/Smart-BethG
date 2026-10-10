@@ -1,5 +1,9 @@
+import logging
+
 from database import get_connection
 from providers.provider_manager import provider_manager
+
+logger = logging.getLogger("smart_bethg.health")
 
 
 def check_database():
@@ -10,8 +14,11 @@ def check_database():
         finally:
             conn.close()
         return {"status": "ok"}
-    except Exception as exc:
-        return {"status": "error", "detail": str(exc)}
+    except Exception:
+        # Keep connection strings, paths, and driver errors out of a public
+        # health response. The full exception remains in server logs only.
+        logger.exception("Database health check failed")
+        return {"status": "error", "detail": "Database connection is unavailable."}
 
 
 def check_providers():
@@ -24,13 +31,11 @@ def check_providers():
 
 
 def check_background_worker():
-    """
-    There is no background worker/task-execution process yet (see
-    v1_capabilities.md - task execution is still queue-only), so this is
-    honestly reported as not implemented rather than omitted or faked as
-    healthy.
-    """
+    """Report the current synchronous request model honestly."""
     return {
         "status": "not_implemented",
-        "detail": "Tasks are queued (POST /tasks) but nothing executes them yet.",
+        "detail": (
+            "The current /tasks endpoint executes synchronously within the request. "
+            "A durable worker for missions and workflows is not implemented yet."
+        ),
     }
