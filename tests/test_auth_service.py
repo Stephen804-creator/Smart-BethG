@@ -52,7 +52,7 @@ class TestAuthService(SmartBethGTestCase):
         self.assertEqual(user["username"], "person@gmail.com")
 
     def test_oauth_user_is_stable_across_logins(self):
-        first = find_or_create_oauth_user("person@gmail.com", "google", "sub-1")
+        first = find_or_create_oauth_user("person@gmail.com", "google", "sub-1", allow_create=True)
         second = find_or_create_oauth_user("person@gmail.com", "google", "sub-1")
         self.assertEqual(first["id"], second["id"])
 
