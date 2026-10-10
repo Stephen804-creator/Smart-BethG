@@ -16,7 +16,15 @@ permissions:
   actions: read
 
 jobs:
+  private-repo-note:
+    if: github.event.repository.visibility != 'public'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain CodeQL availability
+        run: echo "CodeQL upload is skipped for private repositories unless GitHub Code Security is enabled. Dependency audit, secret scanning, tests, and PostgreSQL integration tests remain active."
+
   analyze:
+    if: github.event.repository.visibility == 'public'
     name: Analyze ${{ matrix.language }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
