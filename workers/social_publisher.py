@@ -76,7 +76,7 @@ class SocialPublisherWorker:
             row = conn.execute(
                 "SELECT j.*, c.status AS campaign_status, c.autonomy_mode, c.autopublish_authorized_at, "
                 "s.status AS content_status, s.topic AS title, s.caption AS content, s.hashtags, "
-                "sc.credential_ref, sc.status AS connection_status "
+                "sc.credential_ref, sc.external_account_id, sc.display_name, sc.status AS connection_status "
                 "FROM social_publish_jobs j "
                 "JOIN social_campaigns c ON c.id=j.campaign_id AND c.user_id=j.user_id "
                 "JOIN social_content s ON s.id=j.content_id AND s.user_id=j.user_id "
@@ -199,7 +199,13 @@ class SocialPublisherWorker:
                 except (TypeError, json.JSONDecodeError):
                     hashtags = []
                 outcome = publisher.publish(
-                    account_ref=job["credential_ref"],
+                    account={
+                        "user_id": job["user_id"],
+                        "platform": job["platform"],
+                        "external_account_id": job["external_account_id"],
+                        "display_name": job["display_name"],
+                        "credential_ref": job["credential_ref"],
+                    },
                     content={
                         "platform": job["platform"],
                         "title": job["title"],
