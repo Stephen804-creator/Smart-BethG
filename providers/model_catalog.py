@@ -41,7 +41,7 @@ MODEL_CATALOG = {
         ],
     },
     "groq": {
-        "label": "Groq (free, open-weight)",
+        "label": "Groq (open-weight models)",
         "models": [
             {"id": "openai/gpt-oss-20b", "label": "GPT-OSS 20B (Groq)", "tier": "fast", "pricing_usd_per_million": {"input": 0.075, "output": 0.3}},
             {"id": "qwen/qwen3.8-27b", "label": "Qwen3.8 27B (Groq)", "tier": "balanced", "pricing_usd_per_million": {"input": 0.8, "output": 4}},
