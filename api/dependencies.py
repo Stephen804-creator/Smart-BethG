@@ -53,6 +53,9 @@ def get_current_user(request: Request):
     if not user:
         request.session.clear()
         raise HTTPException(status_code=401, detail="Invalid or inactive user.")
+    if request.session.get("session_version") != user.get("session_version"):
+        request.session.clear()
+        raise HTTPException(status_code=401, detail="Session has expired or been revoked. Please sign in again.")
     if request.method.upper() not in {"GET", "HEAD", "OPTIONS", "TRACE"}:
         require_csrf(request)
     return user
@@ -63,7 +66,11 @@ def get_optional_user(request: Request):
     user_id = request.session.get("user_id")
     if not user_id:
         return None
-    return get_user_by_id(user_id)
+    user = get_user_by_id(user_id)
+    if not user or request.session.get("session_version") != user.get("session_version"):
+        request.session.clear()
+        return None
+    return user
 
 
 def require_role(role: str):
