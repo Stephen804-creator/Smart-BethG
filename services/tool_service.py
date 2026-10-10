@@ -43,13 +43,21 @@ from logging_setup import get_logger
 logger = get_logger("task")
 
 
+def normalize_workspace_name(workspace_name: str) -> str:
+    """Return the canonical workspace name used for both authorization and paths."""
+    return "".join(
+        c for c in (workspace_name or "")
+        if c.isalnum() or c in ("-", "_")
+    ) or "default"
+
+
 def resolve_workspace_root(user_id, workspace_name: str) -> str:
     """
     Maps a workspace to a directory owned by one authenticated user.
     The user ID comes from the server-side session, never the request
     body. Workspace names are sanitized and never treated as paths.
     """
-    safe_name = "".join(c for c in (workspace_name or "") if c.isalnum() or c in ("-", "_")) or "default"
+    safe_name = normalize_workspace_name(workspace_name)
     user_root = os.path.join(config.STORAGE_DIRS["projects"], str(user_id))
     root = os.path.join(user_root, safe_name)
     os.makedirs(root, exist_ok=True)
@@ -69,6 +77,9 @@ class ToolService:
         self._docker_tool = DockerTool()
 
     def execute(self, user: dict, action: str, workspace: str = "default", **kwargs) -> dict:
+        # Authorization records, approval UI, and filesystem paths must refer
+        # to exactly the same canonical workspace name.
+        workspace = normalize_workspace_name(workspace)
         workspace_root = resolve_workspace_root(user["id"], workspace)
         resource = f"workspace:{workspace}"
 
@@ -166,6 +177,8 @@ class ToolService:
         request_id = payload.get("request_id") or str(uuid.uuid4())
         if not isinstance(workspace, str) or not workspace.strip() or not isinstance(kwargs, dict):
             raise HTTPException(status_code=422, detail="Saved operation payload is missing or invalid.")
+        if normalize_workspace_name(workspace) != workspace:
+            raise HTTPException(status_code=409, detail="Saved workspace name is not canonical; operation must be resubmitted.")
         if record.get("resource") != f"workspace:{workspace}":
             raise HTTPException(status_code=409, detail="Saved operation resource does not match its approval.")
         action = record.get("action")
