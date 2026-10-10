@@ -63,6 +63,15 @@ def list_social_accounts(user=Depends(get_current_user)):
         conn.close()
 
 
+@router.get("/meta/configuration")
+def meta_configuration(_user=Depends(get_current_user)):
+    settings = _meta_config()
+    return {
+        "oauth_configured": _meta_ready_for_oauth(settings),
+        "publishing_enabled": os.getenv("SMART_BETHG_META_PUBLISHING_ENABLED", "").strip().lower() == "true",
+    }
+
+
 @router.get("/meta/start")
 def start_meta_oauth(request: Request, user=Depends(get_current_user)):
     settings = _meta_config()
