@@ -7,6 +7,7 @@ from repositories.conversation_repository import ConversationRepository
 from services.approval_service import ApprovalService
 from services.auth_service import create_user
 from services.rate_limiter import check_rate_limit
+from services.usage_budget_service import UsageBudgetService
 
 
 class TestPostgreSQLIntegration(unittest.TestCase):
@@ -31,6 +32,16 @@ class TestPostgreSQLIntegration(unittest.TestCase):
         pending = approvals.create(user["id"], "git.write", "workspace:default")
         decided = approvals.decide(pending["id"], user["id"], True)
         self.assertEqual(decided["status"], "approved")
+
+    def test_database_backed_usage_budget_reservation(self):
+        suffix = uuid.uuid4().hex[:12]
+        user = create_user("pg-budget-" + suffix, "test-password-123")
+        budget = UsageBudgetService()
+        reservation = budget.reserve(user["id"], "openrouter", "openrouter/free", 100, 100)
+        self.assertTrue(budget.reconcile(reservation["id"], 90, 80))
+        usage = budget.get_usage(user["id"])
+        self.assertEqual(usage["actual_tokens"], 170)
+        self.assertEqual(usage["requests"], 1)
 
     def test_database_backed_rate_limiter(self):
         key = "pg-integration:" + uuid.uuid4().hex
