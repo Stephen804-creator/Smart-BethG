@@ -1,3 +1,5 @@
+from fastapi import HTTPException
+
 from tests.base import SmartBethGTestCase
 from services.auth_service import create_user
 from services.approval_service import ApprovalService
@@ -36,14 +38,16 @@ class TestApprovalService(SmartBethGTestCase):
     def test_cannot_decide_someone_elses_approval(self):
         other = create_user("bob", "password123")
         created = self.service.create(self.user["id"], "git.write", "workspace:default")
-        result = self.service.decide(created["id"], other["id"], True)
-        self.assertIn("error", result)
+        with self.assertRaises(HTTPException) as caught:
+            self.service.decide(created["id"], other["id"], True)
+        self.assertEqual(caught.exception.status_code, 404)
 
     def test_cannot_decide_twice(self):
         created = self.service.create(self.user["id"], "git.write", "workspace:default")
         self.service.decide(created["id"], self.user["id"], True)
-        second = self.service.decide(created["id"], self.user["id"], False)
-        self.assertIn("error", second)
+        with self.assertRaises(HTTPException) as caught:
+            self.service.decide(created["id"], self.user["id"], False)
+        self.assertEqual(caught.exception.status_code, 409)
 
     def test_decided_approval_no_longer_pending(self):
         created = self.service.create(self.user["id"], "git.write", "workspace:default")
