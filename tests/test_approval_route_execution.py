@@ -88,6 +88,52 @@ class TestApprovalRouteExecution(SmartBethGTestCase):
         self.assertEqual(count.stdout.strip(), "1")
 
 
+    def test_approved_but_not_yet_claimed_operation_resumes_on_retry(self):
+        csrf = self.client.get("/auth/csrf").json()["csrf_token"]
+        login = self.client.post(
+            "/auth/login",
+            headers={"X-CSRF-Token": csrf},
+            json={"username": "approval-route-admin", "password": "password123"},
+        )
+        self.assertEqual(login.status_code, 200, login.text)
+        csrf = self.client.get("/auth/csrf").json()["csrf_token"]
+
+        workspace = "recovery-approval-repo"
+        root = resolve_workspace_root(self.user["id"], workspace)
+        subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+        with open(os.path.join(root, "recovery.txt"), "w", encoding="utf-8") as handle:
+            handle.write("resume only after approval")
+
+        pending = ToolService().execute(
+            {"id": self.user["id"], "role": "admin"},
+            "git.write",
+            workspace=workspace,
+            operation="commit",
+            message="resumed after approval decision",
+        )
+        self.assertEqual(pending["status"], "approval_required")
+
+        # Simulate interruption after decision commit but before execution claim.
+        from services.approval_service import ApprovalService
+        ApprovalService().decide(pending["approval_id"], self.user["id"], True)
+
+        response = self.client.post(
+            f"/approvals/{pending['approval_id']}",
+            headers={"X-CSRF-Token": csrf},
+            json={"approved": True},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["execution"]["success"])
+
+        count = subprocess.run(
+            ["git", "rev-list", "--count", "HEAD"], cwd=root,
+            capture_output=True, text=True, check=True
+        )
+        self.assertEqual(count.stdout.strip(), "1")
+
+
 if __name__ == "__main__":
     import unittest
     unittest.main()
