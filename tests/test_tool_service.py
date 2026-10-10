@@ -71,6 +71,34 @@ class TestToolServiceExecution(SmartBethGTestCase):
         self.assertFalse(result["success"])
         self.assertEqual(result["status"], "failed")
 
+    def test_approved_operation_resumes_once_with_saved_arguments(self):
+        request = self.service.execute(
+            self.admin, "terminal.execute", workspace="approval-resume",
+            program="python", args=["-c", "print('saved')"], timeout=5,
+        )
+        self.assertEqual(request["status"], "approval_required")
+        approval_id = request["approval_id"]
+        self.service.approvals.decide(approval_id, self.admin["id"], True)
+
+        calls = []
+        def fake_tool(permit, workspace_root, **kwargs):
+            calls.append({"action": permit.action, "resource": permit.resource, "kwargs": kwargs})
+            return {"return_code": 0, "stdout": "saved", "stderr": ""}
+
+        self.service._resolve_tool = lambda action: fake_tool if action == "terminal.execute" else None
+        result = self.service.execute_approved(self.admin, approval_id)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution_status"], "completed")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["kwargs"]["program"], "python")
+        self.assertEqual(calls[0]["kwargs"]["args"], ["-c", "print('saved')"])
+
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as caught:
+            self.service.execute_approved(self.admin, approval_id)
+        self.assertEqual(caught.exception.status_code, 409)
+        self.assertEqual(len(calls), 1)
+
     def test_git_read_on_real_repo_succeeds(self):
         workspace_root = resolve_workspace_root(1, "gitproj")
         subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
