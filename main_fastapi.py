@@ -99,8 +99,14 @@ def create_app() -> FastAPI:
         memory.router, knowledge.router,
     ]
     for router in api_routers:
-        app.include_router(router)
-        app.include_router(router, prefix=config.API_PREFIX)
+        if router is chat.router:
+            # Preserve the existing /api/chat UI endpoint while exposing the
+            # canonical versioned path as /api/v1/chat (not /api/v1/api/chat).
+            app.include_router(router, prefix="/api")
+            app.include_router(router, prefix=config.API_PREFIX)
+        else:
+            app.include_router(router)
+            app.include_router(router, prefix=config.API_PREFIX)
 
     # Compatibility wart: chat.router already includes "/api/chat", so its
     # versioned mirror currently lives at "/api/v1/api/chat/".
