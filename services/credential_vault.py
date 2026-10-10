@@ -27,7 +27,7 @@ class CredentialVault:
         except (ValueError, TypeError, UnicodeEncodeError) as exc:
             raise CredentialVaultError("Connector token encryption key must be a valid Fernet key.") from exc
 
-    def store(self, user_id, provider, access_token, *, scopes=None, expires_at=None):
+    def store(self, user_id, provider, access_token, *, scopes=None, expires_at=None, connection=None):
         if not isinstance(access_token, str) or not access_token.strip():
             raise ValueError("Cannot store an empty connector token.")
         provider = (provider or "").strip().lower()
@@ -35,16 +35,19 @@ class CredentialVault:
             raise ValueError("Invalid connector provider.")
         credential_id = uuid.uuid4().hex
         encrypted = self._fernet.encrypt(access_token.encode("utf-8")).decode("ascii")
-        conn = get_connection()
+        owns_connection = connection is None
+        conn = connection or get_connection()
         try:
             conn.execute(
                 "INSERT INTO connector_credentials(id, user_id, provider, encrypted_access_token, "
                 "scopes_json, expires_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
                 (credential_id, user_id, provider, encrypted, json.dumps(scopes or []), expires_at),
             )
-            conn.commit()
+            if owns_connection:
+                conn.commit()
         finally:
-            conn.close()
+            if owns_connection:
+                conn.close()
         return "vault:" + credential_id
 
     def resolve(self, reference, user_id, provider):
