@@ -26,7 +26,7 @@ import os
 import uuid
 
 import config
-from execution.execution_engine import ExecutionEngine
+from execution.execution_engine import ExecutionEngine, ExecutionPermit
 from security.access_control import AccessRequest
 from security.role_permissions import build_security_context
 from services.approval_service import ApprovalService
@@ -86,7 +86,10 @@ class ToolService:
             return {"success": False, "status": "denied", "reason": decision.reason}
 
         if decision.decision == "approval_required":
-            approval = self.approvals.create(user["id"], action, resource)
+            approval = self.approvals.create(
+                user["id"], action, resource,
+                payload={"workspace": workspace, "kwargs": kwargs, "request_id": request_id},
+            )
             logger.info(
                 "Tool requires approval: action=%s user=%s approval_id=%s",
                 action, user["id"], approval["id"],
@@ -132,6 +135,101 @@ class ToolService:
             details=verified.get("status"),
         )
         return verified
+
+    def execute_approved(self, user: dict, approval_id: str) -> dict:
+        """
+        Resume the exact saved operation after an owner approves it.
+        The approval is claimed atomically before any side effect. If a process
+        crashes while a tool is running, the record stays 'running' and is not
+        blindly replayed; an operator must reconcile the outcome.
+        """
+        from fastapi import HTTPException, status
+
+        record = self.approvals.get_for_user(approval_id, user["id"])
+        if not record:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval not found.")
+        if record.get("status") != "approved":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval has not been approved.")
+
+        payload = record.get("payload") or {}
+        workspace = payload.get("workspace")
+        kwargs = payload.get("kwargs")
+        request_id = payload.get("request_id") or str(uuid.uuid4())
+        if not isinstance(workspace, str) or not workspace.strip() or not isinstance(kwargs, dict):
+            raise HTTPException(status_code=422, detail="Saved operation payload is missing or invalid.")
+        if record.get("resource") != f"workspace:{workspace}":
+            raise HTTPException(status_code=409, detail="Saved operation resource does not match its approval.")
+        action = record.get("action")
+        tool_fn = self._resolve_tool(action)
+        if tool_fn is None:
+            raise HTTPException(status_code=422, detail="The approved tool is no longer registered.")
+
+        # Claim before execution. A concurrent or replayed request cannot run
+        # the same approved operation a second time.
+        self.approvals.claim_for_execution(approval_id, user["id"])
+        workspace_root = resolve_workspace_root(user["id"], workspace)
+        context = build_security_context(user, workspace=workspace_root)
+        access_request = AccessRequest(
+            request_id=request_id, action=action, permission=action,
+            resource=record["resource"],
+        )
+        decision, permit = self.engine.authorize(context, access_request)
+
+        if decision.decision == "deny":
+            result = {"success": False, "status": "denied", "reason": decision.reason}
+            self.approvals.mark_execution_result(approval_id, user["id"], "failed", result)
+            self.audit.record(
+                user["id"], action, record["resource"], "approved_but_denied",
+                risk_level=decision.risk.value, details=f"approval_id={approval_id}; {decision.reason}",
+            )
+            return {**result, "approval_id": approval_id, "execution_status": "failed"}
+
+        # PolicyEngine returns no permit for high-risk actions even after the
+        # explicit approval. Re-issue a narrow permit only for this saved,
+        # owner-bound action after current authorization has been checked.
+        if decision.decision == "approval_required":
+            permit = ExecutionPermit(
+                request_id=request_id, action=action,
+                resource=record["resource"], risk_level=decision.risk.value,
+            )
+        if permit is None:
+            result = {"success": False, "status": "denied", "reason": "No execution permit was issued."}
+            self.approvals.mark_execution_result(approval_id, user["id"], "failed", result)
+            return {**result, "approval_id": approval_id, "execution_status": "failed"}
+
+        try:
+            raw_result = tool_fn(permit, workspace_root, **kwargs)
+            verified = verify_result(action, raw_result)
+            if "operation" in kwargs:
+                verified["operation"] = kwargs["operation"]
+            execution_status = "completed" if verified.get("success") else "failed"
+        except Exception as exc:
+            # A tool may have performed a partial external side effect before
+            # raising. Never auto-retry an operation whose outcome is unknown.
+            logger.exception(
+                "Approved tool outcome is indeterminate: approval_id=%s action=%s user=%s",
+                approval_id, action, user["id"],
+            )
+            verified = {
+                "success": False, "status": "indeterminate",
+                "reason": "The operation raised an error. Its side effects must be checked before retrying.",
+            }
+            execution_status = "indeterminate"
+
+        self.approvals.mark_execution_result(approval_id, user["id"], execution_status, verified)
+        self.audit.record(
+            user["id"], action, record["resource"],
+            "approved_executed" if execution_status == "completed" else "approved_execution_" + execution_status,
+            risk_level=decision.risk.value,
+            details=f"approval_id={approval_id}; status={verified.get('status')}",
+        )
+        return {
+            "success": bool(verified.get("success")),
+            "status": verified.get("status", execution_status),
+            "approval_id": approval_id,
+            "execution_status": execution_status,
+            "result": verified,
+        }
 
     def _resolve_tool(self, action):
         return {
