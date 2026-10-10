@@ -4,13 +4,14 @@ import uuid
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 
+import config
 from database import _run_postgres_migrations, get_connection, initialize_database
 from repositories.conversation_repository import ConversationRepository
 from services.approval_service import ApprovalService
 from services.auth_service import create_user
 from services.file_service import FileService
 from services.rate_limiter import check_rate_limit
-from services.usage_budget_service import UsageBudgetService
+from services.usage_budget_service import BudgetExceededError, UsageBudgetService
 
 
 @unittest.skipUnless(
@@ -114,6 +115,46 @@ class TestPostgreSQLIntegration(unittest.TestCase):
         key = "pg-integration:" + uuid.uuid4().hex
         self.assertTrue(check_rate_limit(key))
 
+
+    def test_concurrent_user_budget_reservations_cannot_overspend(self):
+        suffix = uuid.uuid4().hex[:12]
+        user = create_user("pg-budget-race-" + suffix, "test-password-123")
+        service = UsageBudgetService()
+        names = (
+            "USER_DAILY_TOKEN_BUDGET",
+            "GLOBAL_DAILY_TOKEN_BUDGET",
+            "USER_DAILY_SPEND_USD",
+            "GLOBAL_DAILY_SPEND_USD",
+            "USER_DAILY_REQUEST_BUDGET",
+            "GLOBAL_DAILY_REQUEST_BUDGET",
+        )
+        original = {name: getattr(config, name) for name in names}
+        try:
+            config.USER_DAILY_TOKEN_BUDGET = 200
+            config.GLOBAL_DAILY_TOKEN_BUDGET = 100000
+            config.USER_DAILY_SPEND_USD = 100.0
+            config.GLOBAL_DAILY_SPEND_USD = 1000.0
+            config.USER_DAILY_REQUEST_BUDGET = 100
+            config.GLOBAL_DAILY_REQUEST_BUDGET = 1000
+
+            def reserve_one(_):
+                try:
+                    service.reserve(user["id"], "openrouter", "openrouter/free", 50, 50)
+                    return True
+                except BudgetExceededError:
+                    return False
+
+            with ThreadPoolExecutor(max_workers=12) as pool:
+                outcomes = list(pool.map(reserve_one, range(12)))
+            self.assertEqual(sum(outcomes), 2)
+            usage = service.get_usage(user["id"])
+            self.assertLessEqual(
+                usage["tokens_reserved_or_used"],
+                config.USER_DAILY_TOKEN_BUDGET,
+            )
+        finally:
+            for name, value in original.items():
+                setattr(config, name, value)
 
     def test_database_rate_limiter_is_atomic_under_concurrency(self):
         key = "pg-concurrency:" + uuid.uuid4().hex
