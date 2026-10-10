@@ -100,8 +100,9 @@ class ArtifactService:
         storage = get_artifact_storage()
         storage.put(key, encoded)
 
-        conn = get_connection()
+        conn = None
         try:
+            conn = get_connection()
             cursor = conn.execute(
                 "INSERT INTO artifacts(mission_id, user_id, name, artifact_type, path, content_type, "
                 "size_bytes, checksum_sha256, source_type, source_id, provider, model, metadata_json, "
@@ -117,7 +118,8 @@ class ArtifactService:
                 pass
             raise
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()
         return self.get(user_id, artifact_id)
 
     @staticmethod
@@ -176,8 +178,9 @@ class ArtifactService:
         storage = get_artifact_storage()
         storage.put(key, encoded)
 
-        conn = get_connection()
+        conn = None
         try:
+            conn = get_connection()
             cursor = conn.execute(
                 "INSERT INTO artifacts(mission_id, user_id, name, artifact_type, path, content_type, "
                 "size_bytes, checksum_sha256, source_type, source_id, provider, model, metadata_json, "
@@ -193,7 +196,8 @@ class ArtifactService:
                 pass
             raise
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()
         return self.get(user_id, artifact_id)
 
     def read_bytes(self, user_id, artifact_id):
