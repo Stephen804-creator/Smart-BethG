@@ -178,6 +178,42 @@ class TestToolServiceExecution(SmartBethGTestCase):
         )
         self.assertEqual(log_count.stdout.strip(), "1")
 
+    def test_git_commit_does_not_run_repository_hooks(self):
+        root = resolve_workspace_root(self.admin["id"], "hook-disabled")
+        subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+        marker = os.path.join(root, "hook-ran.txt")
+        hook = os.path.join(root, ".git", "hooks", "pre-commit")
+        with open(hook, "w", encoding="utf-8") as handle:
+            handle.write("#!/bin/sh\\nprintf ran > '" + marker + "'\\n")
+        os.chmod(hook, 0o755)
+        with open(os.path.join(root, "note.txt"), "w", encoding="utf-8") as handle:
+            handle.write("content")
+        from execution.execution_engine import ExecutionPermit
+        permit = ExecutionPermit(request_id="hook-test", action="git.write", resource="workspace:hook-disabled", risk_level="high")
+        result = self.service._git_tool.commit(permit, cwd=root, message="commit without hooks")
+        self.assertEqual(result["return_code"], 0, result["stderr"])
+        self.assertFalse(os.path.exists(marker))
+
+    def test_git_commit_rejects_custom_executable_filters(self):
+        root = resolve_workspace_root(self.admin["id"], "filter-disabled")
+        subprocess.run(["git", "init"], cwd=root, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+        marker = os.path.join(root, "filter-ran.txt")
+        subprocess.run(["git", "config", "filter.evil.clean", "touch " + marker], cwd=root, check=True)
+        subprocess.run(["git", "config", "filter.evil.smudge", "touch " + marker], cwd=root, check=True)
+        with open(os.path.join(root, ".gitattributes"), "w", encoding="utf-8") as handle:
+            handle.write("*.txt filter=evil\\n")
+        with open(os.path.join(root, "note.txt"), "w", encoding="utf-8") as handle:
+            handle.write("content")
+        from execution.execution_engine import ExecutionPermit
+        permit = ExecutionPermit(request_id="filter-test", action="git.write", resource="workspace:filter-disabled", risk_level="high")
+        result = self.service._git_tool.commit(permit, cwd=root, message="should be refused")
+        self.assertEqual(result["return_code"], 126)
+        self.assertFalse(os.path.exists(marker))
+
     def test_git_write_commits_real_change_once_authorized(self):
         """
         Exercises the real commit path directly (bypassing the approval
