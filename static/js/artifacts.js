@@ -86,6 +86,9 @@
     meta.append(node("span", "artifact-pill", artifact.artifact_type || "file"));
     meta.append(node("span", "artifact-pill", formatBytes(artifact.size_bytes)));
     if (artifact.content_type) meta.append(node("span", "artifact-pill", artifact.content_type));
+    if (artifact.source_type) meta.append(node("span", "artifact-pill", "source: " + artifact.source_type));
+    if (artifact.provider) meta.append(node("span", "artifact-pill", "provider: " + artifact.provider));
+    if (artifact.model) meta.append(node("span", "artifact-pill", "model: " + artifact.model));
     card.append(meta);
     if (artifact.checksum_sha256) {
       card.append(node("p", "muted small", "SHA-256: " + String(artifact.checksum_sha256).slice(0, 16) + "…"));
