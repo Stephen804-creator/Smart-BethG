@@ -7,8 +7,7 @@ class TaskService:
   if status not in {
    "queued","running","completed","failed","cancelled","executed",
    "needs_clarification","approval_required","denied","no_provider",
-   "search_failed","no_results","unknown_tool","indeterminate",
-   "approval_required","expired"
+   "search_failed","no_results","unknown_tool","indeterminate","expired"
   }:
    raise ValueError("Invalid task status")
   return self.repo.update_status(user_id,task_id,status)
