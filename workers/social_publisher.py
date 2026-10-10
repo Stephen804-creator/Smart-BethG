@@ -92,10 +92,12 @@ class SocialPublisherWorker:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT j.status AS job_status, c.status AS campaign_status, s.status AS content_status "
+                "SELECT j.status AS job_status, c.status AS campaign_status, s.status AS content_status, "
+                "sc.status AS connection_status "
                 "FROM social_publish_jobs j "
                 "JOIN social_campaigns c ON c.id=j.campaign_id AND c.user_id=j.user_id "
                 "JOIN social_content s ON s.id=j.content_id AND s.user_id=j.user_id "
+                "LEFT JOIN social_connections sc ON sc.id=j.connection_id AND sc.user_id=j.user_id "
                 "WHERE j.id=? LIMIT 1",
                 (job_id,),
             ).fetchone()
@@ -180,6 +182,11 @@ class SocialPublisherWorker:
                 self._update_job(job_id, "cancelled", error_code="cancelled_before_publish",
                                  error_message="Campaign was cancelled before the provider call.")
                 results.append({"job_id": job_id, "status": "cancelled"})
+                continue
+            if state.get("connection_status") != "active":
+                self._update_job(job_id, "blocked", error_code="connection_revoked",
+                                 error_message="The social account is no longer active.")
+                results.append({"job_id": job_id, "status": "blocked"})
                 continue
             if state["content_status"] != "approved":
                 self._update_job(job_id, "blocked", error_code="post_not_approved",
