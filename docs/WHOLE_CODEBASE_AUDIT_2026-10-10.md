@@ -292,3 +292,18 @@ This is a green repository CI baseline, not a live deployment audit, independent
 The workflow job conclusions for the current head are green. A FastAPI deprecation warning remains because the application uses `@app.on_event` startup/shutdown handlers; it is not a test failure, but should be migrated to a lifespan handler in a later focused change.
 
 **Release decision remains unchanged: not approved for unrestricted public launch.** The most important unresolved engineering gates are comprehensive PostgreSQL query/schema coverage and real legacy upgrade rehearsal; shared object storage and remote workspace execution for multi-instance operation; durable jobs and crash recovery; independent adversarial testing of network/tool execution; password recovery/MFA and account data export/deletion; enforced CSP after browser compatibility review; live backup/restore and monitoring evidence; accessibility/load/chaos tests; and qualified legal review of the policy drafts. The live hosting environment has not been inspected by this repository audit.
+
+
+## Timestamped verification — 2026-10-10 20:42 UTC
+
+**Application-code revision verified:** `e2caf66f50b6a8042a33dac8d10991cb75ea9f5a`.
+
+- Unit workflow completed successfully: **317 tests ran; 9 PostgreSQL-only tests were skipped in the SQLite/unit job by design**.
+- PostgreSQL integration workflow completed successfully against PostgreSQL 16.
+- Python compilation and workspace dashboard JavaScript syntax check passed.
+- Dependency vulnerability audit and Gitleaks secret scan passed.
+- Replaced deprecated FastAPI `@app.on_event` startup/shutdown hooks with a lifespan handler. The change preserves startup/shutdown logging while removing the deprecation warning seen in earlier test logs.
+
+The audit document itself is being updated after this verified code revision to preserve the requested timestamped history. That documentation-only commit triggers another CI run; use its checks for the final PR head before merging.
+
+The public-launch decision remains **NO-GO** until the outstanding P0 gates in this document are closed and the production environment is independently verified.
