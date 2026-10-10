@@ -62,7 +62,7 @@ class WorkflowService:
         steps = self.validate_steps(steps, require_nonempty=False)
         conn = get_connection()
         try:
-            conn.execute(
+            cursor = conn.execute(
                 "UPDATE workflows SET name=?, description=?, definition_json=?, version=version+1, "
                 "status='draft', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND version=?",
                 (name, description, json.dumps(steps, ensure_ascii=False), workflow_id, user_id, current["version"]),
