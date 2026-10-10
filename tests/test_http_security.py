@@ -14,6 +14,13 @@ from services.tool_service import resolve_workspace_root
 
 
 class TestHttpSecurityBoundaries(unittest.TestCase):
+    def test_security_headers_are_present(self):
+        client = TestClient(create_app())
+        response = client.get("/health")
+        self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
+        self.assertEqual(response.headers.get("x-frame-options"), "DENY")
+        self.assertEqual(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin")
+
     def test_approvals_endpoint_requires_authentication(self):
         client = TestClient(create_app())
         response = client.get("/approvals")
