@@ -37,7 +37,7 @@ class TestController(SmartBethGTestCase):
         self.assertNotEqual(tasks[0]["status"], "queued")
 
     def test_git_intent_updates_task_status_to_real_outcome(self):
-        workspace_root = resolve_workspace_root("default")
+        workspace_root = resolve_workspace_root(1, "default")
         subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
 
         result = self.controller.handle_request("git status", user=self.user, workspace="default")
