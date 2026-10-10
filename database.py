@@ -521,6 +521,8 @@ def _initialize_database_on_connection(conn):
             end_at TEXT,
             cadence_json TEXT NOT NULL DEFAULT '{}',
             autonomy_mode TEXT NOT NULL DEFAULT 'review_each_post',
+            autopublish_authorized_at TEXT,
+            authorization_scope_json TEXT,
             daily_post_limit INTEGER NOT NULL DEFAULT 1,
             status TEXT NOT NULL DEFAULT 'draft',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -633,6 +635,8 @@ def _initialize_database_on_connection(conn):
     _add_column_if_missing(conn, "social_content", "updated_at", "TEXT")
     _add_column_if_missing(conn, "social_content", "campaign_id", "INTEGER")
     _add_column_if_missing(conn, "social_content", "scheduled_at", "TEXT")
+    _add_column_if_missing(conn, "social_campaigns", "autopublish_authorized_at", "TEXT")
+    _add_column_if_missing(conn, "social_campaigns", "authorization_scope_json", "TEXT")
     _add_column_if_missing(conn, "projects", "updated_at", "TEXT")
     _add_column_if_missing(conn, "logs", "user_id", "INTEGER")
     _add_column_if_missing(conn, "messages", "tokens_in", "INTEGER")
