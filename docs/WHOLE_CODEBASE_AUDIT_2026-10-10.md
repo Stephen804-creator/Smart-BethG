@@ -1,7 +1,7 @@
 # Smart BethG Whole-Codebase Audit
 
 **Audit date:** 2026-10-10 UTC  
-**Last updated:** 2026-10-10 19:36 UTC  
+**Last updated:** 2026-10-10 20:30 UTC  
 **Branch reviewed:** `update/corrected-zip-2026-10-10`  
 **Target branch:** `main`  
 **Status:** Engineering audit in progress; public launch is not approved.  
@@ -241,3 +241,16 @@ Subsequent commits `e877d71023817d4787751ad63633e8a6aceda204`, `ee9552496dce9c9d
 An intermediate PostgreSQL run exposed that the original transaction-scoped advisory-lock implementation did not reliably serialize the concurrency test: all 24 parallel attempts were accepted despite a limit of five. That was a real correctness failure, not just CI noise.
 
 The limiter has been changed to acquire a row lock through an UPSERT in the shared `auth_rate_limit_locks` table before counting and inserting events. The table is created in SQLite development/test schema and added to PostgreSQL via the new numbered migration `0002_rate_limit_lock_table.sql`. The PostgreSQL concurrency test then passed: the tested run accepted exactly five of 24 concurrent attempts. The failed intermediate run remains in GitHub Actions history; it is superseded by the later passing run, not erased. Current branch-head CI must still finish before merge.
+
+
+## Timestamped follow-up — 2026-10-10 20:30 UTC
+
+This addendum supersedes only the older status statements explicitly corrected below; it does not erase the historical findings.
+
+- **Current CI baseline before the CSP change:** the latest completed unit/PostgreSQL integration run and dependency/secret scans were green on commit `bb7f806234b76920afb5c185012d7544ce653653`. The CSP changes are newer, and their own runs must finish before they are called verified.
+- **Session revocation:** the earlier statement that copied signed cookies could not be independently revoked is superseded by the session-version mechanism and its regression tests recorded in the decision log. Password recovery, MFA, and full account lifecycle remain open.
+- **Approval resume:** the route now calls `execute_approved` for the persisted operation, atomically claims execution, rechecks current authorization, records outcome, and rejects duplicate execution. The route test covers successful Git commit, retry after a decision was recorded before execution, rejection, and duplicate protection. Crash recovery after a side effect remains a reconciliation problem; never automatically replay an operation stuck in `running`.
+- **CSP:** on 2026-10-10 20:26 UTC, a `Content-Security-Policy-Report-Only` policy was added with a regression test. This is an observation phase, not enforcement. Inline styles are temporarily allowed because current templates contain style attributes and an inline style block; inline scripts and `unsafe-eval` are not allowed by the report-only policy. Review browser violation reports, migrate styles to static CSS, then enforce CSP only after compatibility testing.
+- **Public-launch legal work:** dated Terms of Service and Privacy Policy remain drafts. A legal-review checklist has been added; neither draft should be represented as legally approved.
+- **Public capability UI:** project, mission, artifact, workflow, social-content, research, and evidence APIs/services exist in this branch, but the home page still presents only Chat as an available capability and several features do not yet have complete user-facing workflows. API presence alone does not equal a finished product. Keep capabilities clearly labeled and do not claim autonomous mission execution or social publishing unless the actual worker/integration is implemented.
+- **Production portability:** Render remains an optional test host only. The generic ASGI entry point and environment contract are documented; live deployment, storage durability, backups, and restore have not been verified from the repository.
