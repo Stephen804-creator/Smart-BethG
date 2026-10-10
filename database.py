@@ -157,8 +157,30 @@ def get_connection():
 
 
 def initialize_database():
+    """Initialize schema under a PostgreSQL advisory lock.
+
+    Multiple workers may import the ASGI app at the same time. Serialize
+    schema creation and additive migrations so two processes cannot both
+    observe a missing column and race to add it.
+    """
     config.ensure_storage_dirs()
     conn = get_connection()
+    lock_acquired = False
+    try:
+        if getattr(conn, "is_postgres", False):
+            conn.execute("SELECT pg_advisory_lock(734829104)")
+            lock_acquired = True
+        _initialize_database_on_connection(conn)
+    finally:
+        if lock_acquired:
+            try:
+                conn.execute("SELECT pg_advisory_unlock(734829104)")
+            except Exception:
+                pass
+        conn.close()
+
+
+def _initialize_database_on_connection(conn):
     conn.executescript(
         """
         -- ==================================================
@@ -515,7 +537,6 @@ def initialize_database():
         "GROUP BY oauth_provider, oauth_subject HAVING COUNT(*) > 1"
     ).fetchall()
     if duplicate_oauth:
-        conn.close()
         raise RuntimeError(
             "Duplicate OAuth identities exist. Resolve them before enabling the unique identity index."
         )
@@ -540,7 +561,6 @@ def initialize_database():
         conn.execute(index_sql)
 
     conn.commit()
-    conn.close()
 
 
 def _add_column_if_missing(conn, table, column, coltype):
