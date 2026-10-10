@@ -112,9 +112,9 @@ def create_app() -> FastAPI:
         memory.router, knowledge.router, projects.router, artifacts.router, missions.router, workflows.router, social_content.router, research.router, evidence.router,
     ]
     for router in api_routers:
-        if router is chat.router or router is files.router:
-            # Preserve legacy /api/chat and /api/files endpoints while exposing
-            # canonical /api/v1/chat and /api/v1/files paths without double /api.
+        if router in (chat.router, files.router, memory.router, knowledge.router):
+            # Preserve legacy /api/{chat,files,memory,knowledge} endpoints while
+            # exposing canonical /api/v1/{chat,files,memory,knowledge} paths.
             app.include_router(router, prefix="/api")
             app.include_router(router, prefix=config.API_PREFIX)
         else:
