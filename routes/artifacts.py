@@ -4,7 +4,9 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel, Field
 
+import config
 from api.dependencies import get_artifact_service, get_current_user
+from services.rate_limiter import check_rate_limit
 
 router = APIRouter(prefix="/artifacts", tags=["artifacts"])
 
@@ -34,6 +36,13 @@ async def upload_binary_artifact(
     user=Depends(get_current_user),
     service=Depends(get_artifact_service),
 ):
+    if not check_rate_limit(
+        f"artifact-upload-user:{user['id']}",
+        max_attempts=config.UPLOAD_RATE_LIMIT_MAX_ATTEMPTS,
+        window_seconds=config.UPLOAD_RATE_LIMIT_WINDOW_SECONDS,
+    ):
+        raise HTTPException(status_code=429, detail="Artifact upload rate limit reached. Please wait before uploading again.")
+
     # Read at most the configured cap plus one byte; never buffer an
     # unbounded multipart upload before validating its size.
     try:
