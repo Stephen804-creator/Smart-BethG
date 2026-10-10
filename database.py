@@ -16,7 +16,6 @@ Table groups:
   missions, mission_runs, files, memory, research, evidence, workflows,
   artifacts, social_content, projects, logs
 
-IMPORTANT: creating these tables is schema/storage foundation only. It
 Schema presence is not proof that a feature is complete. The dated repository
 audit and the corresponding route/service tests are the source of truth for
 which capability slices are implemented and which execution paths remain open.
