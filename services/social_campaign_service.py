@@ -4,13 +4,15 @@ This module plans and queues posts; it does not claim to publish to a social
 network unless a real, reviewed platform adapter is installed.
 """
 import json
-import uuid
-from datetime import datetime, timezone
+import re
+from datetime import datetime, time, timedelta, timezone
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from database import get_connection
 from services.social_content_service import SocialContentService
 from connectors.social import ConnectorNotConfigured, SocialConnectorRegistry
+from services.chat_service import ChatService
 
 
 class SocialCampaignService:
@@ -31,6 +33,7 @@ class SocialCampaignService:
         return parsed.astimezone(timezone.utc).isoformat(timespec="seconds")
 
     def create(self, user_id, *, name, objective, platforms, timezone_name, start_at,
+               audience="", tone="clear, helpful", reference_urls=None, content_rules="",
                end_at=None, cadence=None, daily_post_limit=1, autonomy_mode="review_each_post",
                auto_publish_authorized=False):
         name = (name or "").strip()
@@ -44,6 +47,22 @@ class SocialCampaignService:
         cleaned_platforms = list(dict.fromkeys(str(p).strip().lower() for p in platforms))
         if any(p not in self.PLATFORMS for p in cleaned_platforms):
             raise ValueError("One or more target platforms are unsupported.")
+        audience = (audience or "").strip()
+        tone = (tone or "clear, helpful").strip()
+        content_rules = (content_rules or "").strip()
+        if len(audience) > 300 or len(tone) > 300 or len(content_rules) > 4000:
+            raise ValueError("Audience and tone must be at most 300 characters; content rules at most 4000.")
+        if not isinstance(reference_urls, (list, type(None))) or len(reference_urls or []) > 20:
+            raise ValueError("Provide at most 20 reference URLs.")
+        references = []
+        for value in reference_urls or []:
+            if not isinstance(value, str) or len(value) > 2000:
+                raise ValueError("Each reference URL must be a string of at most 2000 characters.")
+            parsed = urlsplit(value.strip())
+            if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+                raise ValueError("Reference links must be valid HTTPS URLs without embedded credentials.")
+            references.append(value.strip())
+        references = list(dict.fromkeys(references))
         try:
             ZoneInfo(timezone_name)
         except (ZoneInfoNotFoundError, TypeError):
@@ -69,12 +88,13 @@ class SocialCampaignService:
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "INSERT INTO social_campaigns(user_id, name, objective, platforms_json, timezone, start_at, "
-                "end_at, cadence_json, autonomy_mode, autopublish_authorized_at, authorization_scope_json, "
-                "daily_post_limit, status, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', CURRENT_TIMESTAMP)",
-                (user_id, name, objective, json.dumps(cleaned_platforms), timezone_name, start, end,
-                 json.dumps(cadence), autonomy_mode, authorized_at,
+                "INSERT INTO social_campaigns(user_id, name, objective, audience, tone, reference_urls_json, "
+                "content_rules, platforms_json, timezone, start_at, end_at, cadence_json, autonomy_mode, "
+                "autopublish_authorized_at, authorization_scope_json, daily_post_limit, status, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', CURRENT_TIMESTAMP)",
+                (user_id, name, objective, audience, tone, json.dumps(references), content_rules,
+                 json.dumps(cleaned_platforms), timezone_name, start, end, json.dumps(cadence),
+                 autonomy_mode, authorized_at,
                  json.dumps({"platforms": cleaned_platforms, "daily_post_limit": daily_post_limit,
                              "start_at": start, "end_at": end}) if authorized_at else None,
                  daily_post_limit),
@@ -115,9 +135,12 @@ class SocialCampaignService:
                 return None
             campaign = self._decode(row)
             posts = conn.execute(
-                "SELECT id, platform, topic AS title, caption AS content, status, scheduled_at, "
-                "external_post_id, published_at, created_at FROM social_content "
-                "WHERE user_id=? AND campaign_id=? ORDER BY scheduled_at, id",
+                "SELECT c.id, c.platform, c.topic AS title, c.caption AS content, c.status, c.scheduled_at, "
+                "c.external_post_id, c.published_at, c.created_at, j.status AS publish_status, "
+                "j.error_code AS publish_error_code, j.error_message AS publish_error_message "
+                "FROM social_content c LEFT JOIN social_publish_jobs j "
+                "ON j.content_id=c.id AND j.user_id=c.user_id "
+                "WHERE c.user_id=? AND c.campaign_id=? ORDER BY c.scheduled_at, c.id",
                 (user_id, campaign_id),
             ).fetchall()
             campaign["posts"] = [dict(post) for post in posts]
@@ -317,16 +340,17 @@ class SocialCampaignService:
     @staticmethod
     def _decode(row):
         item = dict(row)
-        for key in ("platforms_json", "cadence_json", "authorization_scope_json"):
+        for key in ("platforms_json", "cadence_json", "authorization_scope_json", "reference_urls_json"):
             raw = item.pop(key, None)
             target = {
                 "platforms_json": "platforms",
                 "cadence_json": "cadence",
                 "authorization_scope_json": "authorization_scope",
+                "reference_urls_json": "reference_urls",
             }[key]
-            fallback = "[]" if key == "platforms_json" else "{}"
+            fallback = "[]" if key in {"platforms_json", "reference_urls_json"} else "{}"
             try:
                 item[target] = json.loads(raw or fallback) if raw is not None else (None if key == "authorization_scope_json" else json.loads(fallback))
             except (TypeError, json.JSONDecodeError):
-                item[target] = [] if key == "platforms_json" else (None if key == "authorization_scope_json" else {})
+                item[target] = [] if key in {"platforms_json", "reference_urls_json"} else (None if key == "authorization_scope_json" else {})
         return item
