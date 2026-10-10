@@ -258,6 +258,11 @@ def _initialize_database_on_connection(conn):
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS auth_rate_limit_locks(
+            key_hash TEXT PRIMARY KEY,
+            last_seen_epoch REAL NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS auth_rate_limit_events(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             key_hash TEXT NOT NULL,
