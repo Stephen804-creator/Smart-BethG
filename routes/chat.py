@@ -7,7 +7,7 @@ from providers.provider_manager import provider_manager
 from agent.executor import AgentExecutor
 from agent.request import AgentRequest
 
-router = APIRouter(prefix="/api/chat", tags=["chat"])
+router = APIRouter(prefix="/chat", tags=["chat"])
 
 _executor = AgentExecutor()
 
