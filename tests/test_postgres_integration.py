@@ -1,6 +1,7 @@
 """Smoke tests for the production PostgreSQL adapter (run by CI's PG service)."""
 import uuid
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 
 from database import initialize_database
 from repositories.conversation_repository import ConversationRepository
@@ -46,6 +47,16 @@ class TestPostgreSQLIntegration(unittest.TestCase):
     def test_database_backed_rate_limiter(self):
         key = "pg-integration:" + uuid.uuid4().hex
         self.assertTrue(check_rate_limit(key))
+
+
+    def test_database_rate_limiter_is_atomic_under_concurrency(self):
+        key = "pg-concurrency:" + uuid.uuid4().hex
+        with ThreadPoolExecutor(max_workers=12) as pool:
+            results = list(pool.map(
+                lambda _: check_rate_limit(key, max_attempts=5, window_seconds=60),
+                range(24),
+            ))
+        self.assertEqual(sum(results), 5)
 
 
 if __name__ == "__main__":
