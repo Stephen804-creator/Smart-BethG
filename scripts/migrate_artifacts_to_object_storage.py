@@ -25,11 +25,15 @@ def local_bytes(root, user_id, stored_path):
         if user_root not in path.parents:
             raise ValueError("Legacy artifact path is outside the owner's directory.")
     else:
-        if not stored_path.startswith(f"{user_id}/") or ".." in stored_path.split("/"):
+        if not stored_path.startswith(f"{user_id}/") or ".." in stored_path.split("/") or "\\" in stored_path:
             raise ValueError("Artifact locator is not owner-scoped.")
+        owner_root = root / str(user_id)
+        if owner_root.is_symlink():
+            raise ValueError("Artifact owner directory cannot be a symlink.")
         path = (root / stored_path).resolve()
-        if root not in path.parents:
-            raise ValueError("Artifact path escapes the local storage root.")
+        resolved_owner = owner_root.resolve()
+        if root not in resolved_owner.parents or resolved_owner not in path.parents:
+            raise ValueError("Artifact path escapes the owner's storage directory.")
     if not path.is_file():
         raise FileNotFoundError(f"Local artifact is missing: {path}")
     return path, path.read_bytes()
