@@ -35,6 +35,22 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         response = client.post("/auth/logout")
         self.assertEqual(response.status_code, 403)
 
+    def test_new_feature_apis_are_mounted_and_authenticated(self):
+        client = TestClient(create_app())
+        paths = [
+            "/api/v1/projects",
+            "/api/v1/artifacts",
+            "/api/v1/missions",
+            "/api/v1/workflows",
+            "/api/v1/social-content",
+            "/api/v1/research",
+            "/api/v1/evidence",
+        ]
+        for path in paths:
+            with self.subTest(path=path):
+                response = client.get(path)
+                self.assertEqual(response.status_code, 401)
+
     def test_registration_can_be_closed_by_operator(self):
         with patch.object(config, "REGISTRATION_OPEN", False):
             client = TestClient(create_app())
