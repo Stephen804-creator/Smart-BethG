@@ -197,6 +197,12 @@ def initialize_database():
             action TEXT NOT NULL,
             resource TEXT NOT NULL,
             status TEXT NOT NULL,
+            payload_json TEXT,
+            execution_status TEXT NOT NULL DEFAULT 'pending',
+            expires_at TEXT,
+            decided_at TEXT,
+            executed_at TEXT,
+            execution_result TEXT,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -408,6 +414,12 @@ def initialize_database():
     _add_column_if_missing(conn, "users", "oauth_provider", "TEXT")
     _add_column_if_missing(conn, "users", "oauth_subject", "TEXT")
     _add_column_if_missing(conn, "users", "role", "TEXT NOT NULL DEFAULT 'user'")
+    _add_column_if_missing(conn, "approvals", "payload_json", "TEXT")
+    _add_column_if_missing(conn, "approvals", "execution_status", "TEXT NOT NULL DEFAULT 'pending'")
+    _add_column_if_missing(conn, "approvals", "expires_at", "TEXT")
+    _add_column_if_missing(conn, "approvals", "decided_at", "TEXT")
+    _add_column_if_missing(conn, "approvals", "executed_at", "TEXT")
+    _add_column_if_missing(conn, "approvals", "execution_result", "TEXT")
     _add_column_if_missing(conn, "messages", "tokens_in", "INTEGER")
     _add_column_if_missing(conn, "messages", "tokens_out", "INTEGER")
     _add_column_if_missing(conn, "memory", "scope", "TEXT NOT NULL DEFAULT 'user'")
