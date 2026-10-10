@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
 import config
-from services.auth_service import authenticate_user, create_user
+from services.auth_service import authenticate_user, create_user, revoke_user_sessions
 from services.rate_limiter import check_rate_limit
 from api.dependencies import get_current_user, require_csrf
 from logging_setup import get_logger
@@ -57,6 +57,7 @@ def login(payload: LoginRequest, request: Request, _csrf=Depends(require_csrf)):
         return {"authenticated": False, "error": "Invalid credentials."}
     request.session.clear()
     request.session["user_id"] = user["id"]
+    request.session["session_version"] = user["session_version"]
     csrf = secrets.token_urlsafe(32)
     request.session["csrf_token"] = csrf
     logger.info("User %s logged in", user["id"])
@@ -66,8 +67,12 @@ def login(payload: LoginRequest, request: Request, _csrf=Depends(require_csrf)):
 @router.post("/logout")
 def logout(request: Request, _csrf=Depends(require_csrf)):
     user_id = request.session.get("user_id")
+    if user_id:
+        # Increment the server-side version so copied signed cookies cannot
+        # continue authenticating after logout.
+        revoke_user_sessions(user_id)
     request.session.clear()
-    logger.info("User %s logged out", user_id)
+    logger.info("User %s logged out; prior sessions revoked", user_id)
     return {"authenticated": False}
 
 
