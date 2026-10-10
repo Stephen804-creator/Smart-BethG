@@ -99,7 +99,7 @@ The most important distinction is between **code implemented**, **tests passing*
 ### P1.9 Rate limits and abuse controls
 **Updated status (2026-10-10):** Authentication rate-limit counters use shared database rows and PostgreSQL transaction-scoped advisory locks; raw limiter keys are hashed before persistence. A PostgreSQL concurrency test was added to prove only the configured number of simultaneous attempts succeed; its latest CI result is pending.
 
-**Still required:** Add suitable per-user and global limits for chat/provider calls, uploads, searches, tools, file extraction, and costly automation. Confirm trusted-proxy behavior so all users behind a reverse proxy are not accidentally treated as one IP, and do not trust arbitrary forwarded headers.**
+**Still required:** Add suitable per-user and global limits for chat/provider calls, uploads, searches, tools, file extraction, and costly automation. Confirm trusted-proxy behavior so all users behind a reverse proxy are not accidentally treated as one IP, and do not trust arbitrary forwarded headers.
 
 
 ### P1.10 Error handling and logging
