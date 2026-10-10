@@ -20,8 +20,8 @@ Authentication rate-limit counters are stored in the database, not only in proce
 Use shared PostgreSQL in both modes. Before enabling multiple app replicas, implement shared object storage for uploads/artifacts/workspace files and durable, idempotent background jobs. A shared database does not make a local filesystem shared.
 
 ## 2026-10-10 — Approval should resume the original operation
-**Status:** Required; implementation incomplete  
-Approval is not just a notification or database status. The application must persist the exact pending operation, owner, action, resource, and arguments; on approval it must revalidate authorization and execute the same operation once; rejected, expired, modified, or duplicate attempts must not execute. Crash recovery must avoid blindly repeating destructive side effects. The requirement remains open until an end-to-end test proves it.
+**Status:** Implemented on the review branch; recovery and adversarial review still open  
+Approval is not just a notification or database status. The application persists the operation owner, action, resource, arguments, and request ID. The approval route revalidates authorization, atomically claims execution, executes the saved operation, records the outcome, and rejects duplicates. An end-to-end Git operation test passed in the latest completed test baseline; a regression test for a decision committed before execution was added afterward and awaits the next CI result. A crash after execution is claimed must not trigger blind replay; explicit operator reconciliation is still required for indeterminate side effects.
 
 ## 2026-10-10 — Build planned schema-backed capabilities
 **Status:** Active  
