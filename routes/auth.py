@@ -69,8 +69,8 @@ def register(payload: RegisterRequest, request: Request):
       same code - a lightweight gate for "friends and family" testing
       without full user management.
 
-    With both unset, this is fully open - the right default for solo
-    pre-domain testing, wrong for a public launch.
+    Registration defaults to closed in every environment. An operator must
+    explicitly enable it after the public-launch security gates are met.
     """
     if not config.REGISTRATION_OPEN:
         raise HTTPException(status_code=403, detail="Registration is currently closed.")
