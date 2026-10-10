@@ -32,7 +32,7 @@ Keep the fixed-shape planner until tool authorization, action/resource binding, 
 
 An approval must refer to one authenticated owner, one exact action, one exact resource/workspace, and a bounded set of arguments. On approval, the application should resume that saved operation once, after re-checking current permissions and validating the action/resource binding. It must reject changed payloads, expired approvals, rejected requests, and duplicate execution attempts.
 
-A decision record by itself is not execution. The current branch has approval persistence and UI work, but the original interrupted operation is not yet resumed. Do not mark this requirement complete until the route, service, database state transition, audit trail, and end-to-end test all prove that approval executes the same saved request once and only once. If the process crashes during an external side effect, the system must report an indeterminate/recovery state rather than blindly replaying a potentially destructive action.
+A decision record by itself is not execution. The current review branch now has a route that resumes the exact saved operation after approval, rechecks authorization, claims execution atomically, records the outcome, and refuses duplicate execution. The route test verifies a Git operation executes once; a recovery test also covers the narrow case where the decision was committed before execution was claimed. That new recovery test must pass the latest CI run before merge. If the process crashes after the operation is claimed or during an external side effect, the record must not be blindly replayed; it requires an explicit reconciliation path because the outcome may be indeterminate.
 
 ## Token budgets and spending
 
