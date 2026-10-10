@@ -32,10 +32,14 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         old_chat = client.get("/api/v1/api/chat/conversations")
         files = client.get("/api/v1/files")
         old_files = client.get("/api/v1/api/files")
+        old_memory = client.get("/api/v1/api/memory")
+        old_knowledge = client.get("/api/v1/api/knowledge/search?q=example")
         self.assertEqual(chat.status_code, 401)
         self.assertEqual(old_chat.status_code, 404)
         self.assertEqual(files.status_code, 401)
         self.assertEqual(old_files.status_code, 404)
+        self.assertEqual(old_memory.status_code, 404)
+        self.assertEqual(old_knowledge.status_code, 404)
 
     def test_state_changing_auth_route_requires_csrf_token(self):
         client = TestClient(create_app())
@@ -52,6 +56,8 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
             "/api/v1/social-content",
             "/api/v1/research",
             "/api/v1/evidence",
+            "/api/v1/memory",
+            "/api/v1/knowledge/search?q=example",
         ]
         for path in paths:
             with self.subTest(path=path):
