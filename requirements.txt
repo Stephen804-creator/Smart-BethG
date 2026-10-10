@@ -41,3 +41,6 @@ pypdf>=5.0,<6.0
 
 # HTTP client
 requests>=2.32,<3.0
+
+# PostgreSQL production database (SQLite remains for local development/tests)
+psycopg[binary]>=3.2,<4.0
