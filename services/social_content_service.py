@@ -41,7 +41,7 @@ class SocialContentService:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, user_id, platform, topic AS title, caption AS content, hashtags, status, version, "
+                "SELECT id, user_id, campaign_id, platform, topic AS title, caption AS content, hashtags, status, version, "
                 "external_post_id, published_at, created_at, updated_at FROM social_content "
                 "WHERE user_id=? ORDER BY updated_at DESC, id DESC",
                 (user_id,),
@@ -54,7 +54,7 @@ class SocialContentService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT id, user_id, platform, topic AS title, caption AS content, hashtags, status, version, "
+                "SELECT id, user_id, campaign_id, platform, topic AS title, caption AS content, hashtags, status, version, "
                 "external_post_id, published_at, created_at, updated_at FROM social_content "
                 "WHERE id=? AND user_id=? LIMIT 1",
                 (content_id, user_id),
@@ -76,8 +76,8 @@ class SocialContentService:
         current = self.get(user_id, content_id)
         if not current:
             return None
-        if current["status"] in {"approved", "archived"}:
-            raise ValueError("Approved or archived content must be moved back to draft before editing.")
+        if current["status"] in {"approved", "archived", "published"}:
+            raise ValueError("Approved, published, or archived content cannot be edited. Move an approved campaign post back to review first; create a new draft to revise a published post.")
         platform = fields.get("platform", current["platform"])
         title = fields.get("title", current["title"])
         content = fields.get("content", current["content"])
@@ -107,6 +107,14 @@ class SocialContentService:
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (content_id, user_id, version, title, content, tags_json),
             )
+            if current.get("campaign_id") is not None:
+                conn.execute(
+                    "UPDATE social_publish_jobs SET status='awaiting_approval', connection_id=NULL, "
+                    "error_code=NULL, error_message='Post content changed; approval is required again.', "
+                    "updated_at=CURRENT_TIMESTAMP WHERE content_id=? AND user_id=? "
+                    "AND status IN ('queued','awaiting_connection','blocked')",
+                    (content_id, user_id),
+                )
             conn.commit()
         finally:
             conn.close()
@@ -124,6 +132,10 @@ class SocialContentService:
             "approved": {"in_review", "archived"},
             "archived": set(),
         }
+        if current["status"] == "published":
+            raise ValueError("Published posts cannot change review state; create a new draft for future edits.")
+        if current.get("campaign_id") is not None and new_status == "approved":
+            raise ValueError("Campaign posts must be approved through the campaign approval endpoint.")
         if new_status not in allowed[current["status"]]:
             raise ValueError(f"Cannot change content from {current['status']} to {new_status}.")
         conn = get_connection()
@@ -132,6 +144,25 @@ class SocialContentService:
                 "UPDATE social_content SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
                 (new_status, content_id, user_id),
             )
+            if current.get("campaign_id") is not None and new_status in {"draft", "in_review"}:
+                conn.execute(
+                    "UPDATE social_publish_jobs SET status='awaiting_approval', connection_id=NULL, "
+                    "error_code=NULL, error_message='Post moved back to review; approval is required again.', "
+                    "updated_at=CURRENT_TIMESTAMP WHERE content_id=? AND user_id=? "
+                    "AND status IN ('queued','awaiting_connection','blocked')",
+                    (content_id, user_id),
+                )
+            elif current.get("campaign_id") is not None and new_status == "archived":
+                conn.execute(
+                    "UPDATE social_publish_jobs SET status='cancelled', updated_at=CURRENT_TIMESTAMP "
+                    "WHERE content_id=? AND user_id=? AND status IN ('queued','awaiting_approval','awaiting_connection','blocked')",
+                    (content_id, user_id),
+                )
+                conn.execute(
+                    "UPDATE social_publish_jobs SET status='cancel_requested', updated_at=CURRENT_TIMESTAMP "
+                    "WHERE content_id=? AND user_id=? AND status='publishing'",
+                    (content_id, user_id),
+                )
             conn.commit()
         finally:
             conn.close()
