@@ -508,6 +508,22 @@ def initialize_database():
     _add_column_if_missing(conn, "memory", "scope_ref", "TEXT")
     _add_column_if_missing(conn, "memory", "source", "TEXT NOT NULL DEFAULT 'explicit'")
 
+    duplicate_oauth = conn.execute(
+        "SELECT oauth_provider, oauth_subject, COUNT(*) AS count FROM users "
+        "WHERE oauth_provider IS NOT NULL AND oauth_subject IS NOT NULL "
+        "GROUP BY oauth_provider, oauth_subject HAVING COUNT(*) > 1"
+    ).fetchall()
+    if duplicate_oauth:
+        conn.close()
+        raise RuntimeError(
+            "Duplicate OAuth identities exist. Resolve them before enabling the unique identity index."
+        )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth_identity "
+        "ON users(oauth_provider, oauth_subject) "
+        "WHERE oauth_provider IS NOT NULL AND oauth_subject IS NOT NULL"
+    )
+
     # Owner-scoped lookup indexes are created after additive migrations so
     # existing databases missing a newer column still initialize safely.
     for index_sql in (
