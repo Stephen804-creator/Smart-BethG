@@ -88,6 +88,26 @@
         addUsageRow(body, "Input tokens", totals.input_tokens || 0, true);
         addUsageRow(body, "Output tokens", totals.output_tokens || 0, true);
         addUsageRow(body, "Replies", totals.message_count || 0, true);
+        const budget = data.budget || {};
+        addUsageRow(
+          body,
+          "Daily tokens reserved",
+          String(budget.tokens_reserved_or_used || 0) + " / " + String(budget.daily_token_limit || 0),
+          true
+        );
+        addUsageRow(
+          body,
+          "Estimated spend today",
+          "$" + Number(budget.estimated_spend_usd || 0).toFixed(4) +
+            " / $" + Number(budget.daily_spend_limit_usd || 0).toFixed(2),
+          true
+        );
+        addUsageRow(
+          body,
+          "Provider attempts",
+          String(budget.requests || 0) + " / " + String(budget.daily_request_limit || 0),
+          false
+        );
         (data.by_model || []).forEach((model) => {
           const row = document.createElement("div");
           row.style.cssText = "display:flex; justify-content:space-between; gap:10px; font-size:12px; color:var(--text-secondary); padding:6px 0; border-top:1px solid var(--border);";
