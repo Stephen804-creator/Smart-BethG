@@ -1827,3 +1827,72 @@ tr:last-child td {
         border: 1px solid #ccc;
     }
 }
+
+/* Workspace dashboard capability slice — added 2026-10-10 UTC. */
+.workspace-management {
+  margin-top: 28px;
+}
+.workspace-management .section-heading > div > p:last-child {
+  color: var(--text-secondary);
+  max-width: 70ch;
+}
+.workspace-forms,
+.workspace-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+.workspace-form,
+.workspace-lists > section {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--surface);
+}
+.workspace-form h3,
+.workspace-lists h3 {
+  margin: 0 0 14px;
+}
+.workspace-list {
+  display: grid;
+  gap: 10px;
+}
+.workspace-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 10px);
+  overflow-wrap: anywhere;
+}
+.workspace-card h4 {
+  margin: 0 0 8px;
+}
+.workspace-card p {
+  margin: 6px 0;
+}
+.workspace-meta,
+.workspace-empty {
+  color: var(--text-secondary);
+  font-size: var(--text-sm, 14px);
+}
+.workspace-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.status-error-text {
+  color: var(--danger, #ef4444);
+}
+@media (max-width: 760px) {
+  .workspace-forms,
+  .workspace-lists {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-form,
+  .workspace-lists > section {
+    padding: 14px;
+  }
+}
