@@ -55,7 +55,7 @@ def create_user(username, password):
         conn.close()
 
 
-def find_or_create_oauth_user(email, provider, subject):
+def find_or_create_oauth_user(email, provider, subject, allow_create=False):
     """
     Look up a user by (oauth_provider, oauth_subject) first - the stable
     identifier Google gives us - and fall back to matching by email for
@@ -92,6 +92,9 @@ def find_or_create_oauth_user(email, provider, subject):
                 )
                 conn.commit()
             return {"id": row["id"], "username": row["username"], "role": row["role"]}
+
+        if not allow_create:
+            raise PermissionError("Registration is closed. Sign in with an existing linked account or use password login.")
 
         placeholder_hash = generate_password_hash(secrets.token_urlsafe(32))
         cur = conn.execute(
