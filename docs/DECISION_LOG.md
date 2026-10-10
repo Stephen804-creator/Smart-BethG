@@ -43,3 +43,8 @@ Architecture decisions, audit reports, migration plans, release gates, and legal
 ## 2026-10-10 — Logout invalidates previously copied sessions
 **Status:** Implemented on review branch; CI verification pending  
 The signed cookie is bound to a server-side session version. Logout increments the user's version and therefore revokes all sessions issued with the previous version, across devices and replicas. This deliberately favors security over keeping other devices logged in. A stale cookie must be rejected before the route returns user data. The regression tests and current-head CI run are the verification gate.
+
+
+## 2026-10-10 — Versioned PostgreSQL schema migrations
+**Status:** Initial baseline implemented; upgrade and rollback verification still open  
+PostgreSQL schema initialization now applies ordered SQL files under `migrations/postgresql/` and records each applied filename in `schema_migrations`. The initial baseline migration is idempotent to support a controlled adoption of databases created by the earlier schema initializer. Future schema changes must be new numbered migration files; released migrations must not be silently edited. Before production data is used, verify clean installation, adoption/upgrade from the previous schema, rollback/recovery procedure, and backup restoration.
