@@ -6,6 +6,7 @@ from services.agent_service import AgentService
 from services.approval_service import ApprovalService
 from services.audit_service import AuditService
 from services.provider_service import ProviderService
+from services.tool_service import ToolService
 from controller import Controller
 
 _controller = None
@@ -21,6 +22,7 @@ def get_agent_service(): return AgentService()
 def get_approval_service(): return ApprovalService()
 def get_audit_service(): return AuditService()
 def get_provider_service(): return ProviderService()
+def get_tool_service(): return ToolService()
 
 def get_current_user(request: Request):
     """
