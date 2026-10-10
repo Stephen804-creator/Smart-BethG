@@ -16,8 +16,20 @@ SQLite is acceptable only for the current single-instance personal/small-team de
 
 The storage root must point to a persistent mounted disk in the hosting provider. Database, uploads, and user-created artifacts must survive redeploys. Backups must be independent of that disk and periodically restore-tested. The deployment configuration has not been independently verified by this document.
 
+### Live deployment verification checklist
+Do not mark persistence as verified until these steps have been completed against the actual hosted service:
+1. In the host dashboard, confirm a persistent disk is attached and record its mount path.
+2. Set SMART_BETHG_STORAGE_ROOT to that exact mount path (for example, /var/data/smartbethg only if that is the configured mount path). Confirm the database resolves below this root; do not set a conflicting SMART_BETHG_DB path.
+3. Set SMART_BETHG_ENV=production, a long random SMART_BETHG_SECRET_KEY, SMART_BETHG_SESSION_HTTPS_ONLY=true, and SMART_BETHG_REGISTRATION_OPEN=false. Set SMART_BETHG_ALLOWED_ORIGINS only to the actual trusted frontend origins.
+4. Create a non-sensitive test record while signed in, deploy/restart the service, then confirm the record and login still work. Repeat after a redeploy, not only a process restart.
+5. Configure an independent backup destination and retention policy. Restore a backup into a separate test environment and document the result before storing real user data.
+6. Record the date, operator, deployed commit, disk path, backup location, and test outcome. Until this evidence exists, persistent storage and recovery remain unverified.
+
 ## Scaling boundaries
 The in-process rate limiter and in-Python cosine similarity are single-instance-only. Before horizontal scaling, move rate-limit counters to a shared store and knowledge retrieval to a shared, indexed database/vector-search implementation. Do not assume increasing server size fixes cross-instance correctness.
+
+## Approval workflow boundary
+Pending approval records are persisted and scoped to their owner, and the UI can record approve/reject decisions. Recording a decision does not yet resume or execute the interrupted operation. Never treat a recorded approval as authorization to run a tool unless the execution path checks the same approval record immediately before the side effect, validates its owner and action/resource binding, and safely handles expiry, rejection, cancellation, and duplicate execution.
 
 ## Schema-only tables
 Do not delete tables solely because they are not yet used; removal may break future migrations or existing data. Treat missions, workflows, artifacts, social_content, and projects as deferred schema. Either implement a real vertical slice with tests and UI before marketing those features, or remove them in a deliberate versioned migration after checking all references and data. Keep them unadvertised meanwhile.
@@ -33,4 +45,4 @@ Before public access:
 - Document deletion, export, retention, and backup/restore behavior.
 
 ## Testing and delivery
-CI runs compilation and the existing unit suite. This is a starting gate, not proof of end-to-end correctness. Add HTTP integration tests using FastAPI TestClient, then browser-flow tests, dependency scans, and deployment smoke tests. A green CI run must not be represented as a penetration test or live-deployment verification.
+CI runs compilation and the existing unit suite, with HTTP boundary and approval-service regression tests being expanded on the review branch. This is a starting gate, not proof of end-to-end correctness. Add browser-flow tests, dependency scans, and deployment smoke tests. A green CI run must not be represented as a penetration test or live-deployment verification.
