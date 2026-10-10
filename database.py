@@ -515,6 +515,10 @@ def _initialize_database_on_connection(conn):
             user_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             objective TEXT NOT NULL,
+            audience TEXT NOT NULL DEFAULT '',
+            tone TEXT NOT NULL DEFAULT 'clear, helpful',
+            reference_urls_json TEXT NOT NULL DEFAULT '[]',
+            content_rules TEXT NOT NULL DEFAULT '',
             platforms_json TEXT NOT NULL,
             timezone TEXT NOT NULL,
             start_at TEXT NOT NULL,
@@ -637,6 +641,10 @@ def _initialize_database_on_connection(conn):
     _add_column_if_missing(conn, "social_content", "scheduled_at", "TEXT")
     _add_column_if_missing(conn, "social_campaigns", "autopublish_authorized_at", "TEXT")
     _add_column_if_missing(conn, "social_campaigns", "authorization_scope_json", "TEXT")
+    _add_column_if_missing(conn, "social_campaigns", "audience", "TEXT NOT NULL DEFAULT ''")
+    _add_column_if_missing(conn, "social_campaigns", "tone", "TEXT NOT NULL DEFAULT 'clear, helpful'")
+    _add_column_if_missing(conn, "social_campaigns", "reference_urls_json", "TEXT NOT NULL DEFAULT '[]'")
+    _add_column_if_missing(conn, "social_campaigns", "content_rules", "TEXT NOT NULL DEFAULT ''")
     _add_column_if_missing(conn, "projects", "updated_at", "TEXT")
     _add_column_if_missing(conn, "logs", "user_id", "INTEGER")
     _add_column_if_missing(conn, "messages", "tokens_in", "INTEGER")
