@@ -79,4 +79,4 @@ jobs:
       - name: Compile Python files
         run: python -m compileall -q .
       - name: Run PostgreSQL integration tests
-        run: python -m unittest tests.test_postgres_integration -v
+        run: python -m unittest tests.test_postgres_integration tests.test_postgres_capability_services -v
