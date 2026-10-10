@@ -197,3 +197,14 @@ Session revocation now has unit and HTTP-level regression coverage: a copied sig
 - Python compilation, dependency vulnerability audit, and Gitleaks secret scan: passed.
 
 This demonstrates one controlled prior-schema upgrade path on a disposable PostgreSQL database. It is not yet proof that every legacy production schema or every repository query migrates correctly. The original migration-parser failure and the SQLite test-discovery failure were both fixed, and the current code revision is green.
+
+
+## Security audit update — 2026-10-10 20:08 UTC
+
+**17. Network-tool DNS rebinding exposure (mitigation implemented; latest CI pending).**
+
+The prior implementation resolved and validated a destination hostname, then passed the hostname to a standard HTTP client that could perform a second DNS lookup when opening the connection. An attacker-controlled hostname could theoretically return a public address during validation and a private/internal address during the actual connection. Redirects also require the same checks at every hop.
+
+The review branch now uses a pinned-address HTTP(S) transport: it resolves the hostname, rejects the entire DNS answer set if any address is non-public, connects the TCP socket directly to one of the validated public IPs, and for HTTPS still verifies the certificate against the original hostname. Redirects are handled explicitly and revalidated as new destinations; proxy environment variables are not inherited. Response size, timeout, and redirect-count limits remain enforced. A regression test verifies that the connection uses the validated IP without a second DNS lookup, and existing tests cover private/mixed DNS answers and invalid permits.
+
+**Verification state:** this finding is not marked fully closed until the unit, PostgreSQL integration, dependency-audit, and secret-scan workflows finish successfully for the exact current branch head. This mitigation reduces the DNS-rebinding risk but is not a substitute for independent adversarial testing of URL parsing, IPv6 edge cases, redirects, TLS, and the full tool-execution boundary.
