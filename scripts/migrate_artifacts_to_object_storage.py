@@ -19,8 +19,11 @@ from services.artifact_storage import LocalArtifactStorage, S3ArtifactStorage
 def local_bytes(root, user_id, stored_path):
     root = Path(root).resolve()
     stored_path = str(stored_path or "")
+    owner_dir = root / str(user_id)
+    if owner_dir.is_symlink():
+        raise ValueError("Artifact owner directory cannot be a symlink.")
     if os.path.isabs(stored_path):
-        user_root = (root / str(user_id)).resolve()
+        user_root = owner_dir.resolve()
         path = Path(stored_path).resolve()
         if user_root not in path.parents:
             raise ValueError("Legacy artifact path is outside the owner's directory.")
