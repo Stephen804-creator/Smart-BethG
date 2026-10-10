@@ -36,7 +36,7 @@ class TestWorkspaceDashboardHttp(SmartBethGTestCase):
         self.assertIn('id="projectCreateForm"', response.text)
         self.assertIn('id="missionCreateForm"', response.text)
         self.assertIn("workspace-dashboard.js", response.text)
-        self.assertIn("autonomous execution is not connected yet", response.text.lower())
+        self.assertIn("Mission records are not autonomous jobs yet.", response.text)
 
     def test_project_and_mission_api_flow_is_owner_scoped(self):
         project_response = self.client_one.post(
