@@ -21,14 +21,14 @@ permissions:
 
 jobs:
   private-repo-note:
-    if: github.event.repository.visibility != 'public'
+    if: github.event.repository.visibility != 'public' && vars.SMART_BETHG_CODEQL_PRIVATE_ENABLED != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Explain CodeQL availability
-        run: echo "CodeQL upload is skipped for private repositories unless GitHub Code Security is enabled. Dependency audit, secret scanning, tests, and PostgreSQL integration tests remain active."
+        run: echo "CodeQL is gated for this private repository. Enable it only when GitHub Code Security entitlement is confirmed and SMART_BETHG_CODEQL_PRIVATE_ENABLED=true; dependency audit, secret scanning, tests, and PostgreSQL integration tests remain active."
 
   analyze:
-    if: github.event.repository.visibility == 'public'
+    if: github.event.repository.visibility == 'public' || vars.SMART_BETHG_CODEQL_PRIVATE_ENABLED == 'true'
     name: Analyze ${{ matrix.language }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
