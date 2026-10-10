@@ -37,9 +37,28 @@ def decide(
     service=Depends(get_approval_service),
     tool_service=Depends(get_tool_service),
 ):
-    decision = service.decide(approval_id, user["id"], payload.approved)
+    current = service.get_for_user(approval_id, user["id"])
+    if not current:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approval not found.")
+
     if not payload.approved:
+        decision = service.decide(approval_id, user["id"], False)
         return {"approval": decision, "execution": None}
+
+    if current["status"] == "pending":
+        decision = service.decide(approval_id, user["id"], True)
+    elif current["status"] == "approved" and current.get("execution_status") == "pending":
+        # Recover the narrow crash window where the approval decision was
+        # committed but the request died before claiming/executing the saved
+        # operation. execute_approved atomically claims it before side effects.
+        decision = current
+    else:
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Approval is already decided or its operation has started. Refresh to inspect its execution state.",
+        )
 
     # Approval is bound to the saved operation; execute_approved rechecks the
     # current user's permission and claims the operation atomically.
