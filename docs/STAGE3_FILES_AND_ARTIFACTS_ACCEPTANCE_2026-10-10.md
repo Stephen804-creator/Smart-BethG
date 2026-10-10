@@ -15,6 +15,7 @@ Stage 3 is the private file and generated-output layer of Smart BethG. It is mor
 - Text formats: plain text, Markdown, JSON, Python, JavaScript, HTML, CSV, and YAML. JSON is validated before storage.
 - Binary artifact storage for common image, audio, video, PDF, ZIP, and generic binary outputs.
 - SHA-256 recorded at creation and verified when content is read/downloaded.
+- Versioned PostgreSQL migration 0004 and SQLite additive schema updates for artifact provenance: source type/ID, provider/model, bounded JSON metadata, and an owner/source index. Social calendar exports identify the campaign and export schema; internal generation pipelines can attach provider/model provenance.
 - Owner-scoped database queries and owner-prefixed storage keys; local storage rejects traversal and symlinked owner directories.
 - Local development adapter and S3-compatible adapter, including AWS S3, DigitalOcean Spaces, MinIO, and compatible object storage.
 - Bounded upload reads, 1 MiB text-output limit, and 25 MiB binary-artifact limit.
