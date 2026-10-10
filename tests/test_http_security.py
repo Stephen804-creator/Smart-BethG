@@ -30,11 +30,18 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         self.assertEqual(files.status_code, 401)
         self.assertEqual(old_files.status_code, 404)
 
+    def test_state_changing_auth_route_requires_csrf_token(self):
+        client = TestClient(create_app())
+        response = client.post("/auth/logout")
+        self.assertEqual(response.status_code, 403)
+
     def test_registration_can_be_closed_by_operator(self):
         with patch.object(config, "REGISTRATION_OPEN", False):
             client = TestClient(create_app())
+            token = client.get("/auth/csrf").json()["csrf_token"]
             response = client.post(
                 "/auth/register",
+                headers={"X-CSRF-Token": token},
                 json={"username": "closed-registration-test", "password": "not-a-real-password"},
             )
         self.assertEqual(response.status_code, 403)
