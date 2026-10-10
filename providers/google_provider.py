@@ -50,9 +50,9 @@ class GoogleProvider(ProviderBase):
             "output_tokens": getattr(usage, "candidates_token_count", None) if usage else None,
         }
 
-    EMBEDDING_MODEL = "models/text-embedding-004"
+    EMBEDDING_MODEL = "gemini-embedding-001"
 
-    def embed(self, texts: list) -> list:
+    def embed(self, texts: list, task_type=None) -> list:
         """
         Real embeddings via Gemini's embedding API - used for knowledge
         base retrieval (T0903). Raises RuntimeError if unconfigured,
@@ -62,5 +62,11 @@ class GoogleProvider(ProviderBase):
             raise RuntimeError(
                 "Google provider has no API key configured (set GOOGLE_API_KEY)."
             )
-        response = self._client.models.embed_content(model=self.EMBEDDING_MODEL, contents=texts)
+        from google.genai import types
+        embed_config = types.EmbedContentConfig(task_type=task_type) if task_type else None
+        response = self._client.models.embed_content(
+            model=self.EMBEDDING_MODEL,
+            contents=texts,
+            config=embed_config,
+        )
         return [e.values for e in response.embeddings]
