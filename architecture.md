@@ -28,6 +28,9 @@ Do not mark persistence as verified until these steps have been completed agains
 ## Scaling boundaries
 The in-process rate limiter and in-Python cosine similarity are single-instance-only. Before horizontal scaling, move rate-limit counters to a shared store and knowledge retrieval to a shared, indexed database/vector-search implementation. Do not assume increasing server size fixes cross-instance correctness.
 
+## Workspace ownership boundary
+Tool workspaces are now rooted under a server-derived user ID before the sanitized workspace name, so one signed-in user cannot access another user's workspace simply by choosing the same workspace name. Existing directories created under the previous shared `projects/<workspace>` layout are not automatically migrated because their rightful owner cannot be inferred safely. Review and migrate any needed legacy files manually before relying on them; do not copy shared data into a user's workspace without confirming ownership.
+
 ## Approval workflow boundary
 Pending approval records are persisted and scoped to their owner, and the UI can record approve/reject decisions. Recording a decision does not yet resume or execute the interrupted operation. Never treat a recorded approval as authorization to run a tool unless the execution path checks the same approval record immediately before the side effect, validates its owner and action/resource binding, and safely handles expiry, rejection, cancellation, and duplicate execution.
 
