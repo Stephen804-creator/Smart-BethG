@@ -277,3 +277,18 @@ Current reviewed PR head: `022f057765f0b0ed4104f7898eeb0b95903b7a0e`.
 - The two historical red test runs immediately before this baseline were caused by a dashboard test asserting JavaScript-only copy in rendered HTML. The assertion was corrected; later current-head runs passed. The rate-limit race was a separate genuine failure and was fixed/tested as recorded above.
 
 This is a green repository CI baseline, not a live deployment audit, independent penetration test, legal approval, backup restore drill, or public-launch sign-off.
+
+
+## Timestamped current-head verification — 2026-10-10 20:38 UTC
+
+**Current PR head verified:** `7a715fbcb3568a53ed1449324d9cd067ff6d1926`. The changes from the prior verified code baseline are documentation-only: the verification record, decision-log timestamps, and clarification that CAC company registration and NDPC privacy compliance are separate matters.
+
+- Unit-test workflow: **317 tests ran successfully** (9 PostgreSQL-only tests are intentionally skipped in the SQLite/unit job).
+- PostgreSQL integration workflow: **passed** on the disposable PostgreSQL 16 service.
+- Python compilation and workspace dashboard JavaScript syntax check: **passed**.
+- Dependency vulnerability audit: **passed**.
+- Gitleaks secret scan: **passed**.
+
+The workflow job conclusions for the current head are green. A FastAPI deprecation warning remains because the application uses `@app.on_event` startup/shutdown handlers; it is not a test failure, but should be migrated to a lifespan handler in a later focused change.
+
+**Release decision remains unchanged: not approved for unrestricted public launch.** The most important unresolved engineering gates are comprehensive PostgreSQL query/schema coverage and real legacy upgrade rehearsal; shared object storage and remote workspace execution for multi-instance operation; durable jobs and crash recovery; independent adversarial testing of network/tool execution; password recovery/MFA and account data export/deletion; enforced CSP after browser compatibility review; live backup/restore and monitoring evidence; accessibility/load/chaos tests; and qualified legal review of the policy drafts. The live hosting environment has not been inspected by this repository audit.
