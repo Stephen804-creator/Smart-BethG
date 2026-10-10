@@ -79,9 +79,7 @@ def migrate(source_path, target_url, dry_run=False):
 
         counts = {}
         for table in tables:
-            counts[table] = source.execute(
-                sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(table)).as_string(source)
-            ).fetchone()[0] if False else source.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+            counts[table] = source.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
 
         print("Migration preview:")
         for table, count in counts.items():
@@ -90,6 +88,7 @@ def migrate(source_path, target_url, dry_run=False):
             print("Dry run only: no data copied.")
             return counts
 
+        target.commit()  # close the read-only preflight transaction before the data transaction
         with target.transaction():
             for table in tables:
                 source_columns = _columns_sqlite(source, table)
