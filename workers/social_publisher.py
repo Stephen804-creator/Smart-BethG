@@ -240,7 +240,7 @@ class SocialPublisherWorker:
                 "UPDATE social_publish_jobs SET status='indeterminate', lease_until=NULL, "
                 "error_code='worker_lease_expired', "
                 "error_message='Worker stopped after claiming this job; verify provider state before retrying.', "
-                "updated_at=CURRENT_TIMESTAMP WHERE status='publishing' AND lease_until IS NOT NULL AND lease_until<?",
+                "updated_at=CURRENT_TIMESTAMP WHERE status IN ('publishing','cancel_requested') AND lease_until IS NOT NULL AND lease_until<?",
                 (now,),
             )
             conn.commit()
