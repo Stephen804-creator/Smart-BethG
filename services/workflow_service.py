@@ -64,9 +64,12 @@ class WorkflowService:
         try:
             conn.execute(
                 "UPDATE workflows SET name=?, description=?, definition_json=?, version=version+1, "
-                "status='draft', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
-                (name, description, json.dumps(steps, ensure_ascii=False), workflow_id, user_id),
+                "status='draft', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND version=?",
+                (name, description, json.dumps(steps, ensure_ascii=False), workflow_id, user_id, current["version"]),
             )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                raise ValueError("Workflow changed concurrently. Refresh and try again.")
             conn.commit()
         finally:
             conn.close()
