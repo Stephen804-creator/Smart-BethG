@@ -1,3 +1,5 @@
+import secrets
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
@@ -77,5 +79,7 @@ async def google_callback(request: Request):
             status_code=403,
             detail="Registration is closed. Use an existing linked account or password sign-in.",
         )
+    request.session.clear()
     request.session["user_id"] = user["id"]
+    request.session["csrf_token"] = secrets.token_urlsafe(32)
     return RedirectResponse("/", status_code=302)
