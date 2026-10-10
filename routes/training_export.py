@@ -1,42 +1,29 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from api.dependencies import require_role
-from services.training_export_service import TrainingExportService
 
 router = APIRouter(prefix="/admin/training-export", tags=["admin"])
 
+# Conversation data must not be exported for model training until explicit,
+# recorded, revocable user consent exists. Admin authorization alone is not
+# user consent. Keep the endpoints fail-closed until that consent system ships.
 
-def get_training_export_service():
-    return TrainingExportService()
+
+def _require_training_consent_system():
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=(
+            "Training export is temporarily disabled until explicit user "
+            "consent and withdrawal controls are implemented."
+        ),
+    )
 
 
 @router.get("/preview")
-def preview(
-    since: str = None,
-    until: str = None,
-    user=Depends(require_role("admin")),
-    service: TrainingExportService = Depends(get_training_export_service),
-):
-    """
-    How many training examples would an export produce right now - a
-    cheap check before pulling the full export.
-    """
-    return {"exportable_examples": service.count_exportable(since=since, until=until)}
+def preview(user=Depends(require_role("admin"))):
+    _require_training_consent_system()
 
 
 @router.get("")
-def export(
-    since: str = None,
-    until: str = None,
-    limit: int = 1000,
-    user=Depends(require_role("admin")),
-    service: TrainingExportService = Depends(get_training_export_service),
-):
-    """
-    Admin-only (see api.dependencies.require_role). Returns real
-    conversation exchanges only - excludes honest-failure messages and
-    synthesized tool/memory exchanges, excludes any user identity. This
-    is a starting point for review before fine-tuning, not a
-    ready-to-train dataset - see services/training_export_service.py.
-    """
-    return {"examples": service.export(since=since, until=until, limit=limit)}
+def export(user=Depends(require_role("admin"))):
+    _require_training_consent_system()
