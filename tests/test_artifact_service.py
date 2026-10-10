@@ -78,7 +78,7 @@ class TestArtifactService(SmartBethGTestCase):
 
     def test_binary_artifact_cannot_be_read_as_utf8_text(self):
         artifact = self.service.create_bytes(
-            self.owner["id"], "image.png", bytes([137]) + b"PNG" + bytes([0]), "image/png"
+            self.owner["id"], "image.png", bytes([137]) + b"PNG" + bytes([13, 10, 26, 10, 0]), "image/png"
         )
         with self.assertRaisesRegex(ValueError, "download"):
             self.service.read_content(self.owner["id"], artifact["id"])
