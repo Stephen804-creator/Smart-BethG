@@ -186,3 +186,14 @@ The CI process caught two genuine defects during this migration work. First, the
 Session revocation now has unit and HTTP-level regression coverage: a copied signed session cookie works before logout and is rejected after logout increments the user's stored session version. The initial versioned PostgreSQL baseline migration is also exercised against a real PostgreSQL service and re-run idempotently.
 
 **Remaining limits:** the query compatibility adapter remains; migration tests do not yet cover every repository or every prior production schema. Shared object storage, password recovery, complete user data export/deletion, CSP design, broad adversarial tool-security testing, independent review, backup/restore drills, load tests, and public-launch legal/security gates remain open. This green CI result is not a penetration test and does not verify live hosting, domain/TLS, storage durability, or backups.
+
+
+## Verification update — 2026-10-10 19:51 UTC
+
+**Latest code revision verified:** `3edbacc04de9e53ac1dfc9ddb8bacbd262ecab28`.
+
+- Unit workflow: 308 tests passed; PostgreSQL-only tests are skipped here by design.
+- PostgreSQL integration workflow: 7 tests passed. The migration test now goes beyond re-running the current schema: it removes the newly introduced `users.session_version` column from the disposable test database, removes the migration marker, reapplies the baseline migration, and verifies the column is restored.
+- Python compilation, dependency vulnerability audit, and Gitleaks secret scan: passed.
+
+This demonstrates one controlled prior-schema upgrade path on a disposable PostgreSQL database. It is not yet proof that every legacy production schema or every repository query migrates correctly. The original migration-parser failure and the SQLite test-discovery failure were both fixed, and the current code revision is green.
