@@ -282,6 +282,7 @@ def initialize_database():
         CREATE TABLE IF NOT EXISTS missions(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
+            project_id INTEGER,
             objective TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending',
             priority TEXT NOT NULL DEFAULT 'normal',
@@ -297,6 +298,8 @@ def initialize_database():
             error TEXT,
             started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             completed_at TEXT,
+            result_json TEXT,
+            idempotency_key TEXT,
             FOREIGN KEY(mission_id) REFERENCES missions(id)
         );
 
@@ -336,6 +339,7 @@ def initialize_database():
         CREATE TABLE IF NOT EXISTS evidence(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             mission_id INTEGER,
+            user_id INTEGER NOT NULL,
             claim TEXT NOT NULL,
             evidence_text TEXT NOT NULL,
             source_reference TEXT,
@@ -349,6 +353,8 @@ def initialize_database():
             user_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             description TEXT,
+            definition_json TEXT NOT NULL DEFAULT '[]',
+            version INTEGER NOT NULL DEFAULT 1,
             status TEXT NOT NULL DEFAULT 'draft',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -361,8 +367,12 @@ def initialize_database():
             name TEXT NOT NULL,
             artifact_type TEXT,
             path TEXT,
+            content_type TEXT,
+            size_bytes INTEGER,
+            checksum_sha256 TEXT,
             status TEXT NOT NULL DEFAULT 'pending',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(mission_id) REFERENCES missions(id)
         );
 
@@ -374,7 +384,10 @@ def initialize_database():
             caption TEXT,
             hashtags TEXT,
             status TEXT NOT NULL DEFAULT 'draft',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            external_post_id TEXT,
+            published_at TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS projects(
@@ -383,12 +396,14 @@ def initialize_database():
             name TEXT NOT NULL,
             description TEXT,
             status TEXT NOT NULL DEFAULT 'active',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS logs(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             mission_id INTEGER,
+            user_id INTEGER,
             level TEXT NOT NULL DEFAULT 'info',
             event_type TEXT,
             message TEXT NOT NULL,
@@ -427,11 +442,39 @@ def initialize_database():
     _add_column_if_missing(conn, "approvals", "decided_at", "TEXT")
     _add_column_if_missing(conn, "approvals", "executed_at", "TEXT")
     _add_column_if_missing(conn, "approvals", "execution_result", "TEXT")
+    _add_column_if_missing(conn, "missions", "project_id", "INTEGER")
+    _add_column_if_missing(conn, "mission_runs", "result_json", "TEXT")
+    _add_column_if_missing(conn, "mission_runs", "idempotency_key", "TEXT")
+    _add_column_if_missing(conn, "evidence", "user_id", "INTEGER")
+    _add_column_if_missing(conn, "workflows", "definition_json", "TEXT NOT NULL DEFAULT '[]'")
+    _add_column_if_missing(conn, "workflows", "version", "INTEGER NOT NULL DEFAULT 1")
+    _add_column_if_missing(conn, "artifacts", "content_type", "TEXT")
+    _add_column_if_missing(conn, "artifacts", "size_bytes", "INTEGER")
+    _add_column_if_missing(conn, "artifacts", "checksum_sha256", "TEXT")
+    _add_column_if_missing(conn, "artifacts", "updated_at", "TEXT")
+    _add_column_if_missing(conn, "social_content", "external_post_id", "TEXT")
+    _add_column_if_missing(conn, "social_content", "published_at", "TEXT")
+    _add_column_if_missing(conn, "social_content", "updated_at", "TEXT")
+    _add_column_if_missing(conn, "projects", "updated_at", "TEXT")
+    _add_column_if_missing(conn, "logs", "user_id", "INTEGER")
     _add_column_if_missing(conn, "messages", "tokens_in", "INTEGER")
     _add_column_if_missing(conn, "messages", "tokens_out", "INTEGER")
     _add_column_if_missing(conn, "memory", "scope", "TEXT NOT NULL DEFAULT 'user'")
     _add_column_if_missing(conn, "memory", "scope_ref", "TEXT")
     _add_column_if_missing(conn, "memory", "source", "TEXT NOT NULL DEFAULT 'explicit'")
+
+    # Owner-scoped lookup indexes are created after additive migrations so
+    # existing databases missing a newer column still initialize safely.
+    for index_sql in (
+        "CREATE INDEX IF NOT EXISTS idx_projects_user_updated ON projects(user_id, updated_at)",
+        "CREATE INDEX IF NOT EXISTS idx_missions_user_updated ON missions(user_id, updated_at)",
+        "CREATE INDEX IF NOT EXISTS idx_workflows_user_updated ON workflows(user_id, updated_at)",
+        "CREATE INDEX IF NOT EXISTS idx_artifacts_user_created ON artifacts(user_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_social_content_user_updated ON social_content(user_id, updated_at)",
+        "CREATE INDEX IF NOT EXISTS idx_research_user_created ON research(user_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS idx_evidence_user_created ON evidence(user_id, created_at)",
+    ):
+        conn.execute(index_sql)
 
     conn.commit()
     conn.close()
