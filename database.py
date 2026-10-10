@@ -23,6 +23,7 @@ which capability slices are implemented and which execution paths remain open.
 import os
 import re
 import sqlite3
+from pathlib import Path
 
 import config
 
@@ -170,7 +171,10 @@ def initialize_database():
         if getattr(conn, "is_postgres", False):
             conn.execute("SELECT pg_advisory_lock(734829104)")
             lock_acquired = True
-        _initialize_database_on_connection(conn)
+        if getattr(conn, "is_postgres", False):
+            _run_postgres_migrations(conn)
+        else:
+            _initialize_database_on_connection(conn)
     finally:
         if lock_acquired:
             try:
@@ -178,6 +182,42 @@ def initialize_database():
             except Exception:
                 pass
         conn.close()
+
+
+def _run_postgres_migrations(conn):
+    """Apply ordered, versioned SQL migrations for PostgreSQL deployments."""
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS schema_migrations ("
+        "version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+    )
+    conn.commit()
+
+    migration_dir = Path(__file__).resolve().parent / "migrations" / "postgresql"
+    if not migration_dir.is_dir():
+        raise RuntimeError(f"PostgreSQL migration directory is missing: {migration_dir}")
+
+    for migration_path in sorted(migration_dir.glob("[0-9][0-9][0-9][0-9]_*.sql")):
+        version = migration_path.name
+        applied = conn.execute(
+            "SELECT version FROM schema_migrations WHERE version=? LIMIT 1",
+            (version,),
+        ).fetchone()
+        if applied:
+            continue
+
+        sql = migration_path.read_text(encoding="utf-8")
+        statements = [statement.strip() for statement in sql.split(";") if statement.strip()]
+        try:
+            for statement in statements:
+                conn.execute(statement)
+            conn.execute(
+                "INSERT INTO schema_migrations(version) VALUES (?)",
+                (version,),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
 
 def _initialize_database_on_connection(conn):
