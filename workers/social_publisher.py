@@ -76,7 +76,7 @@ class SocialPublisherWorker:
             row = conn.execute(
                 "SELECT j.*, c.status AS campaign_status, c.autonomy_mode, c.autopublish_authorized_at, "
                 "s.status AS content_status, s.topic AS title, s.caption AS content, s.hashtags, "
-                "sc.credential_ref "
+                "sc.credential_ref, sc.status AS connection_status "
                 "FROM social_publish_jobs j "
                 "JOIN social_campaigns c ON c.id=j.campaign_id AND c.user_id=j.user_id "
                 "JOIN social_content s ON s.id=j.content_id AND s.user_id=j.user_id "
@@ -136,7 +136,7 @@ class SocialPublisherWorker:
                                  error_message="The post is not approved for publication.")
                 results.append({"job_id": job_id, "status": "blocked"})
                 continue
-            if not job.get("connection_id") or not job.get("credential_ref"):
+            if not job.get("connection_id") or not job.get("credential_ref") or job.get("connection_status") != "active":
                 self._update_job(job_id, "blocked", error_code="connection_required",
                                  error_message="No verified account credential reference is attached.")
                 results.append({"job_id": job_id, "status": "blocked"})
