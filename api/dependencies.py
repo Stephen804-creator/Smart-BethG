@@ -56,6 +56,7 @@ def get_current_user(request: Request):
     if request.session.get("session_version") != user.get("session_version"):
         request.session.clear()
         raise HTTPException(status_code=401, detail="Session has expired or been revoked. Please sign in again.")
+    user.pop("session_version", None)
     if request.method.upper() not in {"GET", "HEAD", "OPTIONS", "TRACE"}:
         require_csrf(request)
     return user
@@ -70,6 +71,7 @@ def get_optional_user(request: Request):
     if not user or request.session.get("session_version") != user.get("session_version"):
         request.session.clear()
         return None
+    user.pop("session_version", None)
     return user
 
 
