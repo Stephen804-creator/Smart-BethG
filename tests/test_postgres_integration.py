@@ -3,7 +3,7 @@ import uuid
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 
-from database import get_connection, initialize_database
+from database import _run_postgres_migrations, get_connection, initialize_database
 from repositories.conversation_repository import ConversationRepository
 from services.approval_service import ApprovalService
 from services.auth_service import create_user
@@ -16,21 +16,32 @@ class TestPostgreSQLIntegration(unittest.TestCase):
     def setUpClass(cls):
         initialize_database()
 
-    def test_versioned_baseline_migration_is_recorded(self):
+    def test_versioned_baseline_migration_is_recorded_and_idempotent(self):
         conn = get_connection()
         try:
+            version = "0001_initial_schema.sql"
             row = conn.execute(
                 "SELECT version FROM schema_migrations WHERE version=?",
-                ("0001_initial_schema.sql",),
+                (version,),
             ).fetchone()
             self.assertIsNotNone(row)
-            self.assertEqual(row["version"], "0001_initial_schema.sql")
+            self.assertEqual(row["version"], version)
             columns = conn.execute(
                 "SELECT column_name FROM information_schema.columns "
                 "WHERE table_schema=current_schema() AND table_name='users' "
                 "AND column_name='session_version'"
             ).fetchone()
             self.assertIsNotNone(columns)
+
+            # Simulate an existing schema without a recorded migration marker.
+            # The baseline must safely adopt it rather than recreate or damage it.
+            conn.execute("DELETE FROM schema_migrations WHERE version=?", (version,))
+            conn.commit()
+            _run_postgres_migrations(conn)
+            adopted = conn.execute(
+                "SELECT version FROM schema_migrations WHERE version=?", (version,)
+            ).fetchone()
+            self.assertIsNotNone(adopted)
         finally:
             conn.close()
 
