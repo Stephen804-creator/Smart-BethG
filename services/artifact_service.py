@@ -1,8 +1,12 @@
 """Owner-scoped artifact storage with content integrity and pluggable backends."""
 import hashlib
 import json
+import os
 import re
 import uuid
+from pathlib import Path
+
+import config
 
 from database import get_connection
 from services.artifact_storage import get_artifact_storage
@@ -99,13 +103,26 @@ class ArtifactService:
         if not record:
             return None, None
         key = record["path"]
-        if not isinstance(key, str) or not key.startswith(f"{user_id}/") or ".." in key.split("/"):
+        if not isinstance(key, str) or ".." in key.split("/"):
             return None, record
-        storage = get_artifact_storage()
-        try:
-            encoded = storage.get(key)
-        except FileNotFoundError:
-            return None, record
+        if os.path.isabs(key):
+            # Backward compatibility for artifacts written before the storage
+            # abstraction. Legacy paths must remain inside the owner's folder.
+            root = Path(config.STORAGE_DIRS["artifacts"], str(user_id)).resolve()
+            legacy_path = Path(key).resolve()
+            if os.getenv("SMART_BETHG_OBJECT_STORAGE_BACKEND", "local").lower() != "local" or root not in legacy_path.parents:
+                return None, record
+            if not legacy_path.is_file():
+                return None, record
+            encoded = legacy_path.read_bytes()
+        else:
+            if not key.startswith(f"{user_id}/"):
+                return None, record
+            storage = get_artifact_storage()
+            try:
+                encoded = storage.get(key)
+            except FileNotFoundError:
+                return None, record
         if len(encoded) > self.MAX_CONTENT_BYTES:
             raise ValueError("Stored artifact exceeds the configured read limit.")
         digest = hashlib.sha256(encoded).hexdigest()
@@ -132,9 +149,15 @@ class ArtifactService:
             conn.close()
         if deleted:
             key = record.get("path", "")
-            if isinstance(key, str) and key.startswith(f"{user_id}/") and ".." not in key.split("/"):
+            if isinstance(key, str) and ".." not in key.split("/"):
                 try:
-                    get_artifact_storage().delete(key)
+                    if os.path.isabs(key):
+                        root = Path(config.STORAGE_DIRS["artifacts"], str(user_id)).resolve()
+                        legacy_path = Path(key).resolve()
+                        if os.getenv("SMART_BETHG_OBJECT_STORAGE_BACKEND", "local").lower() == "local" and root in legacy_path.parents:
+                            legacy_path.unlink(missing_ok=True)
+                    elif key.startswith(f"{user_id}/"):
+                        get_artifact_storage().delete(key)
                 except Exception:
                     # DB row is gone; an orphan object is safer than an exposed
                     # artifact row. A future orphan-cleanup job can retry.
