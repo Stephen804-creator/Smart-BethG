@@ -82,3 +82,9 @@ The home page now supports owner-scoped project creation/list/archive and missio
 
 **Status:** Verified on PR branch; not merged.  
 Commit `022f057765f0b0ed4104f7898eeb0b95903b7a0e` passed 317 unit tests, 9 PostgreSQL integration tests, Python compilation, dashboard JavaScript syntax validation, dependency vulnerability audit, and Gitleaks secret scanning. This includes the new global CSRF regression, report-only CSP checks, project/mission dashboard HTTP owner-isolation tests, concurrent rate limiting, and concurrent user-budget reservation coverage. Production storage/backup, independent adversarial review, legal approval, and public-launch gates remain open.
+
+
+## 2026-10-11 UTC — Freeze SniperMemory Design C
+
+**Status:** Target architecture frozen; Phase 1 core implemented on a review branch and awaiting current-head CI.  
+SniperMemory is a provider-neutral context compiler that retrieves only relevant durable facts, selected earlier turns, and evidence rather than replaying the entire transcript. The default mode is local lexical ranking with PostgreSQL full-text indexes in production and SQLite keyword search in local development/tests. It makes no embedding-model call, requires no GPU/VRAM, and introduces no additional per-chat embedding charge. The complete entity/relation state graph, temporal conflict resolution, AST-based repository indexing, dependency expansion, optional semantic retrieval, and standalone SDK are later phases. See docs/SNIPERMEMORY_DESIGN_C_2026-10-11.md and docs/SNIPERMEMORY_IMPLEMENTATION_LOG_2026-10-11.md. This decision does not claim the current code is fully verified until the latest unit and PostgreSQL CI runs pass.
