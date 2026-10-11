@@ -61,8 +61,12 @@ class KnowledgeRepository:
                 for term in terms:
                     fts_terms.extend(re.findall(r"[a-zA-Z0-9]+", term.lower()))
                 tsquery = " | ".join(dict.fromkeys(fts_terms))
-                where = "(to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR (" + clauses + "))"
-                params = [tsquery, *like_params, user_id]
+                if tsquery:
+                    where = "(to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR (" + clauses + "))"
+                    params = [tsquery, *like_params, user_id]
+                else:
+                    where = "(" + clauses + ")"
+                    params = [*like_params, user_id]
             else:
                 where = "(" + clauses + ")"
                 params = [*like_params, user_id]
