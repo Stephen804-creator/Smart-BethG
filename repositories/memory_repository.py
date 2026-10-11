@@ -53,6 +53,25 @@ class MemoryRepository:
         finally:
             conn.close()
 
+    def list_context_candidates(self, user_id, workspace="default", conversation_id=None, limit=200):
+        """Fetch only this user's applicable memory scopes for bounded local ranking."""
+        clauses = ["(scope='user')", "(scope='project' AND scope_ref=?)"]
+        params = [user_id, workspace or "default"]
+        if conversation_id is not None:
+            clauses.append("(scope='conversation' AND scope_ref=?)")
+            params.append(str(conversation_id))
+        params.append(max(1, min(int(limit), 500)))
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT * FROM memory WHERE user_id=? AND (" + " OR ".join(clauses) + ") "
+                "ORDER BY id DESC LIMIT ?",
+                tuple(params),
+            ).fetchall()
+            return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
     def delete(self, memory_id, user_id):
         conn = get_connection()
         try:
