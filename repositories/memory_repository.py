@@ -74,8 +74,12 @@ class MemoryRepository:
                     for term in terms:
                         fts_terms.extend(re.findall(r"[a-zA-Z0-9]+", term))
                     tsquery = " | ".join(dict.fromkeys(fts_terms))
-                    where += " AND (to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR (" + likes + "))"
-                    params.extend([tsquery, *like_params])
+                    if tsquery:
+                        where += " AND (to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR (" + likes + "))"
+                        params.extend([tsquery, *like_params])
+                    else:
+                        where += " AND (" + likes + ")"
+                        params.extend(like_params)
                 else:
                     where += " AND (" + likes + ")"
                     params.extend(like_params)
