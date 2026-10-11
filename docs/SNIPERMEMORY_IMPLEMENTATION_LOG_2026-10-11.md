@@ -25,3 +25,8 @@ This log is created before the first full CI run of this branch. Do not mark tes
 - Lexical ranking can miss semantically similar wording.
 - PostgreSQL full-text indexes are production-only; SQLite's LIKE fallback is intended for development/tests and should not be used as a large-scale search backend.
 - The current retrieval benchmark is a regression test suite, not yet a representative benchmark dataset.
+
+
+## 2026-10-11 16:53 UTC — CI runner execution blocker
+
+The latest observed GitHub Actions runs for commit cee600dcfe92205f9ebdde7d3cbff9dc2285cf7b are marked failed, but each job has an empty steps list, runner_id 0, and no downloadable logs. This means the jobs failed before checkout, dependency installation, compilation, or tests ran. It is not evidence of a code assertion failure, and it is also not a passing verification. Investigate repository Actions permissions/available hosted-runner capacity or retry when the runner service is available. Keep this PR unmerged until the current head has actually executed the unit and PostgreSQL integration suites.
