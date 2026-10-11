@@ -130,10 +130,10 @@ class SniperMemoryService:
         self.conversation_repo = conversation_repo or ConversationRepository()
         self.memory_repo = memory_repo or MemoryRepository()
         self.knowledge_repo = knowledge_repo or KnowledgeRepository()
-        self.max_context_chars = max(
-            1000,
-            int(max_context_chars or getattr(config, "SNIPER_MAX_CONTEXT_CHARS", DEFAULT_MAX_CONTEXT_CHARS)),
+        configured_context_chars = max_context_chars or getattr(
+            config, "SNIPER_MAX_CONTEXT_CHARS", DEFAULT_MAX_CONTEXT_CHARS
         )
+        self.max_context_chars = max(1000, min(int(configured_context_chars), 60000))
 
     def compile(self, user_id, query, conversation_id=None, workspace="default"):
         """
@@ -149,7 +149,7 @@ class SniperMemoryService:
         older_turns = []
         if conversation_id is not None:
             recent = self.conversation_repo.list_recent_messages(
-                conversation_id, limit=DEFAULT_RECENT_MESSAGES
+                conversation_id, limit=max(1, min(int(getattr(config, "SNIPER_RECENT_MESSAGES", DEFAULT_RECENT_MESSAGES)), 30))
             )
             recent_ids = {row.get("id") for row in recent}
             if terms:
@@ -162,7 +162,7 @@ class SniperMemoryService:
                     and row.get("role") in ("user", "assistant")
                 ]
                 older_turns = rank_documents(
-                    query, candidates, text_key="content", limit=DEFAULT_RELEVANT_TURNS
+                    query, candidates, text_key="content", limit=max(1, min(int(getattr(config, "SNIPER_RELEVANT_TURNS", DEFAULT_RELEVANT_TURNS)), 10))
                 )
 
         memory_candidates = self.memory_repo.list_context_candidates(
@@ -170,14 +170,14 @@ class SniperMemoryService:
             terms=terms, limit=MAX_MEMORY_CANDIDATES,
         )
         memories = rank_documents(
-            query, memory_candidates, text_key="content", limit=DEFAULT_MEMORY_RESULTS
+            query, memory_candidates, text_key="content", limit=max(1, min(int(getattr(config, "SNIPER_MEMORY_RESULTS", DEFAULT_MEMORY_RESULTS)), 20))
         ) if terms else []
 
         knowledge_candidates = self.knowledge_repo.search_candidates(
-            user_id, terms, workspace=workspace, limit=MAX_KNOWLEDGE_CANDIDATES
+            user_id, terms, workspace=workspace, limit=max(1, min(int(getattr(config, "SNIPER_MAX_CANDIDATES", MAX_KNOWLEDGE_CANDIDATES)), 500))
         ) if terms else []
         knowledge = rank_documents(
-            query, knowledge_candidates, text_key="content", limit=DEFAULT_KNOWLEDGE_RESULTS
+            query, knowledge_candidates, text_key="content", limit=max(1, min(int(getattr(config, "SNIPER_KNOWLEDGE_RESULTS", DEFAULT_KNOWLEDGE_RESULTS)), 10))
         )
 
         sections = []
