@@ -51,16 +51,26 @@ class KnowledgeRepository:
         if not terms:
             return []
         clauses = " OR ".join("LOWER(content) LIKE ?" for _ in terms)
-        params = [f"%{term}%" for term in terms]
-        params.append(user_id)
+        like_params = [f"%{term}%" for term in terms]
         workspace_order = "CASE WHEN workspace=? THEN 0 ELSE 1 END, " if workspace else ""
-        if workspace:
-            params.append(workspace)
-        params.append(max(1, min(int(limit), 500)))
         conn = get_connection()
         try:
+            if getattr(conn, "is_postgres", False):
+                import re
+                fts_terms = []
+                for term in terms:
+                    fts_terms.extend(re.findall(r"[a-zA-Z0-9]+", term.lower()))
+                tsquery = " | ".join(dict.fromkeys(fts_terms))
+                where = "(to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR (" + clauses + "))"
+                params = [tsquery, *like_params, user_id]
+            else:
+                where = "(" + clauses + ")"
+                params = [*like_params, user_id]
+            if workspace:
+                params.append(workspace)
+            params.append(max(1, min(int(limit), 500)))
             rows = conn.execute(
-                "SELECT * FROM knowledge_chunks WHERE (" + clauses + ") AND user_id=? "
+                "SELECT * FROM knowledge_chunks WHERE " + where + " AND user_id=? "
                 "ORDER BY " + workspace_order + "id DESC LIMIT ?",
                 tuple(params),
             ).fetchall()
