@@ -111,3 +111,10 @@ See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). C
 ## Security reporting
 
 Do not include API keys, passwords, session cookies, private user data, or unredacted logs in public issues. Report security-sensitive findings privately to the repository owner.
+
+
+## SniperMemory context engine
+
+Smart BethG is beginning implementation of SniperMemory Design C. The current core uses deterministic local keyword ranking to assemble a bounded context from recent turns, relevant older turns, saved memory, and uploaded knowledge. It does not require local GPU/VRAM or call an embedding provider on each chat. Configure its limits with SMART_BETHG_SNIPER_MAX_CONTEXT_CHARS, SMART_BETHG_SNIPER_RECENT_MESSAGES, SMART_BETHG_SNIPER_RELEVANT_TURNS, SMART_BETHG_SNIPER_MEMORY_RESULTS, SMART_BETHG_SNIPER_KNOWLEDGE_RESULTS, and SMART_BETHG_SNIPER_MAX_CANDIDATES.
+
+The target architecture and staged implementation are documented in docs/SNIPERMEMORY_DESIGN_C_2026-10-11.md. Phase 1 is lexical retrieval, not yet a full entity-relation state graph or AST-based code dependency engine. Verify current-head unit and PostgreSQL CI before merging this work.
