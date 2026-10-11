@@ -167,7 +167,7 @@ class SniperMemoryService:
 
         memory_candidates = self.memory_repo.list_context_candidates(
             user_id, workspace=workspace, conversation_id=conversation_id,
-            limit=MAX_MEMORY_CANDIDATES,
+            terms=terms, limit=MAX_MEMORY_CANDIDATES,
         )
         memories = rank_documents(
             query, memory_candidates, text_key="content", limit=DEFAULT_MEMORY_RESULTS
