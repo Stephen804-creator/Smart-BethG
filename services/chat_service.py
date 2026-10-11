@@ -65,13 +65,11 @@ class ChatService:
         provider_manager.choose_auto) rather than pretending to a more
         sophisticated routing model than actually exists.
 
-        `workspace` scopes which project-level memory (T0804) gets
-        recalled into this request - see services/memory_service.py.
+        `workspace` scopes which saved project facts SniperMemory can retrieve.
 
-        `extra_context`, when given, is prepended alongside recalled
-        memory - this is how grounded generation (T0904) injects real
-        search results into a research request without needing a
-        separate code path from plain chat.
+        `extra_context`, when given, is included with the bounded retrieval
+        package so research/tool synthesis can use real results without
+        sending the entire transcript to the model.
         """
         message = (message or "").strip()
         if not message:
@@ -120,7 +118,10 @@ class ChatService:
             # Keep the adapter provider-agnostic: retrieved evidence is sent
             # as a clearly labelled user context block, never as a system rule.
             provider_messages = [
-                {"role": "user", "content": "\n\n".join(leading_context)}
+                {
+                    "role": "user",
+                    "content": "SniperMemory / agent task context:\n\n" + "\n\n".join(leading_context),
+                }
             ] + provider_messages
 
         logger.info(
@@ -261,11 +262,31 @@ class ChatService:
 
     @staticmethod
     def _bound_context(messages, max_chars):
-        """Keep the newest context within a hard character budget."""
+        """Keep retrieved evidence and the newest conversation within a hard budget."""
         budget = max(4000, int(max_chars))
-        kept = []
+        leading = []
+        history = list(messages or [])
         used = 0
-        for message in reversed(messages):
+
+        # Reserve space for the compiled retrieval/task block. Without this,
+        # a long recent user message could consume the budget and silently
+        # discard the very memory evidence that was retrieved for this turn.
+        if history and str(history[0].get("content", "")).startswith("SniperMemory / agent task context:"):
+            raw = str(history.pop(0).get("content", ""))
+            reserve = min(
+                len(raw),
+                max(1000, min(
+                    int(getattr(config, "SNIPER_MAX_CONTEXT_CHARS", 12000)) + 6000,
+                    budget // 2,
+                )),
+            )
+            if len(raw) > reserve:
+                raw = raw[:max(1, reserve - 24)] + "\n[context truncated]"
+            leading = [{"role": "user", "content": raw}]
+            used = len(raw)
+
+        kept = []
+        for message in reversed(history):
             content = str(message.get("content", ""))
             remaining = budget - used
             if remaining <= 0:
@@ -275,7 +296,7 @@ class ChatService:
             kept.append({"role": message.get("role", "user"), "content": content})
             used += len(content)
         kept.reverse()
-        return kept
+        return leading + kept
 
     @staticmethod
     def _balanced_model_for(provider_name):
