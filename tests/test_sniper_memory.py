@@ -5,6 +5,7 @@ from repositories.conversation_repository import ConversationRepository
 from repositories.knowledge_repository import KnowledgeRepository
 from repositories.memory_repository import MemoryRepository
 from services.auth_service import create_user
+from services.chat_service import ChatService
 from services.sniper_memory import SniperMemoryService, rank_documents, tokenize
 from tests.base import SmartBethGTestCase
 
@@ -149,6 +150,22 @@ class TestSniperMemoryContext(SmartBethGTestCase):
             result["stats"]["estimated_context_tokens"],
             250,
         )
+
+    def test_prompt_budget_preserves_retrieval_block_and_latest_user_request(self):
+        messages = [
+            {
+                "role": "user",
+                "content": "SniperMemory / agent task context:\nRELEVANT_EVIDENCE "
+                + ("supporting context " * 500),
+            },
+            {"role": "user", "content": "older message " * 500},
+            {"role": "user", "content": "The latest user request must remain visible."},
+        ]
+        bounded = ChatService._bound_context(messages, 4000)
+        self.assertLessEqual(sum(len(item["content"]) for item in bounded), 4000)
+        self.assertTrue(bounded[0]["content"].startswith("SniperMemory / agent task context:"))
+        self.assertIn("RELEVANT_EVIDENCE", bounded[0]["content"])
+        self.assertIn("The latest user request must remain visible.", bounded[-1]["content"])
 
     def test_recent_messages_are_newest_window_in_chronological_order(self):
         conversation_id = self.conversations.create(self.user["id"])
