@@ -47,6 +47,15 @@ The default retrieval path uses database queries and CPU ranking only. It introd
 
 Optional semantic retrieval may be added later through a pluggable adapter. It must be off by default, budget-aware, measurable against the lexical baseline, and never require local GPU memory. CPU-local embeddings, remote embedding APIs, or pgvector are alternatives to evaluate, not assumptions to bake into the core.
 
+
+## Prompt caching versus SniperMemory
+
+Prompt caching and SniperMemory solve different parts of the problem and should be complementary. Provider prompt caching reuses a matching prompt prefix's model-side key/value state; that cached state lives on the provider's infrastructure, not in the user's local VRAM. It can reduce latency and cached-input price when the exact prefix matches, but it does not itself choose which historical facts matter, remove those tokens from the prompt, or guarantee a cache hit. Cache behavior, eligible models, retention, and pricing vary by provider.
+
+SniperMemory reduces the amount of context sent by selecting a small relevant subset. It is therefore useful even when provider caching is unavailable, a user switches providers/models, a conversation changes enough to miss the cache, or the agent needs relevant facts from earlier parts of a thread. The trade-off is retrieval error: if lexical search misses a crucial fact, the model will not see it. The target design is to use cheap retrieval first, provider caching where supported, and optional semantic/graph expansion only when evaluations show the extra cost is justified.
+
+Do not claim that SniperMemory always beats caching on price. Compare actual uncached/cached input tokens, provider-reported usage, prompt length, cache hit rate, latency, and answer quality on the same workload. A smaller prompt may be cheaper; a stable cached prefix may also be very efficient; a hybrid can be best.
+
 ## Retrieval safety and data governance
 
 - Every query must apply owner and scope predicates in the database before ranking.
