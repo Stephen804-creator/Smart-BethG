@@ -53,6 +53,55 @@ class MemoryRepository:
         finally:
             conn.close()
 
+    def list_context_candidates(self, user_id, workspace="default", conversation_id=None, terms=None, limit=200):
+        """Fetch applicable, owner-scoped memory records for bounded local ranking."""
+        import re
+
+        clauses = ["(scope='user')", "(scope='project' AND scope_ref=?)"]
+        params = [user_id, workspace or "default"]
+        if conversation_id is not None:
+            clauses.append("(scope='conversation' AND scope_ref=?)")
+            params.append(str(conversation_id))
+        where = "user_id=? AND (" + " OR ".join(clauses) + ")"
+        terms = [str(term).lower() for term in (terms or []) if term]
+        if terms:
+            likes = " OR ".join("LOWER(content) LIKE ?" for _ in terms)
+            like_params = [f"%{term}%" for term in terms]
+            conn = get_connection()
+            try:
+                if getattr(conn, "is_postgres", False):
+                    fts_terms = []
+                    for term in terms:
+                        fts_terms.extend(re.findall(r"[a-zA-Z0-9]+", term))
+                    tsquery = " | ".join(dict.fromkeys(fts_terms))
+                    if tsquery:
+                        where += " AND (to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR (" + likes + "))"
+                        params.extend([tsquery, *like_params])
+                    else:
+                        where += " AND (" + likes + ")"
+                        params.extend(like_params)
+                else:
+                    where += " AND (" + likes + ")"
+                    params.extend(like_params)
+                params.append(max(1, min(int(limit), 500)))
+                rows = conn.execute(
+                    "SELECT * FROM memory WHERE " + where + " ORDER BY id DESC LIMIT ?",
+                    tuple(params),
+                ).fetchall()
+                return [dict(row) for row in rows]
+            finally:
+                conn.close()
+        conn = get_connection()
+        try:
+            params.append(max(1, min(int(limit), 500)))
+            rows = conn.execute(
+                "SELECT * FROM memory WHERE " + where + " ORDER BY id DESC LIMIT ?",
+                tuple(params),
+            ).fetchall()
+            return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
     def delete(self, memory_id, user_id):
         conn = get_connection()
         try:

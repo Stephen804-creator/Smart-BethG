@@ -6,6 +6,7 @@ from providers.provider_manager import provider_manager
 from services.model_evaluation_service import ModelEvaluationService
 from services.memory_service import MemoryService
 from services.knowledge_service import KnowledgeService
+from services.sniper_memory import SniperMemoryService
 from services.usage_budget_service import UsageBudgetService, BudgetExceededError
 from logging_setup import get_logger
 
@@ -27,11 +28,17 @@ class ChatService:
         memory_service: MemoryService = None,
         knowledge_service: KnowledgeService = None,
         budget_service: UsageBudgetService = None,
+        sniper_memory_service: SniperMemoryService = None,
     ):
         self.repo = repo or ConversationRepository()
         self.eval_service = eval_service or ModelEvaluationService()
         self.memory_service = memory_service or MemoryService()
         self.knowledge_service = knowledge_service or KnowledgeService()
+        self.sniper_memory_service = sniper_memory_service or SniperMemoryService(
+            conversation_repo=self.repo,
+            memory_repo=getattr(self.memory_service, "repo", None),
+            knowledge_repo=getattr(self.knowledge_service, "repo", None),
+        )
         self.budget_service = budget_service or UsageBudgetService()
 
     def get_or_create_conversation(self, user_id, conversation_id=None):
@@ -58,13 +65,11 @@ class ChatService:
         provider_manager.choose_auto) rather than pretending to a more
         sophisticated routing model than actually exists.
 
-        `workspace` scopes which project-level memory (T0804) gets
-        recalled into this request - see services/memory_service.py.
+        `workspace` scopes which saved project facts SniperMemory can retrieve.
 
-        `extra_context`, when given, is prepended alongside recalled
-        memory - this is how grounded generation (T0904) injects real
-        search results into a research request without needing a
-        separate code path from plain chat.
+        `extra_context`, when given, is included with the bounded retrieval
+        package so research/tool synthesis can use real results without
+        sending the entire transcript to the model.
         """
         message = (message or "").strip()
         if not message:
@@ -97,29 +102,32 @@ class ChatService:
             }
 
         provider = provider_manager.get(user_id, provider_name)
-        history = self.repo.list_messages(conversation_id)
-        provider_messages = [
-            {"role": m["role"], "content": m["content"]}
-            for m in history
-            if m["role"] in ("user", "assistant")
-        ]
-
-        memory_context = self.memory_service.recall_context(user_id, workspace, conversation_id)
+        # SniperMemory keeps the full transcript in storage but sends only a
+        # recent window plus a small query-relevant retrieval package. Its
+        # default retrieval path is local and does not call an embedding model.
+        retrieval = self.sniper_memory_service.compile(
+            user_id, message, conversation_id=conversation_id, workspace=workspace
+        )
+        provider_messages = retrieval["messages"]
         leading_context = []
-        if memory_context:
-            leading_context.append(memory_context)
-        if self.knowledge_service.has_knowledge(user_id):
-            knowledge_context = self.knowledge_service.recall_context(user_id, message)
-            if knowledge_context:
-                leading_context.append(knowledge_context)
+        if retrieval["context"]:
+            leading_context.append(retrieval["context"])
         if extra_context:
             leading_context.append(extra_context)
         if leading_context:
-            # Prepended as leading user-role messages rather than a
-            # provider-specific "system" field, since not every provider
-            # SDK call here is wired the same way - this keeps the
-            # injection provider-agnostic.
-            provider_messages = [{"role": "user", "content": c} for c in leading_context] + provider_messages
+            # Keep the adapter provider-agnostic: retrieved evidence is sent
+            # as a clearly labelled user context block, never as a system rule.
+            provider_messages = [
+                {
+                    "role": "user",
+                    "content": "SniperMemory / agent task context:\n\n" + "\n\n".join(leading_context),
+                }
+            ] + provider_messages
+
+        logger.info(
+            "SniperMemory context compiled (user=%s conversation=%s stats=%s)",
+            user_id, conversation_id, retrieval["stats"],
+        )
 
         result, used_provider, used_model, attempted, last_error = self._generate_with_fallback(
             provider, provider_name, model_id, provider_messages, user_id,
@@ -254,11 +262,31 @@ class ChatService:
 
     @staticmethod
     def _bound_context(messages, max_chars):
-        """Keep the newest context within a hard character budget."""
+        """Keep retrieved evidence and the newest conversation within a hard budget."""
         budget = max(4000, int(max_chars))
-        kept = []
+        leading = []
+        history = list(messages or [])
         used = 0
-        for message in reversed(messages):
+
+        # Reserve space for the compiled retrieval/task block. Without this,
+        # a long recent user message could consume the budget and silently
+        # discard the very memory evidence that was retrieved for this turn.
+        if history and str(history[0].get("content", "")).startswith("SniperMemory / agent task context:"):
+            raw = str(history.pop(0).get("content", ""))
+            reserve = min(
+                len(raw),
+                max(1000, min(
+                    int(getattr(config, "SNIPER_MAX_CONTEXT_CHARS", 12000)) + 6000,
+                    budget // 2,
+                )),
+            )
+            if len(raw) > reserve:
+                raw = raw[:max(1, reserve - 24)] + "\n[context truncated]"
+            leading = [{"role": "user", "content": raw}]
+            used = len(raw)
+
+        kept = []
+        for message in reversed(history):
             content = str(message.get("content", ""))
             remaining = budget - used
             if remaining <= 0:
@@ -268,7 +296,7 @@ class ChatService:
             kept.append({"role": message.get("role", "user"), "content": content})
             used += len(content)
         kept.reverse()
-        return kept
+        return leading + kept
 
     @staticmethod
     def _balanced_model_for(provider_name):

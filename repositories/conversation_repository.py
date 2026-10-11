@@ -1,3 +1,5 @@
+import re
+
 from database import get_connection
 
 
@@ -82,6 +84,65 @@ class ConversationRepository:
                 (conversation_id, limit),
             ).fetchall()
             return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def count_messages(self, conversation_id):
+        """Count stored messages without loading transcript content into Python."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) AS total FROM messages WHERE conversation_id=?",
+                (conversation_id,),
+            ).fetchone()
+            return int(row["total"] or 0)
+        finally:
+            conn.close()
+
+    def list_recent_messages(self, conversation_id, limit=8):
+        """Return the newest messages in chronological order, not the oldest rows."""
+        limit = max(1, min(int(limit), 30))
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT id, role, content, provider, model, created_at FROM messages "
+                "WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
+                (conversation_id, limit),
+            ).fetchall()
+            return [dict(row) for row in reversed(rows)]
+        finally:
+            conn.close()
+
+    def search_messages(self, conversation_id, terms, limit=100):
+        """Bounded keyword candidates from one conversation; never crosses owners/conversations."""
+        terms = [str(term) for term in terms if term]
+        if not terms:
+            return []
+        clauses = " OR ".join("LOWER(content) LIKE ?" for _ in terms)
+        like_params = [f"%{term.lower()}%" for term in terms]
+        conn = get_connection()
+        try:
+            if getattr(conn, "is_postgres", False):
+                fts_terms = []
+                for term in terms:
+                    fts_terms.extend(re.findall(r"[a-zA-Z0-9]+", term.lower()))
+                tsquery = " | ".join(dict.fromkeys(fts_terms))
+                if tsquery:
+                    where = f"(to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR ({clauses}))"
+                    params = [tsquery, *like_params, conversation_id, max(1, min(int(limit), 200))]
+                else:
+                    where = f"({clauses})"
+                    params = [*like_params, conversation_id, max(1, min(int(limit), 200))]
+            else:
+                where = f"({clauses})"
+                params = [*like_params, conversation_id, max(1, min(int(limit), 200))]
+            rows = conn.execute(
+                "SELECT id, role, content, provider, model, created_at FROM messages "
+                f"WHERE {where} AND conversation_id=? AND role IN ('user','assistant') "
+                "ORDER BY id DESC LIMIT ?",
+                tuple(params),
+            ).fetchall()
+            return [dict(row) for row in rows]
         finally:
             conn.close()
 

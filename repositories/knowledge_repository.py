@@ -45,6 +45,43 @@ class KnowledgeRepository:
         finally:
             conn.close()
 
+    def search_candidates(self, user_id, terms, workspace=None, limit=200):
+        """Find bounded matching chunks in SQL; this path never calls an embedding provider."""
+        terms = [str(term).lower() for term in terms if term]
+        if not terms:
+            return []
+        clauses = " OR ".join("LOWER(content) LIKE ?" for _ in terms)
+        like_params = [f"%{term}%" for term in terms]
+        workspace_order = "CASE WHEN workspace=? THEN 0 ELSE 1 END, " if workspace else ""
+        conn = get_connection()
+        try:
+            if getattr(conn, "is_postgres", False):
+                import re
+                fts_terms = []
+                for term in terms:
+                    fts_terms.extend(re.findall(r"[a-zA-Z0-9]+", term.lower()))
+                tsquery = " | ".join(dict.fromkeys(fts_terms))
+                if tsquery:
+                    where = "(to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR (" + clauses + "))"
+                    params = [tsquery, *like_params, user_id]
+                else:
+                    where = "(" + clauses + ")"
+                    params = [*like_params, user_id]
+            else:
+                where = "(" + clauses + ")"
+                params = [*like_params, user_id]
+            if workspace:
+                params.append(workspace)
+            params.append(max(1, min(int(limit), 500)))
+            rows = conn.execute(
+                "SELECT * FROM knowledge_chunks WHERE " + where + " AND user_id=? "
+                "ORDER BY " + workspace_order + "id DESC LIMIT ?",
+                tuple(params),
+            ).fetchall()
+            return [self._deserialize(dict(row)) for row in rows]
+        finally:
+            conn.close()
+
     def count_for_user(self, user_id):
         conn = get_connection()
         try:

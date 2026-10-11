@@ -131,6 +131,14 @@ MAX_CHAT_MESSAGE_CHARS = int(os.getenv("SMART_BETHG_MAX_CHAT_MESSAGE_CHARS", "20
 MAX_PROVIDER_ATTEMPTS_PER_CHAT = int(os.getenv("SMART_BETHG_MAX_PROVIDER_ATTEMPTS_PER_CHAT", "3"))
 
 MAX_CHAT_CONTEXT_CHARS = int(os.getenv("SMART_BETHG_MAX_CHAT_CONTEXT_CHARS", "60000"))
+# SniperMemory context assembly: deterministic retrieval stays local and
+# bounded; these values tune context size, not model/provider capabilities.
+SNIPER_MAX_CONTEXT_CHARS = int(os.getenv("SMART_BETHG_SNIPER_MAX_CONTEXT_CHARS", "12000"))
+SNIPER_RECENT_MESSAGES = int(os.getenv("SMART_BETHG_SNIPER_RECENT_MESSAGES", "8"))
+SNIPER_RELEVANT_TURNS = int(os.getenv("SMART_BETHG_SNIPER_RELEVANT_TURNS", "4"))
+SNIPER_MEMORY_RESULTS = int(os.getenv("SMART_BETHG_SNIPER_MEMORY_RESULTS", "5"))
+SNIPER_KNOWLEDGE_RESULTS = int(os.getenv("SMART_BETHG_SNIPER_KNOWLEDGE_RESULTS", "3"))
+SNIPER_MAX_CANDIDATES = int(os.getenv("SMART_BETHG_SNIPER_MAX_CANDIDATES", "200"))
 CHAT_MAX_OUTPUT_TOKENS = int(os.getenv("SMART_BETHG_CHAT_MAX_OUTPUT_TOKENS", "2048"))
 
 # Conservative daily budgets. Dollar amounts are estimates based on the
