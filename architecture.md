@@ -65,3 +65,8 @@ Before unrestricted public registration:
 ## CI and verification truth
 
 The CI suite must run the unit tests and PostgreSQL integration tests. A green run is evidence only for the tests that actually ran; it is not a penetration test, legal review, load test, or live deployment verification. Every significant decision and fix should be timestamped in the decision log/changelog, with the exact Git commit serving as the source of truth.
+
+
+## SniperMemory context compiler
+
+The target memory architecture is frozen as Design C: durable source records → owner-scoped candidate retrieval → relevance ranking → saved project-state facts → later dependency expansion → bounded context compilation → provider adapter → evaluation. Phase 1 uses local BM25-style lexical ranking and PostgreSQL full-text indexes in production; SQLite keyword search remains for local development/tests. It does not require GPU/VRAM or make an extra embedding call on every chat. The full temporal entity/relation graph, AST-based code indexing, dependency expansion, optional semantic retrieval, and standalone SDK remain staged work. See docs/SNIPERMEMORY_DESIGN_C_2026-10-11.md for the frozen design and benchmark gates.
