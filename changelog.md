@@ -719,3 +719,8 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Added bounded retrieval configuration and telemetry for selected sources, context characters, and approximate context tokens.
 - Added tests for retrieval ranking, owner/workspace scoping, cross-user conversation isolation, relevant old-turn recovery, knowledge evidence, recent-message windows, and context limits.
 - The complete state graph, AST/dependency indexing, semantic retrieval, standalone SDK, and benchmark harness remain future phases. No claim of production readiness or measured token savings is made until current-head CI and a representative retrieval benchmark pass.
+
+
+## 2026-10-11 16:53 UTC — SniperMemory CI runner blocker
+
+The latest SniperMemory branch Actions runs were marked failed before any job steps ran (runner_id 0, empty steps, no job logs). This does not establish a test failure, but it leaves the current head unverified. Do not merge until the runner issue is resolved and unit, PostgreSQL integration, dependency-audit, and secret-scan workflows actually execute on the latest commit.
