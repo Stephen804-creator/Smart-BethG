@@ -1,5 +1,3 @@
-import os
-import tempfile
 import unittest
 
 from database import get_connection
@@ -7,7 +5,6 @@ from repositories.conversation_repository import ConversationRepository
 from repositories.knowledge_repository import KnowledgeRepository
 from repositories.memory_repository import MemoryRepository
 from services.auth_service import create_user
-from services.memory_service import MemoryService
 from services.sniper_memory import SniperMemoryService, rank_documents, tokenize
 from tests.base import SmartBethGTestCase
 
@@ -119,6 +116,18 @@ class TestSniperMemoryContext(SmartBethGTestCase):
         self.assertIn("local keyword ranking", result["context"])
         self.assertNotIn("gardening calendar", result["context"])
         self.assertEqual(result["stats"]["knowledge_chunks_selected"], 1)
+
+    def test_foreign_conversation_id_is_not_retrieved(self):
+        foreign_conversation = self.conversations.create(self.other["id"], "Private thread")
+        self.conversations.add_message(
+            foreign_conversation, "user", "The secret project code is cobalt-fox."
+        )
+        result = self.service.compile(
+            self.user["id"], "What is the secret project code?",
+            conversation_id=foreign_conversation,
+        )
+        self.assertNotIn("cobalt-fox", result["context"])
+        self.assertEqual(result["messages"], [])
 
     def test_context_has_a_hard_character_limit(self):
         self.memories.create(
