@@ -710,3 +710,12 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Replaced a host-specific native-app URL example with a provider-neutral deployment URL. Updated README launch gates to reflect what is implemented versus what remains incomplete.
 - Added dated architecture/decision records and draft Terms of Service and Privacy Policy documents. These are planning drafts and are not approved legal policies.
 - Latest confirmed checks at this point: dependency audit and Gitleaks passed on the branch; PostgreSQL smoke tests passed on the preceding capability-test commit. The newest combined unit/PostgreSQL run is still being checked before merge.
+
+
+## 2026-10-11 UTC — SniperMemory Design C Phase 1
+
+- Added a deterministic, no-embedding context compiler to the chat path. The model now receives a bounded recent-message window plus selected relevant earlier turns, saved user/project memory, and matching uploaded knowledge instead of the full stored transcript.
+- Added PostgreSQL full-text and B-tree indexes for message, memory, and knowledge candidate retrieval. SQLite retains a compatible keyword-search path for local development and isolated tests.
+- Added bounded retrieval configuration and telemetry for selected sources, context characters, and approximate context tokens.
+- Added tests for retrieval ranking, owner/workspace scoping, cross-user conversation isolation, relevant old-turn recovery, knowledge evidence, recent-message windows, and context limits.
+- The complete state graph, AST/dependency indexing, semantic retrieval, standalone SDK, and benchmark harness remain future phases. No claim of production readiness or measured token savings is made until current-head CI and a representative retrieval benchmark pass.
