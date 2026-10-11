@@ -115,8 +115,12 @@ class ConversationRepository:
                 for term in terms:
                     fts_terms.extend(re.findall(r"[a-zA-Z0-9]+", term.lower()))
                 tsquery = " | ".join(dict.fromkeys(fts_terms))
-                where = f"(to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR ({clauses}))"
-                params = [tsquery, *like_params, conversation_id, max(1, min(int(limit), 200))]
+                if tsquery:
+                    where = f"(to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR ({clauses}))"
+                    params = [tsquery, *like_params, conversation_id, max(1, min(int(limit), 200))]
+                else:
+                    where = f"({clauses})"
+                    params = [*like_params, conversation_id, max(1, min(int(limit), 200))]
             else:
                 where = f"({clauses})"
                 params = [*like_params, conversation_id, max(1, min(int(limit), 200))]
