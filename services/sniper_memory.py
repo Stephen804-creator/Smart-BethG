@@ -147,6 +147,10 @@ class SniperMemoryService:
         terms = list(dict.fromkeys(tokenize(query)))[:MAX_QUERY_TERMS]
         recent = []
         older_turns = []
+        # A conversation ID is not an authorization token. Confirm ownership
+        # before retrieving any messages from that conversation.
+        if conversation_id is not None and not self.conversation_repo.get(conversation_id, user_id):
+            conversation_id = None
         if conversation_id is not None:
             recent = self.conversation_repo.list_recent_messages(
                 conversation_id, limit=max(1, min(int(getattr(config, "SNIPER_RECENT_MESSAGES", DEFAULT_RECENT_MESSAGES)), 30))
