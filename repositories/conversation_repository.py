@@ -105,13 +105,22 @@ class ConversationRepository:
         if not terms:
             return []
         clauses = " OR ".join("LOWER(content) LIKE ?" for _ in terms)
-        params = [f"%{term.lower()}%" for term in terms]
-        params.extend([conversation_id, max(1, min(int(limit), 200))])
+        like_params = [f"%{term.lower()}%" for term in terms]
         conn = get_connection()
         try:
+            if getattr(conn, "is_postgres", False):
+                fts_terms = []
+                for term in terms:
+                    fts_terms.extend(re.findall(r"[a-zA-Z0-9]+", term.lower()))
+                tsquery = " | ".join(dict.fromkeys(fts_terms))
+                where = f"(to_tsvector('simple', content) @@ to_tsquery('simple', ?) OR ({clauses}))"
+                params = [tsquery, *like_params, conversation_id, max(1, min(int(limit), 200))]
+            else:
+                where = f"({clauses})"
+                params = [*like_params, conversation_id, max(1, min(int(limit), 200))]
             rows = conn.execute(
                 "SELECT id, role, content, provider, model, created_at FROM messages "
-                f"WHERE ({clauses}) AND conversation_id=? AND role IN ('user','assistant') "
+                f"WHERE {where} AND conversation_id=? AND role IN ('user','assistant') "
                 "ORDER BY id DESC LIMIT ?",
                 tuple(params),
             ).fetchall()
