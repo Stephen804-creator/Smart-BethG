@@ -87,6 +87,18 @@ class ConversationRepository:
         finally:
             conn.close()
 
+    def count_messages(self, conversation_id):
+        """Count stored messages without loading transcript content into Python."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) AS total FROM messages WHERE conversation_id=?",
+                (conversation_id,),
+            ).fetchone()
+            return int(row["total"] or 0)
+        finally:
+            conn.close()
+
     def list_recent_messages(self, conversation_id, limit=8):
         """Return the newest messages in chronological order, not the oldest rows."""
         limit = max(1, min(int(limit), 30))
