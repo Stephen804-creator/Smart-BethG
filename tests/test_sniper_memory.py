@@ -86,7 +86,7 @@ class TestSniperMemoryContext(SmartBethGTestCase):
         sent_text = " ".join(message["content"] for message in result["messages"])
         self.assertNotIn("PostgreSQL is the production database", sent_text)
         self.assertIn("PostgreSQL is the production database", result["context"])
-        self.assertLessEqual(result["stats"]["recent_messages"], 8)
+        self.assertLessEqual(result["stats"]["recent_messages_sent"], 8)
         self.assertEqual(result["stats"]["relevant_older_turns"], 1)
 
     def test_retrieves_matching_uploaded_knowledge_without_embedding(self):
