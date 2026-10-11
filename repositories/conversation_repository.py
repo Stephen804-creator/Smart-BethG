@@ -85,6 +85,40 @@ class ConversationRepository:
         finally:
             conn.close()
 
+    def list_recent_messages(self, conversation_id, limit=8):
+        """Return the newest messages in chronological order, not the oldest rows."""
+        limit = max(1, min(int(limit), 30))
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT id, role, content, provider, model, created_at FROM messages "
+                "WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
+                (conversation_id, limit),
+            ).fetchall()
+            return [dict(row) for row in reversed(rows)]
+        finally:
+            conn.close()
+
+    def search_messages(self, conversation_id, terms, limit=100):
+        """Bounded keyword candidates from one conversation; never crosses owners/conversations."""
+        terms = [str(term) for term in terms if term]
+        if not terms:
+            return []
+        clauses = " OR ".join("LOWER(content) LIKE ?" for _ in terms)
+        params = [f"%{term.lower()}%" for term in terms]
+        params.extend([conversation_id, max(1, min(int(limit), 200))])
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT id, role, content, provider, model, created_at FROM messages "
+                f"WHERE ({clauses}) AND conversation_id=? AND role IN ('user','assistant') "
+                "ORDER BY id DESC LIMIT ?",
+                tuple(params),
+            ).fetchall()
+            return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
     def usage_totals_for_user(self, user_id):
         """
         Real totals, summed directly from stored per-message token counts
