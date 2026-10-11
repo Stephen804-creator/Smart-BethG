@@ -72,7 +72,7 @@ class TestPostgresSniperMemory(unittest.TestCase):
         self.assertIn("PostgreSQL is required", result["context"])
         self.assertIn("full-text search", result["context"])
         self.assertNotIn("cobalt-fox", result["context"])
-        self.assertLessEqual(result["stats"]["recent_messages"], 8)
+        self.assertLessEqual(result["stats"]["recent_messages_sent"], 8)
         self.assertGreaterEqual(result["stats"]["relevant_older_turns"], 1)
 
 
