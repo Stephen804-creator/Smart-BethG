@@ -97,7 +97,7 @@ class TestAnthropicPromptCaching(unittest.TestCase):
         self.assertEqual(fake.kwargs["messages"][1]["content"], "current question")
         self.assertEqual(messages[0]["content"], "stable prefix long enough")
         self.assertEqual(result["cached_input_tokens"], 80)
-        self.assertEqual(result["cache_creation_input_tokens"], 0)
+        self.assertIsNone(result["cache_creation_input_tokens"])
 
     def test_does_not_add_breakpoint_to_small_prefix(self):
         config.PROMPT_CACHE_ANTHROPIC_MIN_PREFIX_CHARS = 1000
@@ -211,7 +211,7 @@ class TestChatServicePromptCaching(SmartBethGTestCase):
 
         self.assertEqual(len(provider.kwargs["prompt_cache_key"]), 64)
         self.assertEqual(result["prompt_cache"]["cached_input_tokens"], 10)
-        self.assertEqual(result["prompt_cache"]["cache_creation_input_tokens"], 0)
+        self.assertIsNone(result["prompt_cache"]["cache_creation_input_tokens"])
 
 
 if __name__ == "__main__":
