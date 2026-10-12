@@ -92,6 +92,10 @@ DATABASE_URL="postgresql://..." python scripts/migrate_sqlite_to_postgres.py /pa
 
 First take a backup and test against a fresh PostgreSQL database. The script refuses to merge into non-empty target tables and leaves the SQLite source unchanged. It migrates database rows, not uploaded files or workspace directories; copy those files separately. Use the storage-root options when the destination path differs so recognized file paths can be remapped. Follow the full [migration runbook](docs/DATABASE_MIGRATION_2026-10-10.md) and verify every migrated feature before moving real user data. Do not run this against your only production database without a verified backup.
 
+## Interim prompt caching
+
+Smart BethG includes provider-native prompt-cache hints and cache-usage reporting as an interim cost optimization. It does not store prompt/response caches itself and is separate from the proposed SniperMemory Engine. See [the dated prompt-caching design and verification checklist](docs/PROMPT_CACHING_2026-10-12.md). Provider caching is best-effort; it does not reduce context length, and actual savings must be verified using provider usage data.
+
 ## Legal and privacy preparation
 
 The Terms of Service and Privacy Policy under `docs/` are **drafts, not final or approved legal documents**. Read [the dated legal/privacy launch checklist](docs/LEGAL_AND_PRIVACY_LAUNCH_CHECKLIST_2026-10-10.md) before preparing a public launch. The product owner can prepare initial drafts, but qualified Nigerian legal review is recommended before publication. Assess any NDPC registration, audit, or notification duties against the actual data-processing activities and current rules; do not assume the draft itself establishes compliance.
