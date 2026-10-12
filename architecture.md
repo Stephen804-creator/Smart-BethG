@@ -65,3 +65,14 @@ Before unrestricted public registration:
 ## CI and verification truth
 
 The CI suite must run the unit tests and PostgreSQL integration tests. A green run is evidence only for the tests that actually ran; it is not a penetration test, legal review, load test, or live deployment verification. Every significant decision and fix should be timestamped in the decision log/changelog, with the exact Git commit serving as the source of truth.
+
+
+## SniperMemory and long-running context
+
+**Updated:** 2026-10-12 UTC
+
+Smart BethG keeps the full conversation transcript for user-visible history but must not automatically send the entire transcript to the model on every turn. The active first-stage approach is deterministic context compilation: retain the newest request and recent conversational turns, retrieve older turns that match the current request, and combine them with explicitly saved memories and relevant knowledge. Context selection is CPU-only and does not require embeddings, a GPU, or VRAM.
+
+The first implementation is lexical retrieval, not a claim of semantic understanding. It must be evaluated for retrieval recall, missed dependencies, answer correctness, latency, selected-context size, and provider token usage. Character counts are a rough proxy and must not be reported as exact token savings. A hard scan limit bounds retrieval work; older turns beyond that window may be missed until an indexed retrieval layer is built.
+
+Design C remains the selected direction for research and incremental implementation. The complete state graph, typed decision/constraint/task nodes, provenance-aware state extraction, relationships, AST-based code dependency indexing, and optional pgvector retrieval are not yet implemented. They should be added as separately tested stages, not as a large unverified rewrite. The long-term goal is a standalone developer API/package, but the first acceptance target is a reliable, measurable core inside Smart BethG.

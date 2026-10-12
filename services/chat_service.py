@@ -5,6 +5,7 @@ from repositories.conversation_repository import ConversationRepository
 from providers.provider_manager import provider_manager
 from services.model_evaluation_service import ModelEvaluationService
 from services.memory_service import MemoryService
+from services.sniper_memory import SniperMemory
 from services.knowledge_service import KnowledgeService
 from services.usage_budget_service import UsageBudgetService, BudgetExceededError
 from logging_setup import get_logger
@@ -27,10 +28,17 @@ class ChatService:
         memory_service: MemoryService = None,
         knowledge_service: KnowledgeService = None,
         budget_service: UsageBudgetService = None,
+        sniper_memory: SniperMemory = None,
     ):
         self.repo = repo or ConversationRepository()
         self.eval_service = eval_service or ModelEvaluationService()
         self.memory_service = memory_service or MemoryService()
+        self.sniper_memory = sniper_memory or SniperMemory(
+            recent_turns=config.SNIPER_MEMORY_RECENT_TURNS,
+            relevant_turns=config.SNIPER_MEMORY_RELEVANT_TURNS,
+            max_context_chars=config.SNIPER_MEMORY_CONTEXT_CHARS,
+            max_scan_messages=config.SNIPER_MEMORY_MAX_SCAN_MESSAGES,
+        )
         self.knowledge_service = knowledge_service or KnowledgeService()
         self.budget_service = budget_service or UsageBudgetService()
 
@@ -97,14 +105,27 @@ class ChatService:
             }
 
         provider = provider_manager.get(user_id, provider_name)
-        history = self.repo.list_messages(conversation_id)
-        provider_messages = [
-            {"role": m["role"], "content": m["content"]}
-            for m in history
-            if m["role"] in ("user", "assistant")
+        history = self.repo.list_messages_for_context(
+            conversation_id, limit=config.SNIPER_MEMORY_MAX_SCAN_MESSAGES
+        )
+        history = [
+            message for message in history
+            if message["role"] in ("user", "assistant")
         ]
+        compiled_context = self.sniper_memory.compile(history, message)
+        provider_messages = compiled_context["messages"]
 
-        memory_context = self.memory_service.recall_context(user_id, workspace, conversation_id)
+        logger.info(
+            "SniperMemory context compiled (user=%s conversation=%s messages=%s/%s chars=%s/%s saved_chars=%s older_turns=%s)",
+            user_id, conversation_id,
+            compiled_context["selected_messages"], compiled_context["available_messages"],
+            compiled_context["selected_chars"], compiled_context["available_chars"],
+            compiled_context["saved_chars"], compiled_context["retrieved_older_turns"],
+        )
+
+        memory_context = self.memory_service.recall_context(
+            user_id, workspace, conversation_id, query=message
+        )
         leading_context = []
         if memory_context:
             leading_context.append(memory_context)
@@ -141,6 +162,9 @@ class ChatService:
                 "reply": reply,
                 "provider_configured": True,
                 "error": True,
+                "sniper_memory": {
+                    key: value for key, value in compiled_context.items() if key != "messages"
+                },
             }
 
         reply = result["text"]
@@ -171,6 +195,9 @@ class ChatService:
             "provider": used_provider,
             "model": used_model,
             "fallback_used": fallback_used,
+            "sniper_memory": {
+                key: value for key, value in compiled_context.items() if key != "messages"
+            },
         }
 
     def _generate_with_fallback(self, provider, provider_name, model_id, provider_messages, user_id):

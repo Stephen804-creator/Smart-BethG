@@ -133,6 +133,13 @@ MAX_PROVIDER_ATTEMPTS_PER_CHAT = int(os.getenv("SMART_BETHG_MAX_PROVIDER_ATTEMPT
 MAX_CHAT_CONTEXT_CHARS = int(os.getenv("SMART_BETHG_MAX_CHAT_CONTEXT_CHARS", "60000"))
 CHAT_MAX_OUTPUT_TOKENS = int(os.getenv("SMART_BETHG_CHAT_MAX_OUTPUT_TOKENS", "2048"))
 
+# SniperMemory selects recent and relevant historic turns before provider calls.
+# It is deterministic and CPU-only; no embeddings or local-model VRAM required.
+SNIPER_MEMORY_RECENT_TURNS = int(os.getenv("SMART_BETHG_SNIPER_RECENT_TURNS", "4"))
+SNIPER_MEMORY_RELEVANT_TURNS = int(os.getenv("SMART_BETHG_SNIPER_RELEVANT_TURNS", "4"))
+SNIPER_MEMORY_CONTEXT_CHARS = int(os.getenv("SMART_BETHG_SNIPER_CONTEXT_CHARS", "12000"))
+SNIPER_MEMORY_MAX_SCAN_MESSAGES = int(os.getenv("SMART_BETHG_SNIPER_MAX_SCAN_MESSAGES", "2000"))
+
 # Conservative daily budgets. Dollar amounts are estimates based on the
 # dated model-catalog rates; also configure provider-side spend limits.
 USER_DAILY_TOKEN_BUDGET = int(os.getenv("SMART_BETHG_USER_DAILY_TOKEN_BUDGET", "100000"))
