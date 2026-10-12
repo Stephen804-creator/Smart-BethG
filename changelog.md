@@ -710,3 +710,14 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Replaced a host-specific native-app URL example with a provider-neutral deployment URL. Updated README launch gates to reflect what is implemented versus what remains incomplete.
 - Added dated architecture/decision records and draft Terms of Service and Privacy Policy documents. These are planning drafts and are not approved legal policies.
 - Latest confirmed checks at this point: dependency audit and Gitleaks passed on the branch; PostgreSQL smoke tests passed on the preceding capability-test commit. The newest combined unit/PostgreSQL run is still being checked before merge.
+
+
+## 2026-10-12 UTC — SniperMemory core (feature branch)
+
+- Added deterministic CPU-only retrieval to compile a compact conversation context from recent turns and relevant older turns.
+- Kept the full transcript in storage; only provider context is selected.
+- Added relevance ranking for existing explicit saved memories.
+- Added bounded history scanning and retrieval metrics (available/selected messages and characters, saved characters, retrieved older turns).
+- Added unit tests and a chat integration test.
+- No vector database, embedding model, VRAM, or deployment-provider-specific configuration is required for this first stage.
+- Status: CI and retrieval-quality evaluation pending; not merged.
