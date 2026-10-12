@@ -176,7 +176,7 @@ class ChatService:
             "fallback_used": fallback_used,
             "prompt_cache": {
                 "cached_input_tokens": result.get("cached_input_tokens", 0) or 0,
-                "cache_creation_input_tokens": result.get("cache_creation_input_tokens", 0) or 0,
+                "cache_creation_input_tokens": result.get("cache_creation_input_tokens"),
             },
         }
 
