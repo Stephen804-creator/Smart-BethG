@@ -10,7 +10,7 @@ import json
 import config
 
 
-def make_prompt_cache_key(user_id, model_id, prefix_messages=None):
+def make_prompt_cache_key(user_id, model_id, prefix_messages=None, conversation_id=None):
     """Return a stable opaque cache-bucket key, or None when disabled."""
     if not config.PROMPT_CACHING_ENABLED:
         return None
@@ -21,7 +21,7 @@ def make_prompt_cache_key(user_id, model_id, prefix_messages=None):
         sort_keys=True,
         separators=(",", ":"),
     )
-    material = f"smart-bethg:v1:{user_id}:{model_id}:{prefix}".encode("utf-8")
+    material = f"smart-bethg:v1:{user_id}:{conversation_id or 'default'}:{model_id}:{prefix}".encode("utf-8")
     secret = config.SECRET_KEY.encode("utf-8")
     return hmac.new(secret, material, hashlib.sha256).hexdigest()
 
