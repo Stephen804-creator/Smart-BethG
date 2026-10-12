@@ -114,15 +114,16 @@ class ChatService:
                 leading_context.append(knowledge_context)
         if extra_context:
             leading_context.append(extra_context)
-        if leading_context:
-            # Prepended as leading user-role messages rather than a
-            # provider-specific "system" field, since not every provider
-            # SDK call here is wired the same way - this keeps the
-            # injection provider-agnostic.
-            provider_messages = [{"role": "user", "content": c} for c in leading_context] + provider_messages
+        cache_prefix_messages = [{"role": "user", "content": c} for c in leading_context]
+        if cache_prefix_messages:
+            # Keep context ordering unchanged. Providers may cache this prefix
+            # when the same memory/knowledge context is reused.
+            provider_messages = cache_prefix_messages + provider_messages
 
         result, used_provider, used_model, attempted, last_error = self._generate_with_fallback(
             provider, provider_name, model_id, provider_messages, user_id,
+            cache_prefix_messages=cache_prefix_messages,
+            conversation_id=conversation_id,
         )
 
         if result is None:
@@ -151,8 +152,10 @@ class ChatService:
                 user_id, provider_name, used_provider,
             )
         logger.info(
-            "Chat reply generated (user=%s, provider=%s, model=%s, in=%s, out=%s)",
-            user_id, used_provider, used_model, result.get("input_tokens"), result.get("output_tokens"),
+            "Chat reply generated (user=%s, provider=%s, model=%s, in=%s, out=%s, cached_in=%s, cache_write=%s)",
+            user_id, used_provider, used_model, result.get("input_tokens"),
+            result.get("output_tokens"), result.get("cached_input_tokens", 0),
+            result.get("cache_creation_input_tokens", 0),
         )
         self.repo.add_message(
             conversation_id,
@@ -171,9 +174,16 @@ class ChatService:
             "provider": used_provider,
             "model": used_model,
             "fallback_used": fallback_used,
+            "prompt_cache": {
+                "cached_input_tokens": result.get("cached_input_tokens", 0) or 0,
+                "cache_creation_input_tokens": result.get("cache_creation_input_tokens"),
+            },
         }
 
-    def _generate_with_fallback(self, provider, provider_name, model_id, provider_messages, user_id):
+    def _generate_with_fallback(
+        self, provider, provider_name, model_id, provider_messages, user_id,
+        cache_prefix_messages=None, conversation_id=None,
+    ):
         """
         Tries the requested/auto-chosen provider first; if it raises,
         tries every other currently-configured provider (priority order)
@@ -212,8 +222,23 @@ class ChatService:
             start = time.monotonic()
             try:
                 bounded_messages = self._bound_context(provider_messages, config.MAX_CHAT_CONTEXT_CHARS)
+                effective_prefix = []
+                if cache_prefix_messages:
+                    count = len(cache_prefix_messages)
+                    if bounded_messages[:count] == cache_prefix_messages:
+                        effective_prefix = bounded_messages[:count]
+
+                provider_kwargs = {"max_tokens": config.CHAT_MAX_OUTPUT_TOKENS}
+                if config.PROMPT_CACHING_ENABLED:
+                    if name == "anthropic":
+                        provider_kwargs["cache_prefix_message_count"] = len(effective_prefix)
+                    elif name == "openai":
+                        from services.prompt_cache import make_prompt_cache_key
+                        provider_kwargs["prompt_cache_key"] = make_prompt_cache_key(
+                            user_id, candidate_model, effective_prefix, conversation_id
+                        )
                 result = candidate_provider.generate(
-                    bounded_messages, model=candidate_model, max_tokens=config.CHAT_MAX_OUTPUT_TOKENS
+                    bounded_messages, model=candidate_model, **provider_kwargs
                 )
             except Exception as exc:
                 latency_ms = int((time.monotonic() - start) * 1000)

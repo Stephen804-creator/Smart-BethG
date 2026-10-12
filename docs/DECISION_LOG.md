@@ -82,3 +82,14 @@ The home page now supports owner-scoped project creation/list/archive and missio
 
 **Status:** Verified on PR branch; not merged.  
 Commit `022f057765f0b0ed4104f7898eeb0b95903b7a0e` passed 317 unit tests, 9 PostgreSQL integration tests, Python compilation, dashboard JavaScript syntax validation, dependency vulnerability audit, and Gitleaks secret scanning. This includes the new global CSRF regression, report-only CSP checks, project/mission dashboard HTTP owner-isolation tests, concurrent rate limiting, and concurrent user-budget reservation coverage. Production storage/backup, independent adversarial review, legal approval, and public-launch gates remain open.
+
+
+## 2026-10-12 — Interim provider-native prompt caching
+
+**Status:** Implemented on feat/provider-prompt-caching-2026-10-12; CI and live-provider verification pending.  
+Smart BethG adds provider-native caching hints/telemetry while the separate SniperMemory Engine / Design C remains out of scope. OpenAI receives an opaque HMAC-derived cache-bucketing key scoped to user, conversation, model, and leading context; Anthropic gets an ephemeral cache breakpoint only for a sufficiently large stable leading context; Gemini cached-token usage is reported when available. No app-side response cache or local KV/VRAM cache is created. Full prompts are still submitted, cache hits are not guaranteed, and budget reconciliation remains conservative. See docs/PROMPT_CACHING_2026-10-12.md and docs/WHOLE_CODEBASE_AUDIT_2026-10-12.md.
+
+## 2026-10-12 — Main-branch security workflow failure
+
+**Status:** Open investigation; not release-ready.  
+The main-branch security workflow run 38254113540 shows failure for both the dependency audit and Gitleaks jobs, but GitHub reports runner_id=0 and empty step lists. The same symptom affects the prompt-caching PR's test and security jobs. This does not prove a dependency vulnerability or leaked secret; the checks appear not to have executed. Restore GitHub Actions runner/job execution, then rerun the scans and tests and investigate the actual output before public release. This is independent of prompt caching.
