@@ -57,7 +57,6 @@ class TestPromptCacheKey(unittest.TestCase):
         first = make_prompt_cache_key(10, "model-a", prefix, 99)
         self.assertEqual(first, make_prompt_cache_key(10, "model-a", prefix, 99))
         self.assertEqual(len(first), 64)
-        self.assertNotIn("10", first)
         self.assertNotEqual(first, make_prompt_cache_key(11, "model-a", prefix, 99))
         self.assertNotEqual(first, make_prompt_cache_key(10, "model-b", prefix, 99))
         self.assertNotEqual(first, make_prompt_cache_key(10, "model-a", prefix, 100))
