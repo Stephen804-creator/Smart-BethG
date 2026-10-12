@@ -82,3 +82,11 @@ The home page now supports owner-scoped project creation/list/archive and missio
 
 **Status:** Verified on PR branch; not merged.  
 Commit `022f057765f0b0ed4104f7898eeb0b95903b7a0e` passed 317 unit tests, 9 PostgreSQL integration tests, Python compilation, dashboard JavaScript syntax validation, dependency vulnerability audit, and Gitleaks secret scanning. This includes the new global CSRF regression, report-only CSP checks, project/mission dashboard HTTP owner-isolation tests, concurrent rate limiting, and concurrent user-budget reservation coverage. Production storage/backup, independent adversarial review, legal approval, and public-launch gates remain open.
+
+
+## 2026-10-12 UTC — SniperMemory phase 1 context compiler
+**Status:** Implemented on feature branch; CI and quality evaluation pending
+
+Keep the complete conversation transcript stored, but send a compact task-specific subset to the provider: the newest request, recent turns, and relevance-ranked older turns. Rank existing explicit saved memories against the current request. The initial retrieval is deterministic, lexical, CPU-only, and makes no additional provider or embedding calls. This reduces repeated context payload without requiring GPU/VRAM. It is not infinite memory and can miss paraphrased facts or dependencies.
+
+The first acceptance gate is a passing unit/integration test suite plus a curated retrieval-quality corpus. Only after measuring recall and answer quality should the project add typed state-graph nodes/edges, AST-based code dependency retrieval, optional embeddings/pgvector, or extract a standalone package. The feature branch is `feat/sniper-memory-core`; merge remains a review decision.
