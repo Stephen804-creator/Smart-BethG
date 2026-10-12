@@ -97,7 +97,7 @@ class TestAnthropicPromptCaching(unittest.TestCase):
         self.assertEqual(fake.kwargs["messages"][1]["content"], "current question")
         self.assertEqual(messages[0]["content"], "stable prefix long enough")
         self.assertEqual(result["cached_input_tokens"], 80)
-        self.assertIsNone(result["cache_creation_input_tokens"])
+        self.assertEqual(result["cache_creation_input_tokens"], 0)
 
     def test_does_not_add_breakpoint_to_small_prefix(self):
         config.PROMPT_CACHE_ANTHROPIC_MIN_PREFIX_CHARS = 1000
@@ -133,7 +133,7 @@ class TestOpenAIPromptCaching(unittest.TestCase):
         )
         self.assertEqual(fake.kwargs["prompt_cache_key"], "a" * 64)
         self.assertEqual(result["cached_input_tokens"], 80)
-        self.assertEqual(result["cache_creation_input_tokens"], 0)
+        self.assertIsNone(result["cache_creation_input_tokens"])
 
     def test_cache_key_is_not_sent_to_openai_compatible_hosts(self):
         from providers.groq_provider import GroqProvider
