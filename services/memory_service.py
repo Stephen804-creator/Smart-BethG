@@ -23,6 +23,7 @@ Governance (T0806): a user can list and delete everything remembered
 about them - not optional polish, a real requirement.
 """
 from repositories.memory_repository import MemoryRepository
+from services.sniper_memory import SniperMemory
 from logging_setup import get_logger
 
 logger = get_logger("task")
@@ -31,8 +32,9 @@ MAX_CONTEXT_MEMORIES = 20  # keeps the injected context bounded regardless of hi
 
 
 class MemoryService:
-    def __init__(self, repo: MemoryRepository = None):
+    def __init__(self, repo: MemoryRepository = None, sniper_memory: SniperMemory = None):
         self.repo = repo or MemoryRepository()
+        self.sniper_memory = sniper_memory or SniperMemory()
 
     def remember(self, user_id, content, scope="user", scope_ref=None, source="explicit"):
         content = (content or "").strip()
@@ -56,7 +58,7 @@ class MemoryService:
         logger.info("All memory cleared for user=%s (%s entries)", user_id, count)
         return count
 
-    def recall_context(self, user_id, workspace="default", conversation_id=None):
+    def recall_context(self, user_id, workspace="default", conversation_id=None, query=None):
         """
         Builds a short text block of everything in scope for this
         request: user-level memory always, project-level memory for the
@@ -73,6 +75,8 @@ class MemoryService:
         if not entries:
             return ""
 
-        entries = entries[:MAX_CONTEXT_MEMORIES]
+        entries = self.sniper_memory.rank_memories(
+            entries, query or "", limit=MAX_CONTEXT_MEMORIES
+        )
         lines = "\n".join(f"- {e['content']}" for e in entries)
         return f"Things Smart BethG has been asked to remember about this user/context:\n{lines}"
