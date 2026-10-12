@@ -74,14 +74,28 @@ class ConversationRepository:
             conn.close()
 
     def list_messages(self, conversation_id, limit=200):
+        """Return the latest messages in chronological order for the history UI."""
         conn = get_connection()
         try:
             rows = conn.execute(
                 "SELECT id, role, content, provider, model, created_at FROM messages "
-                "WHERE conversation_id=? ORDER BY id ASC LIMIT ?",
+                "WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
                 (conversation_id, limit),
             ).fetchall()
-            return [dict(r) for r in rows]
+            return [dict(row) for row in reversed(rows)]
+        finally:
+            conn.close()
+
+    def list_messages_for_context(self, conversation_id, limit=2000):
+        """Fetch a bounded recent slice for local context retrieval; never sent wholesale."""
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT id, role, content, provider, model, created_at FROM messages "
+                "WHERE conversation_id=? ORDER BY id DESC LIMIT ?",
+                (conversation_id, max(20, min(int(limit), 10000))),
+            ).fetchall()
+            return [dict(row) for row in reversed(rows)]
         finally:
             conn.close()
 
