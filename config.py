@@ -133,6 +133,15 @@ MAX_PROVIDER_ATTEMPTS_PER_CHAT = int(os.getenv("SMART_BETHG_MAX_PROVIDER_ATTEMPT
 MAX_CHAT_CONTEXT_CHARS = int(os.getenv("SMART_BETHG_MAX_CHAT_CONTEXT_CHARS", "60000"))
 CHAT_MAX_OUTPUT_TOKENS = int(os.getenv("SMART_BETHG_CHAT_MAX_OUTPUT_TOKENS", "2048"))
 
+# Provider-native prompt caching is a temporary optimization, not SniperMemory.
+# OpenAI/Gemini may apply automatic caching; Anthropic needs an explicit
+# breakpoint. Use a conservative size threshold to avoid cache-write overhead
+# or provider rejection for prefixes that are too short.
+PROMPT_CACHING_ENABLED = os.getenv("SMART_BETHG_PROMPT_CACHING_ENABLED", "true").lower() == "true"
+PROMPT_CACHE_ANTHROPIC_MIN_PREFIX_CHARS = int(
+    os.getenv("SMART_BETHG_PROMPT_CACHE_ANTHROPIC_MIN_PREFIX_CHARS", "20000")
+)
+
 # Conservative daily budgets. Dollar amounts are estimates based on the
 # dated model-catalog rates; also configure provider-side spend limits.
 USER_DAILY_TOKEN_BUDGET = int(os.getenv("SMART_BETHG_USER_DAILY_TOKEN_BUDGET", "100000"))
