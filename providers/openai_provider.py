@@ -1,5 +1,6 @@
 from .provider_base import ProviderBase
 from .model_catalog import model_for_tier
+import config
 
 
 class OpenAIProvider(ProviderBase):
@@ -48,15 +49,25 @@ class OpenAIProvider(ProviderBase):
         }
         if self.name == "openai":
             request_args["max_completion_tokens"] = token_limit
+            cache_key = kwargs.get("prompt_cache_key")
+            if config.PROMPT_CACHING_ENABLED and cache_key:
+                # OpenAI caching is automatic; this stable opaque key helps
+                # route repeated prefixes to the same cache bucket.
+                request_args["prompt_cache_key"] = str(cache_key)[:64]
         else:
+            # Do not send OpenAI-only cache parameters to Groq/OpenRouter:
+            # their compatible APIs do not guarantee support for them.
             request_args["max_tokens"] = token_limit
         response = self._client.chat.completions.create(**request_args)
         text = (response.choices[0].message.content or "").strip()
         usage = getattr(response, "usage", None)
+        prompt_details = getattr(usage, "prompt_tokens_details", None) if usage else None
         return {
             "text": text,
             "input_tokens": getattr(usage, "prompt_tokens", None) if usage else None,
             "output_tokens": getattr(usage, "completion_tokens", None) if usage else None,
+            "cached_input_tokens": getattr(prompt_details, "cached_tokens", 0) if prompt_details else 0,
+            "cache_creation_input_tokens": 0,
         }
 
     def embed(self, texts: list, task_type=None) -> list:
