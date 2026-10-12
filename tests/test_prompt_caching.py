@@ -162,3 +162,57 @@ class TestOpenAIPromptCaching(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+from services.auth_service import create_user
+from services.chat_service import ChatService
+from tests.base import SmartBethGTestCase
+from unittest.mock import patch
+
+
+class FakeMemoryService:
+    def recall_context(self, user_id, workspace, conversation_id):
+        return "Stable project context " * 100
+
+
+class FakeKnowledgeService:
+    def has_knowledge(self, user_id):
+        return False
+
+    def recall_context(self, user_id, message):
+        return None
+
+
+class FakeChatProvider:
+    name = "openai"
+
+    def __init__(self):
+        self.kwargs = None
+
+    def generate(self, messages, model=None, **kwargs):
+        self.kwargs = kwargs
+        return {
+            "text": "hello from provider",
+            "input_tokens": 25,
+            "output_tokens": 5,
+            "cached_input_tokens": 10,
+            "cache_creation_input_tokens": 0,
+        }
+
+
+class TestChatServicePromptCaching(SmartBethGTestCase):
+    def test_chat_supplies_scoped_cache_key_and_returns_cache_metrics(self):
+        user = create_user("cache-user", "password123")
+        provider = FakeChatProvider()
+        service = ChatService(
+            memory_service=FakeMemoryService(),
+            knowledge_service=FakeKnowledgeService(),
+        )
+        with patch("services.chat_service.provider_manager.choose_auto", return_value=("openai", "test-model")), \
+             patch("services.chat_service.provider_manager.get", return_value=provider), \
+             patch("services.chat_service.provider_manager.fallback_candidates", return_value=[]):
+            result = service.send(user["id"], "continue the project")
+
+        self.assertEqual(len(provider.kwargs["prompt_cache_key"]), 64)
+        self.assertEqual(result["prompt_cache"]["cached_input_tokens"], 10)
+        self.assertEqual(result["prompt_cache"]["cache_creation_input_tokens"], 0)
