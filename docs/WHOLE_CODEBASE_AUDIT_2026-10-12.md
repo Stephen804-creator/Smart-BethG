@@ -10,13 +10,13 @@
 
 Smart BethG has a meaningful application foundation: FastAPI routes, provider adapters, PostgreSQL production direction, SQLite-based isolated unit tests, PostgreSQL integration tests, user-scoped repositories, approval workflows, tool policy, usage budgets, and CI workflows. It is still not ready for unrestricted public launch.
 
-A critical current signal is that the most recent main-branch security workflow, run 38254113540 on 2026-10-12, failed both the Python dependency vulnerability audit and Gitleaks secret scan. The available run metadata does not establish the causes. Do not guess that these failures are harmless: inspect the full job logs, identify each finding, remediate it, and rerun the checks before treating main as release-ready.
+A critical current signal is that the most recent main-branch security workflow, run 38254113540 on 2026-10-12, has failed statuses for both the Python dependency vulnerability audit and Gitleaks secret scan. However, both job records have runner_id=0 and empty step lists. The current evidence therefore does **not** prove that either scanner actually ran or found a code vulnerability/secret; the jobs appear to have failed before their steps executed. The same runner/empty-step symptom affects the prompt-caching PR's unit, PostgreSQL integration, dependency-audit, and secret-scan jobs. Restore working GitHub Actions execution first, then use the actual logs to establish whether code findings exist. Do not treat the red checks as green, and do not mislabel them as confirmed vulnerability findings.
 
 ## P0 — Resolve before public launch
 
 ### P0.1 Security workflow is red on main
-**Evidence:** [Security workflow run 38254113540](https://github.com/Stephen804-creator/Smart-BethG/actions/runs/38254113540) reports failure for both “Python dependency vulnerability audit” and “Scan tracked files for secrets.”  
-**Action:** Retrieve each job's complete output, distinguish actual findings from scanner/configuration errors, update or replace vulnerable dependencies where needed, and remove any real secrets from the current tree and Git history as appropriate. Do not suppress findings without documented evidence and a time-bounded exception.
+**Evidence:** [Security workflow run 38254113540](https://github.com/Stephen804-creator/Smart-BethG/actions/runs/38254113540) reports failure for both jobs, but GitHub reports runner_id=0 and no executed steps. This is currently an execution/verification failure, not proof that the dependency audit or secret scan found a specific issue.  
+**Action:** Restore workflow execution (check repository Actions settings, billing/minutes limits, runner availability, and workflow permissions), rerun both jobs, then remediate actual dependency or secret findings. Do not suppress findings without documented evidence and a time-bounded exception.
 
 ### P0.2 Arbitrary code execution requires a real isolation boundary
 The repository audit identifies the host Python runner as unsuitable for public users even if execution is disabled in production configuration. A workspace path is not a sandbox. Before public tool/code execution, use a separate job runner with per-job identity, filesystem isolation, CPU/memory/time/output limits, minimal environment variables, network policy, cancellation, and cleanup. Validate the Docker daemon boundary independently.
@@ -73,7 +73,7 @@ Before public launch, establish structured/redacted logs, error monitoring, upti
 
 ## Interim prompt caching
 
-A provider-native prompt-caching implementation is being prepared separately on branch feat/provider-prompt-caching-2026-10-12. It is intentionally not SniperMemory. It adds an OpenAI cache-bucketing key, an Anthropic ephemeral cache breakpoint for sufficiently large stable leading context, Gemini cached-token telemetry, and tests. It does not cache AI responses, reduce prompt length, provide local KV/VRAM caching, or guarantee savings. It remains unverified until the branch CI and live-provider checks pass. See docs/PROMPT_CACHING_2026-10-12.md.
+A provider-native prompt-caching implementation is being prepared separately on branch feat/provider-prompt-caching-2026-10-12. It is intentionally not SniperMemory. It adds an OpenAI cache-bucketing key, an Anthropic ephemeral cache breakpoint for sufficiently large stable leading context, Gemini cached-token telemetry, and tests. It does not cache AI responses, reduce prompt length, provide local KV/VRAM caching, or guarantee savings. It remains unverified until the branch CI actually executes and passes; current GitHub Actions job records are failing before any runner steps execute, so they provide no code-test result. Live-provider checks also remain outstanding. See docs/PROMPT_CACHING_2026-10-12.md.
 
 ## Release decision
 
