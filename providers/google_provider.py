@@ -44,10 +44,18 @@ class GoogleProvider(ProviderBase):
         )
         text = (response.text or "").strip()
         usage = getattr(response, "usage_metadata", None)
+        cached_tokens = 0
+        if usage:
+            cached_tokens = getattr(
+                usage, "cached_content_token_count",
+                getattr(usage, "total_cached_tokens", 0),
+            ) or 0
         return {
             "text": text,
             "input_tokens": getattr(usage, "prompt_token_count", None) if usage else None,
             "output_tokens": getattr(usage, "candidates_token_count", None) if usage else None,
+            "cached_input_tokens": cached_tokens,
+            "cache_creation_input_tokens": 0,
         }
 
     EMBEDDING_MODEL = "gemini-embedding-001"
