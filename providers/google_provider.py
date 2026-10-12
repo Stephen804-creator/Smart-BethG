@@ -55,7 +55,7 @@ class GoogleProvider(ProviderBase):
             "input_tokens": getattr(usage, "prompt_token_count", None) if usage else None,
             "output_tokens": getattr(usage, "candidates_token_count", None) if usage else None,
             "cached_input_tokens": cached_tokens,
-            "cache_creation_input_tokens": 0,
+            "cache_creation_input_tokens": None,
         }
 
     EMBEDDING_MODEL = "gemini-embedding-001"
