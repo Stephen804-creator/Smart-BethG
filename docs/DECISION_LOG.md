@@ -92,4 +92,4 @@ Smart BethG adds provider-native caching hints/telemetry while the separate Snip
 ## 2026-10-12 — Main-branch security workflow failure
 
 **Status:** Open investigation; not release-ready.  
-The main-branch security workflow run 38254113540 failed both the dependency vulnerability audit and the Gitleaks scan. The available run metadata did not identify the precise findings, so no cause is assumed. Retrieve the full logs, investigate each result, remediate or document evidence-based exceptions, and rerun the workflow before public release. This is independent of prompt caching and must not be hidden by a green test suite on a feature branch.
+The main-branch security workflow run 38254113540 shows failure for both the dependency audit and Gitleaks jobs, but GitHub reports runner_id=0 and empty step lists. The same symptom affects the prompt-caching PR's test and security jobs. This does not prove a dependency vulnerability or leaked secret; the checks appear not to have executed. Restore GitHub Actions runner/job execution, then rerun the scans and tests and investigate the actual output before public release. This is independent of prompt caching.
