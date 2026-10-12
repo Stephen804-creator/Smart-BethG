@@ -67,7 +67,7 @@ class OpenAIProvider(ProviderBase):
             "input_tokens": getattr(usage, "prompt_tokens", None) if usage else None,
             "output_tokens": getattr(usage, "completion_tokens", None) if usage else None,
             "cached_input_tokens": getattr(prompt_details, "cached_tokens", 0) if prompt_details else 0,
-            "cache_creation_input_tokens": 0,
+            "cache_creation_input_tokens": None,
         }
 
     def embed(self, texts: list, task_type=None) -> list:
