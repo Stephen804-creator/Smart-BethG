@@ -160,10 +160,6 @@ class TestOpenAIPromptCaching(unittest.TestCase):
         self.assertNotIn("prompt_cache_key", fake.kwargs)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 from services.auth_service import create_user
 from services.chat_service import ChatService
 from tests.base import SmartBethGTestCase
@@ -216,3 +212,7 @@ class TestChatServicePromptCaching(SmartBethGTestCase):
         self.assertEqual(len(provider.kwargs["prompt_cache_key"]), 64)
         self.assertEqual(result["prompt_cache"]["cached_input_tokens"], 10)
         self.assertEqual(result["prompt_cache"]["cache_creation_input_tokens"], 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
