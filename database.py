@@ -55,7 +55,7 @@ class _PostgresConnection:
 
     def execute(self, sql, params=()):
         statement = sql.strip()
-        pragma = re.match(r"PRAGMA\\s+table_info\\(([^)]+)\\)", statement, re.I)
+        pragma = re.match(r"PRAGMA\s+table_info\(([^)]+)\)", statement, re.I)
         if pragma:
             table = pragma.group(1).strip().strip(chr(34) + "[]")
             cursor = self._connection.execute(
@@ -70,11 +70,11 @@ class _PostgresConnection:
         statement = statement.replace("?", "%s")
         lastrowid = None
         insert = re.match(
-            r"INSERT\\s+INTO\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(([^)]*)\\)",
+            r"INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)",
             statement,
             re.I | re.S,
         )
-        if insert and not re.search(r"\\bRETURNING\\b", statement, re.I):
+        if insert and not re.search(r"\bRETURNING\b", statement, re.I):
             columns = {
                 part.strip().strip(chr(34)).lower()
                 for part in insert.group(2).split(",")
@@ -171,7 +171,7 @@ def _run_postgres_migrations(conn):
         sql = migration_path.read_text(encoding="utf-8")
         # Remove full-line comments before splitting; comments can contain
         # semicolons that are not SQL statement delimiters.
-        sql = "\\n".join(
+        sql = "\n".join(
             line for line in sql.splitlines()
             if not line.lstrip().startswith("--")
         )
