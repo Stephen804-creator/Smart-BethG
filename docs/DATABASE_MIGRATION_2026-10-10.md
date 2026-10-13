@@ -6,7 +6,7 @@
 
 ## Purpose
 
-PostgreSQL is the required production database for Smart BethG, for both single-instance and multi-instance deployments. SQLite remains a local development/test option only. This runbook describes a one-way copy from a legacy SQLite database into a fresh PostgreSQL database without deleting the SQLite source.
+PostgreSQL is the only database engine the Smart BethG application opens in every environment. This runbook describes a one-way copy from a legacy SQLite database into a fresh PostgreSQL database without deleting or modifying the SQLite source. SQLite remains in this procedure only as a legacy import format.
 
 ## Before migration
 
