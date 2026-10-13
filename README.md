@@ -7,7 +7,7 @@ Smart BethG is an AI-assisted agent workspace with chat, provider routing, memor
 
 ## Architecture decisions
 
-- **Production database:** PostgreSQL is required. SQLite is only for local development and isolated unit tests.
+- **Application database:** PostgreSQL is required in local development, tests, and production. The app has no SQLite fallback; SQLite is accepted only as a read-only source by the explicit legacy migration utility.
 - **Scaling:** one or multiple application instances use the same PostgreSQL database. Authentication rate-limit events are shared through the database.
 - **Files and workspaces:** local storage works for development and single-instance testing. Multiple instances require a shared durable storage mount for uploads, generated artifacts, and workspaces. PostgreSQL does not share local files between replicas.
 - **Hosting:** provider-neutral Python/ASGI application. No Render-specific manifest, API, or runtime is required. Deploy to any compatible Linux/Python host that can provide PostgreSQL and durable storage.
@@ -16,27 +16,44 @@ Smart BethG is an AI-assisted agent workspace with chat, provider routing, memor
 ## Requirements
 
 - Python 3.12 (see `.python-version`)
-- PostgreSQL for production
+- PostgreSQL for every environment (local development, tests, and production)
 - A writable storage root; for multiple app instances, it must be a shared durable mount
 - At least one AI provider API key for live model responses (provider selection otherwise reports that no provider is configured)
 
 ## Local development
 
-Create a virtual environment and install dependencies:
+PostgreSQL can run locally; you do not need a hosted database to develop Smart BethG. The repository includes a Docker Compose service for a local-only PostgreSQL 16 instance. Install Docker Desktop (Windows/macOS) or Docker Engine with the Compose plugin (Linux), then start the database from the repository root:
+
+```bash
+docker compose up -d postgres
+```
+
+The compose file binds PostgreSQL to localhost only and uses credentials intended for local development. Never use those credentials in production. To stop the service without deleting its database volume, run `docker compose stop postgres`. To permanently remove the local database volume, `docker compose down -v` deletes its data; use that only when you intentionally want a fresh local database.
+
+Create and activate a Python virtual environment, then install dependencies:
 
 ```bash
 python -m venv .venv
+python -m pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-Activate it using the command for your shell, then run:
+Set the local PostgreSQL URL before starting the app. On PowerShell:
 
-```bash
-python -m pip install -r requirements.txt -r requirements-dev.txt
-python -m unittest discover -s tests -p "test_*.py" -v
+```powershell
+$env:DATABASE_URL = "postgresql://smartbethg:local_dev_only_change_me@localhost:5432/smartbethg_dev"
+$env:SMART_BETHG_ENV = "development"
 uvicorn main_fastapi:app --host 127.0.0.1 --port 8000
 ```
 
-For local development, SQLite is used when `DATABASE_URL` is not set. Set `SMART_BETHG_ENV=test` and a test-only `SMART_BETHG_SECRET_KEY` when running tests manually if needed. Do not reuse production secrets or production databases in tests.
+On Bash:
+
+```bash
+export DATABASE_URL="postgresql://smartbethg:local_dev_only_change_me@localhost:5432/smartbethg_dev"
+export SMART_BETHG_ENV=development
+uvicorn main_fastapi:app --host 127.0.0.1 --port 8000
+```
+
+The application initializes the PostgreSQL schema through the numbered files in `migrations/postgresql/`. If `DATABASE_URL` is missing or points to SQLite, the app fails clearly instead of creating or using a second database. Keep local development data separate from production data.
 
 ## Production environment
 
