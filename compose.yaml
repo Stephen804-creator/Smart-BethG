@@ -1,0 +1,21 @@
+# Local development database only. Never reuse these credentials in production.
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartbethg_dev
+      POSTGRES_USER: smartbethg
+      POSTGRES_PASSWORD: local_dev_only_change_me
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - smart_bethg_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartbethg -d smartbethg_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  smart_bethg_postgres_data:
