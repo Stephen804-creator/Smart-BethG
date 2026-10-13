@@ -82,3 +82,12 @@ The home page now supports owner-scoped project creation/list/archive and missio
 
 **Status:** Verified on PR branch; not merged.  
 Commit `022f057765f0b0ed4104f7898eeb0b95903b7a0e` passed 317 unit tests, 9 PostgreSQL integration tests, Python compilation, dashboard JavaScript syntax validation, dependency vulnerability audit, and Gitleaks secret scanning. This includes the new global CSRF regression, report-only CSP checks, project/mission dashboard HTTP owner-isolation tests, concurrent rate limiting, and concurrent user-budget reservation coverage. Production storage/backup, independent adversarial review, legal approval, and public-launch gates remain open.
+
+
+## 2026-10-13 — PostgreSQL-only application database
+
+**Decision:** PostgreSQL is the only database engine the Smart BethG application may open in development, tests, and production. Local development uses PostgreSQL through the repository's Docker Compose service. SQLite is not an application fallback; the existing SQLite-to-PostgreSQL utility remains only as a one-way, read-only-source migration tool for legacy data.
+
+**Reason:** Keeping two runtime database engines requires duplicate initialization, query compatibility behavior, and separate test paths, increasing the risk that local tests pass while production PostgreSQL fails. Using PostgreSQL everywhere makes local behavior closer to deployment and makes schema migration behavior consistent.
+
+**Implementation status:** Code and CI configuration changed on branch `feat/postgresql-only-2026-10-13`. A local PostgreSQL Compose service and PostgreSQL-schema-isolated unit-test setup were added. Tests have deliberately not been run in this correction pass. Do not merge or deploy until CI, PostgreSQL integration, legacy-data migration rehearsal, and backup/restore checks pass. The main branch remains unchanged.
