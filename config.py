@@ -29,7 +29,6 @@ STORAGE_DIRS = {
     "artifacts": os.path.join(STORAGE_ROOT, "artifacts"),
     "workflows": os.path.join(STORAGE_ROOT, "workflows"),
     "logs": os.path.join(STORAGE_ROOT, "logs"),
-    "db": os.path.join(STORAGE_ROOT, "db"),
 }
 
 
