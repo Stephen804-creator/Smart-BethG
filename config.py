@@ -162,3 +162,77 @@ FILE_INGEST_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_FILE_INGEST_R
 MAX_KNOWLEDGE_CHARS_PER_FILE = int(os.getenv("SMART_BETHG_MAX_KNOWLEDGE_CHARS_PER_FILE", "160000"))
 MAX_KNOWLEDGE_CHUNKS_PER_FILE = int(os.getenv("SMART_BETHG_MAX_KNOWLEDGE_CHUNKS_PER_FILE", "200"))
 EMBEDDING_BATCH_SIZE = int(os.getenv("SMART_BETHG_EMBEDDING_BATCH_SIZE", "16"))
+
+
+def _validate_runtime_config() -> None:
+    """Fail fast when resource limits or production security settings are unsafe."""
+    positive_integer_settings = {
+        "AUTH_RATE_LIMIT_MAX_ATTEMPTS": AUTH_RATE_LIMIT_MAX_ATTEMPTS,
+        "AUTH_RATE_LIMIT_WINDOW_SECONDS": AUTH_RATE_LIMIT_WINDOW_SECONDS,
+        "MAX_UPLOAD_SIZE_BYTES": MAX_UPLOAD_SIZE_BYTES,
+        "CHAT_RATE_LIMIT_MAX_ATTEMPTS": CHAT_RATE_LIMIT_MAX_ATTEMPTS,
+        "CHAT_RATE_LIMIT_WINDOW_SECONDS": CHAT_RATE_LIMIT_WINDOW_SECONDS,
+        "UPLOAD_RATE_LIMIT_MAX_ATTEMPTS": UPLOAD_RATE_LIMIT_MAX_ATTEMPTS,
+        "UPLOAD_RATE_LIMIT_WINDOW_SECONDS": UPLOAD_RATE_LIMIT_WINDOW_SECONDS,
+        "TASK_RATE_LIMIT_MAX_ATTEMPTS": TASK_RATE_LIMIT_MAX_ATTEMPTS,
+        "TASK_RATE_LIMIT_WINDOW_SECONDS": TASK_RATE_LIMIT_WINDOW_SECONDS,
+        "MAX_CHAT_MESSAGE_CHARS": MAX_CHAT_MESSAGE_CHARS,
+        "MAX_PROVIDER_ATTEMPTS_PER_CHAT": MAX_PROVIDER_ATTEMPTS_PER_CHAT,
+        "MAX_CHAT_CONTEXT_CHARS": MAX_CHAT_CONTEXT_CHARS,
+        "CHAT_MAX_OUTPUT_TOKENS": CHAT_MAX_OUTPUT_TOKENS,
+        "USER_DAILY_TOKEN_BUDGET": USER_DAILY_TOKEN_BUDGET,
+        "GLOBAL_DAILY_TOKEN_BUDGET": GLOBAL_DAILY_TOKEN_BUDGET,
+        "USER_DAILY_REQUEST_BUDGET": USER_DAILY_REQUEST_BUDGET,
+        "GLOBAL_DAILY_REQUEST_BUDGET": GLOBAL_DAILY_REQUEST_BUDGET,
+        "SESSION_MAX_AGE_SECONDS": SESSION_MAX_AGE_SECONDS,
+        "KNOWLEDGE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS": KNOWLEDGE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS,
+        "KNOWLEDGE_SEARCH_RATE_LIMIT_WINDOW_SECONDS": KNOWLEDGE_SEARCH_RATE_LIMIT_WINDOW_SECONDS,
+        "MAX_EXTRACTED_TEXT_CHARS": MAX_EXTRACTED_TEXT_CHARS,
+        "MAX_FILE_SEARCH_CHARS": MAX_FILE_SEARCH_CHARS,
+        "MAX_PDF_PAGES": MAX_PDF_PAGES,
+        "FILE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS": FILE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS,
+        "FILE_SEARCH_RATE_LIMIT_WINDOW_SECONDS": FILE_SEARCH_RATE_LIMIT_WINDOW_SECONDS,
+        "FILE_EXTRACT_RATE_LIMIT_MAX_ATTEMPTS": FILE_EXTRACT_RATE_LIMIT_MAX_ATTEMPTS,
+        "FILE_EXTRACT_RATE_LIMIT_WINDOW_SECONDS": FILE_EXTRACT_RATE_LIMIT_WINDOW_SECONDS,
+        "FILE_INGEST_RATE_LIMIT_MAX_ATTEMPTS": FILE_INGEST_RATE_LIMIT_MAX_ATTEMPTS,
+        "FILE_INGEST_RATE_LIMIT_WINDOW_SECONDS": FILE_INGEST_RATE_LIMIT_WINDOW_SECONDS,
+        "MAX_KNOWLEDGE_CHARS_PER_FILE": MAX_KNOWLEDGE_CHARS_PER_FILE,
+        "MAX_KNOWLEDGE_CHUNKS_PER_FILE": MAX_KNOWLEDGE_CHUNKS_PER_FILE,
+        "EMBEDDING_BATCH_SIZE": EMBEDDING_BATCH_SIZE,
+    }
+    invalid = [
+        f"{name} must be greater than zero"
+        for name, value in positive_integer_settings.items()
+        if value <= 0
+    ]
+    positive_money_settings = {
+        "USER_DAILY_SPEND_USD": USER_DAILY_SPEND_USD,
+        "GLOBAL_DAILY_SPEND_USD": GLOBAL_DAILY_SPEND_USD,
+        "UNKNOWN_MODEL_INPUT_USD_PER_MILLION": UNKNOWN_MODEL_INPUT_USD_PER_MILLION,
+        "UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION": UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION,
+    }
+    import math
+
+    invalid.extend(
+        f"{name} must be a finite number greater than zero"
+        for name, value in positive_money_settings.items()
+        if not math.isfinite(value) or value <= 0
+    )
+    if invalid:
+        raise RuntimeError("Invalid Smart BethG configuration: " + "; ".join(invalid) + ".")
+
+    if IS_PRODUCTION:
+        database_url = DATABASE_URL.strip().lower()
+        if not database_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
+            raise RuntimeError(
+                "Production requires DATABASE_URL pointing to PostgreSQL; "
+                "SQLite is permitted only in development and tests."
+            )
+        if not SESSION_HTTPS_ONLY:
+            raise RuntimeError(
+                "SMART_BETHG_SESSION_HTTPS_ONLY must be true in production "
+                "so session cookies are not sent over plain HTTP."
+            )
+
+
+_validate_runtime_config()
