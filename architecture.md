@@ -10,7 +10,7 @@ Smart BethG is being built for a public launch, not only for personal use or a s
 
 ## Database: PostgreSQL is the production standard
 
-PostgreSQL is the required database for production, whether the first deployment has one application instance or several. SQLite remains available only for local development and isolated unit tests. Production startup fails closed if DATABASE_URL does not point to PostgreSQL.
+PostgreSQL is the only application database in local development, tests, and production, whether deployment has one application instance or several. The application has no SQLite runtime adapter or fallback. A legacy SQLite file may be read only by the explicit one-way migration utility. Startup fails closed if DATABASE_URL does not point to PostgreSQL.
 
 PostgreSQL schema initialization now uses a numbered migration directory (`migrations/postgresql/`) and records applied versions in `schema_migrations`. The first idempotent baseline migration can also adopt a database initialized by the earlier compatibility adapter. The SQL compatibility adapter remains in place for repository queries, so this is the start of a versioned migration system—not proof that every query or upgrade path is production-verified. Every future schema change must be a new numbered migration; never silently rewrite an already-released migration. PostgreSQL integration CI must pass before merging or deploying. Any SQL behavior that differs between SQLite and PostgreSQL must be covered by regression tests.
 
@@ -18,9 +18,9 @@ A migration utility and a tested backup/restore procedure are required before mo
 
 ## Single-instance and multi-instance operation
 
-One application instance and multiple application instances must use the same production architecture: shared PostgreSQL, server-side authorization, and shared rate-limit records. Scaling from one instance to several should not require replacing SQLite or rewriting rate limiting.
+Local development and deployment use the same database engine: PostgreSQL. One or multiple application instances use shared PostgreSQL, server-side authorization, and shared rate-limit records.
 
-The database-backed authentication limiter uses shared PostgreSQL row locks in the auth_rate_limit_locks table to serialize attempts across replicas. SQLite's transaction lock is for local development/tests only. Future high-volume traffic may justify a dedicated shared rate-limit service, but a per-process in-memory counter must not be used in production.
+The database-backed authentication limiter uses PostgreSQL transaction-scoped advisory locks and shared rows to serialize attempts across processes. Future high-volume traffic may justify a dedicated shared rate-limit service, but a per-process in-memory counter must not be used in production.
 
 **Multi-instance limitation still requiring an explicit implementation:** local filesystem paths are not shared across app replicas. Before enabling multiple instances, file uploads, generated artifacts, and any workspace data that must be visible on every replica need a shared object-storage adapter or shared storage service. Do not assume PostgreSQL alone makes local files multi-instance safe. Provider calls and background work also need bounded concurrency, durable job state, cancellation semantics, and idempotency before worker replicas are scaled.
 
