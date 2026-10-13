@@ -15,9 +15,10 @@ class TestDatabaseSchema(SmartBethGTestCase):
         conn = database.get_connection()
         try:
             names = {
-                row["name"]
+                row["table_name"]
                 for row in conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
+                    "SELECT table_name FROM information_schema.tables "
+                    "WHERE table_schema = current_schema() AND table_type='BASE TABLE'"
                 ).fetchall()
             }
         finally:
@@ -39,30 +40,39 @@ class TestDatabaseSchema(SmartBethGTestCase):
     def test_users_migration_adds_oauth_columns(self):
         conn = database.get_connection()
         try:
-            cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+            cols = {
+                row["column_name"]
+                for row in conn.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema=current_schema() AND table_name='users'"
+                ).fetchall()
+            }
         finally:
             conn.close()
         self.assertIn("oauth_provider", cols)
         self.assertIn("oauth_subject", cols)
 
-    def test_production_refuses_sqlite_or_missing_database_url(self):
-        original_production = config.IS_PRODUCTION
+    def test_application_refuses_sqlite_or_missing_database_url(self):
         original_url = config.DATABASE_URL
         try:
-            config.IS_PRODUCTION = True
             for invalid_url in ("", "sqlite:///should-not-be-used.db"):
                 config.DATABASE_URL = invalid_url
                 with self.subTest(database_url=invalid_url):
-                    with self.assertRaisesRegex(RuntimeError, "requires DATABASE_URL.*PostgreSQL"):
+                    with self.assertRaisesRegex(RuntimeError, "requires PostgreSQL"):
                         database.get_connection()
         finally:
-            config.IS_PRODUCTION = original_production
             config.DATABASE_URL = original_url
 
     def test_messages_migration_adds_token_columns(self):
         conn = database.get_connection()
         try:
-            cols = {r["name"] for r in conn.execute("PRAGMA table_info(messages)").fetchall()}
+            cols = {
+                row["column_name"]
+                for row in conn.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema=current_schema() AND table_name='messages'"
+                ).fetchall()
+            }
         finally:
             conn.close()
         self.assertIn("tokens_in", cols)
