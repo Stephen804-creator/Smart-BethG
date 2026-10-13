@@ -10,10 +10,10 @@ import shutil
 import tempfile
 import unittest
 import uuid
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import psycopg
 from psycopg import sql
-from psycopg.conninfo import make_conninfo
 
 import config
 import database
@@ -40,10 +40,16 @@ class SmartBethGTestCase(unittest.TestCase):
                 admin.execute(
                     sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(self._schema))
                 )
-            config.DATABASE_URL = make_conninfo(
-                self._base_database_url,
-                options=f"-csearch_path={self._schema}",
-            )
+            # Keep DATABASE_URL URL-shaped because the application validates its scheme.
+            # libpq's options query parameter sets an isolated per-test search_path.
+            parsed = urlsplit(self._base_database_url.replace(
+                "postgresql+psycopg://", "postgresql://", 1
+            ).replace("postgres://", "postgresql://", 1))
+            query = parse_qsl(parsed.query, keep_blank_values=True)
+            query.append(("options", f"-csearch_path={self._schema}"))
+            config.DATABASE_URL = urlunsplit((
+                parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment
+            ))
             database.initialize_database()
         except Exception:
             config.DATABASE_URL = self._original_database_url
