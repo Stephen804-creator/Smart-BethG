@@ -146,7 +146,7 @@ The Terms of Service and Privacy Policy under `docs/` are **drafts, not final or
 ## Tests and CI
 
 GitHub Actions runs:
-- Python compilation and the unit test suite on SQLite.
+- Python compilation and the unit test suite against isolated schemas in a disposable PostgreSQL service.
 - PostgreSQL integration smoke tests against a disposable PostgreSQL service.
 
 A passing CI run covers only the tests that ran. It is not a penetration test, load test, accessibility review, legal review, or live-host backup/restore verification.
