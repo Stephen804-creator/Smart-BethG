@@ -710,3 +710,13 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Replaced a host-specific native-app URL example with a provider-neutral deployment URL. Updated README launch gates to reflect what is implemented versus what remains incomplete.
 - Added dated architecture/decision records and draft Terms of Service and Privacy Policy documents. These are planning drafts and are not approved legal policies.
 - Latest confirmed checks at this point: dependency audit and Gitleaks passed on the branch; PostgreSQL smoke tests passed on the preceding capability-test commit. The newest combined unit/PostgreSQL run is still being checked before merge.
+
+
+## 2026-10-13 — PostgreSQL-only database correction
+
+- Removed the application's SQLite connection and schema-initialization fallback; PostgreSQL is now required for local development, tests, and production.
+- Kept SQLite only in the explicit legacy data migration utility, which reads the source database and does not delete or modify it.
+- Added a local PostgreSQL 16 Docker Compose service and updated local-development instructions.
+- Changed unit-test setup to use isolated PostgreSQL schemas and updated the CI unit-test job to provide PostgreSQL.
+- Removed the SQLite-specific rate-limiter transaction branch; all environments use PostgreSQL advisory locking.
+- **Verification pending:** tests and CI were not run as part of this code-correction pass. Do not treat the branch as validated until PostgreSQL CI and the legacy migration rehearsal pass.
