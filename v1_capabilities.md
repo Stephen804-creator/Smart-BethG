@@ -401,7 +401,7 @@ matching review - treat it as a snapshot, not a guarantee.
 | Social content | STRUCTURALLY PREPARED | `social_content` table now exists. No connector, no writer. |
 | Projects | STRUCTURALLY PREPARED | `projects` table now exists. No CRUD yet. |
 | Logging | STRUCTURALLY PREPARED | `logs` table now exists. Nothing writes to it yet (audit_events is separate and does have a writer). |
-| Storage/database foundation | IMPLEMENTED | `DATABASE_URL` boundary enforced (sqlite only, fails fast otherwise). Storage directories auto-created via `config.ensure_storage_dirs()`. |
+| Storage/database foundation | IMPLEMENTED (PostgreSQL-only runtime; verification pending on this branch) | `DATABASE_URL` must point to PostgreSQL in every environment; no SQLite runtime fallback. Storage directories auto-created via `config.ensure_storage_dirs()`. Legacy SQLite import remains a separate one-way migration tool. |
 | Testing | IMPLEMENTED (foundation only) | 42 real unit tests in `tests/`, run via `python -m unittest discover -s tests`. Covers service/logic layer. No integration or end-to-end tests against a running server yet (still can't run the actual FastAPI app in the environment this was built in). |
 | Logging | IMPLEMENTED | Structured logging to stdout + best-effort rotating files. Named loggers per subsystem. Request logging middleware logs every request's method/path/status/duration. |
 | Error handling | IMPLEMENTED | Centralized handlers for HTTP exceptions, validation errors, and unexpected exceptions. Consistent `{"error": {...}}` response shape. Tracebacks logged server-side only. |
