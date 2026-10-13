@@ -13,7 +13,7 @@ Keep platform-specific commands and resource definitions in optional deployment 
 ## Local development
 
 - Set `SMART_BETHG_ENV=development`.
-- SQLite is permitted for local development and isolated unit tests.
+- PostgreSQL is required locally and in CI; use the repository's `compose.yaml` service for local development.
 - Set `SMART_BETHG_STORAGE_ROOT` to a local writable directory if you do not want the default `./storage`.
 - Provider keys are optional; without a configured provider, Smart BethG must report that chat is not configured rather than fabricate an AI response.
 - Host Python execution is development-only and must not be enabled in production.
@@ -21,7 +21,7 @@ Keep platform-specific commands and resource definitions in optional deployment 
 
 ## Single-instance production
 
-A single-instance production deployment still uses PostgreSQL. Do not switch production to SQLite merely because only one application process is running.
+A single-instance and multi-instance deployment both use PostgreSQL. The application has no SQLite runtime fallback.
 
 Required configuration contract:
 
