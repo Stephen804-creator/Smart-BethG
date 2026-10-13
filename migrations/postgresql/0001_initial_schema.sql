@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users(
             status TEXT NOT NULL DEFAULT 'active',
             role TEXT NOT NULL DEFAULT 'user',
             session_version INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS agents(
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS tasks(
             request TEXT NOT NULL,
             status TEXT NOT NULL,
             workspace TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS auth_rate_limit_events(
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS usage_budget_counters(
             reserved_cost_micros INTEGER NOT NULL DEFAULT 0,
             actual_cost_micros INTEGER NOT NULL DEFAULT 0,
             requests INTEGER NOT NULL DEFAULT 0,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             PRIMARY KEY(period_start, scope, scope_id)
         );
 
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS usage_budget_reservations(
             actual_output_tokens INTEGER,
             actual_cost_micros INTEGER,
             status TEXT NOT NULL DEFAULT 'reserved',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             completed_at TEXT
         );
 
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS approvals(
             decided_at TEXT,
             executed_at TEXT,
             execution_result TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS audit_events(
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS audit_events(
             decision TEXT,
             risk_level TEXT,
             details TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS tools(
@@ -112,8 +112,8 @@ CREATE TABLE IF NOT EXISTS conversations(
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             title TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS messages(
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS messages(
             content TEXT NOT NULL,
             provider TEXT,
             model TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             FOREIGN KEY(conversation_id) REFERENCES conversations(id)
         );
 
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS provider_calls(
             success INTEGER NOT NULL,
             latency_ms INTEGER,
             error TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS missions(
@@ -145,8 +145,8 @@ CREATE TABLE IF NOT EXISTS missions(
             objective TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending',
             priority TEXT NOT NULL DEFAULT 'normal',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS mission_runs(
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS mission_runs(
             attempt_number INTEGER NOT NULL DEFAULT 1,
             status TEXT NOT NULL DEFAULT 'pending',
             error TEXT,
-            started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            started_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             completed_at TEXT,
             result_json TEXT,
             idempotency_key TEXT,
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS files(
             file_type TEXT,
             source TEXT,
             status TEXT NOT NULL DEFAULT 'stored',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS memory(
@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS memory(
             title TEXT,
             content TEXT NOT NULL,
             source TEXT NOT NULL DEFAULT 'explicit',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS research(
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS research(
             topic TEXT NOT NULL,
             summary TEXT,
             source_info TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             FOREIGN KEY(mission_id) REFERENCES missions(id)
         );
 
@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS evidence(
             source_reference TEXT,
             confidence REAL,
             validation_status TEXT NOT NULL DEFAULT 'unvalidated',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             FOREIGN KEY(mission_id) REFERENCES missions(id)
         );
 
@@ -216,8 +216,8 @@ CREATE TABLE IF NOT EXISTS workflows(
             definition_json TEXT NOT NULL DEFAULT '[]',
             version INTEGER NOT NULL DEFAULT 1,
             status TEXT NOT NULL DEFAULT 'draft',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS artifacts(
@@ -231,8 +231,8 @@ CREATE TABLE IF NOT EXISTS artifacts(
             size_bytes INTEGER,
             checksum_sha256 TEXT,
             status TEXT NOT NULL DEFAULT 'pending',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             FOREIGN KEY(mission_id) REFERENCES missions(id)
         );
 
@@ -247,8 +247,8 @@ CREATE TABLE IF NOT EXISTS social_content(
             version INTEGER NOT NULL DEFAULT 1,
             external_post_id TEXT,
             published_at TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS social_content_versions(
@@ -259,7 +259,7 @@ CREATE TABLE IF NOT EXISTS social_content_versions(
             title TEXT NOT NULL,
             content TEXT NOT NULL,
             hashtags TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             FOREIGN KEY(social_content_id) REFERENCES social_content(id)
         );
 
@@ -269,8 +269,8 @@ CREATE TABLE IF NOT EXISTS projects(
             name TEXT NOT NULL,
             description TEXT,
             status TEXT NOT NULL DEFAULT 'active',
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS logs(
@@ -280,7 +280,7 @@ CREATE TABLE IF NOT EXISTS logs(
             level TEXT NOT NULL DEFAULT 'info',
             event_type TEXT,
             message TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
         );
 
 CREATE TABLE IF NOT EXISTS knowledge_chunks(
@@ -292,7 +292,7 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks(
             content TEXT NOT NULL,
             embedding TEXT,
             embedding_model TEXT,
-            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             FOREIGN KEY(file_id) REFERENCES files(id)
         );
 
