@@ -196,18 +196,18 @@ Required capability:
 
 ## 14. Storage and Database Foundation
 
-V1 should maintain persistent local storage.
+V1 must use PostgreSQL as its single application database in local development, tests, and production.
 
 Required capability:
-- SQLite support for the current V1.
-- Database configuration through `DATABASE_URL`.
-- A clear boundary preventing non-SQLite URLs from being passed to `sqlite3.connect()`.
+- PostgreSQL connection configuration through `DATABASE_URL` in every environment.
+- No SQLite runtime fallback or second schema-initialization path.
 - Automatic creation of required storage directories.
-- Persistent database tables for V1 systems.
+- Persistent database tables for V1 systems, created through ordered PostgreSQL migrations.
 - Transaction commit/rollback handling.
 - Safe connection cleanup.
+- A separate, explicit one-way utility to import legacy SQLite data into a fresh PostgreSQL database without modifying the source.
 
-`DATABASE_URL` is retained now as a configuration boundary for future database-engine migration. It does not mean PostgreSQL/MySQL support is already implemented.
+PostgreSQL support is implemented in the application code, but the PostgreSQL-only refactor on branch `feat/postgresql-only-2026-10-13` still requires CI and migration-rehearsal verification before merge.
 
 ## 15. V1 Storage Areas
 
