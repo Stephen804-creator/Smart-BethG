@@ -55,6 +55,36 @@ uvicorn main_fastapi:app --host 127.0.0.1 --port 8000
 
 The application initializes the PostgreSQL schema through the numbered files in `migrations/postgresql/`. If `DATABASE_URL` is missing or points to SQLite, the app fails clearly instead of creating or using a second database. Keep local development data separate from production data.
 
+### Run tests locally
+
+Use a separate PostgreSQL database for tests. Create it once:
+
+```bash
+docker compose exec postgres createdb -U smartbethg smartbethg_test
+```
+
+PowerShell:
+
+```powershell
+$env:SMART_BETHG_ENV = "test"
+$env:SMART_BETHG_SECRET_KEY = "local-test-only-not-for-production"
+$env:DATABASE_URL = "postgresql://smartbethg:local_dev_only_change_me@localhost:5432/smartbethg_test"
+$env:SMART_BETHG_TEST_DATABASE_URL = $env:DATABASE_URL
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+Bash:
+
+```bash
+export SMART_BETHG_ENV=test
+export SMART_BETHG_SECRET_KEY="local-test-only-not-for-production"
+export DATABASE_URL="postgresql://smartbethg:local_dev_only_change_me@localhost:5432/smartbethg_test"
+export SMART_BETHG_TEST_DATABASE_URL="$DATABASE_URL"
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+The shared test base creates a unique PostgreSQL schema per test and drops it afterward. The test database must be disposable; never set these variables to a production database. The dedicated PostgreSQL integration tests are enabled separately with `SMART_BETHG_RUN_POSTGRES_TESTS=1` and should run only against a disposable PostgreSQL instance.
+
 ## Production environment
 
 Set these variables in the hosting provider's secret/configuration manager:
