@@ -162,9 +162,17 @@ class AgentExecutor:
         try:
             results = self.search_service.search(query)
         except Exception as exc:
-            logger.error("Search failed: user=%s query=%r error=%s", agent_request.user["id"], query, exc)
+            # Provider/network exception messages can contain internal URLs,
+            # request details, or other deployment information. Keep the
+            # user-facing response generic and log only the exception type.
+            logger.warning(
+                "Search failed: user=%s query=%r error_type=%s",
+                agent_request.user["id"], query, type(exc).__name__,
+            )
             chat_result = self._persist_synthesized_exchange(
-                agent_request, f"I couldn't search the web for that: {exc}"
+                agent_request,
+                "I couldn't complete the web search because the search service failed. "
+                "Please try again later.",
             )
             return None, {"intent": RESEARCH, "status": "search_failed", "result": chat_result}
 
