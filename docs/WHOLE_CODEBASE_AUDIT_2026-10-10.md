@@ -307,3 +307,10 @@ The workflow job conclusions for the current head are green. A FastAPI deprecati
 The audit document itself is being updated after this verified code revision to preserve the requested timestamped history. That documentation-only commit triggers another CI run; use its checks for the final PR head before merging.
 
 The public-launch decision remains **NO-GO** until the outstanding P0 gates in this document are closed and the production environment is independently verified.
+
+
+## Follow-up — 2026-10-13: PostgreSQL-only runtime change
+
+A subsequent code-correction branch, `feat/postgresql-only-2026-10-13`, removes the application's SQLite connection path and requires PostgreSQL in development, tests, and production. Local PostgreSQL is provided through `compose.yaml`; unit-test setup now uses isolated PostgreSQL schemas, and the unit-test CI job has a disposable PostgreSQL service. SQLite remains referenced only by the explicit one-way legacy data-import utility and negative tests that ensure SQLite URLs are rejected.
+
+**Verification status:** this follow-up is code-reviewed only. No tests, CI jobs, database migration rehearsal, or live deployment checks were run as part of this change. The branch must not be considered verified or merged until the new PostgreSQL-only test setup passes, the full regression suite passes, and a copy-based legacy migration plus backup/restore rehearsal is completed. The original SQLite source database must remain untouched until migration sign-off.
