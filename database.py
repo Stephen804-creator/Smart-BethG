@@ -21,18 +21,6 @@ SERIAL_ID_TABLES = {
 }
 
 
-class _EmptyCursor:
-    """No-op cursor for a legacy SQLite PRAGMA that some callers may issue."""
-    rowcount = 0
-    lastrowid = None
-
-    def fetchone(self):
-        return None
-
-    def fetchall(self):
-        return []
-
-
 class _PostgresCursor:
     def __init__(self, cursor, lastrowid=None):
         self._cursor = cursor
@@ -55,17 +43,6 @@ class _PostgresConnection:
 
     def execute(self, sql, params=()):
         statement = sql.strip()
-        pragma = re.match(r"PRAGMA\s+table_info\(([^)]+)\)", statement, re.I)
-        if pragma:
-            table = pragma.group(1).strip().strip(chr(34) + "[]")
-            cursor = self._connection.execute(
-                "SELECT column_name AS name FROM information_schema.columns "
-                "WHERE table_schema = current_schema() AND table_name = %s "
-                "ORDER BY ordinal_position",
-                (table,),
-            )
-            return _PostgresCursor(cursor)
-
         # Repository services use DB-API qmark placeholders. Psycopg uses %s.
         statement = statement.replace("?", "%s")
         lastrowid = None
