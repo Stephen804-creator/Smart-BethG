@@ -79,16 +79,30 @@ def migrate(source_path, target_url, dry_run=False, old_storage_root=None, new_s
         tables = [t for t in TABLE_ORDER if t in available]
         tables += sorted(available - set(tables) - EXCLUDED_TABLES)
 
+        # Require every application table in the target schema to be empty,
+        # not only tables also present in this source SQLite file. Otherwise a
+        # partial/older source could silently coexist with unrelated target data.
+        target_tables = [
+            row[0] for row in target.execute(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema=current_schema() AND table_type='BASE TABLE' "
+                "AND table_name <> 'schema_migrations' ORDER BY table_name"
+            ).fetchall()
+        ]
+        for target_table in target_tables:
+            if not SAFE_IDENTIFIER.fullmatch(target_table):
+                raise ValueError(f"Unsafe table name in PostgreSQL target: {target_table!r}")
+            if _target_has_rows(target, target_table):
+                raise RuntimeError(
+                    f"Target table {target_table!r} is not empty. Use a fresh target database; "
+                    "this script refuses to mix migrated records with existing data."
+                )
+
         for table in tables:
             if not SAFE_IDENTIFIER.fullmatch(table):
                 raise ValueError(f"Unsafe table name in source: {table!r}")
             if not _columns_postgres(target, table):
                 raise RuntimeError(f"Target schema is missing table {table!r}; initialize Smart BethG first.")
-            if _target_has_rows(target, table):
-                raise RuntimeError(
-                    f"Target table {table!r} is not empty. Use a fresh target database; "
-                    "this script refuses to merge records silently."
-                )
 
         counts = {}
         for table in tables:
