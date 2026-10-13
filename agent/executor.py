@@ -70,9 +70,18 @@ class AgentExecutor:
                     agent_request.workspace,
                     extra_context="\n\n".join(context_parts) if context_parts else None,
                 )
+                # A configured provider is not proof that generation succeeded.
+                # ChatService marks exhausted provider attempts with error=True;
+                # propagate that failure instead of reporting a false completion.
+                if chat_result.get("error"):
+                    outcome_status = "failed"
+                elif not chat_result.get("provider_configured"):
+                    outcome_status = "no_provider"
+                else:
+                    outcome_status = "completed"
                 return {
                     "intent": intent,
-                    "status": "completed" if chat_result.get("provider_configured") else "no_provider",
+                    "status": outcome_status,
                     "result": chat_result,
                 }
 
