@@ -39,22 +39,10 @@ def ensure_storage_dirs():
         os.makedirs(path, exist_ok=True)
 
 
-# PostgreSQL is the production backend; SQLite is reserved for local development/tests.
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-
-
-def resolve_sqlite_path() -> str:
-    """Resolve the on-disk SQLite path from DATABASE_URL / legacy env var."""
-    if DATABASE_URL:
-        if DATABASE_URL.startswith("sqlite:///"):
-            return DATABASE_URL.replace("sqlite:///", "", 1)
-        if DATABASE_URL.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
-            return os.path.join(STORAGE_DIRS["db"], "smart_bethg.db")
-        raise ValueError(f"Unsupported DATABASE_URL scheme: {DATABASE_URL!r}")
-    legacy = os.getenv("SMART_BETHG_DB")
-    if legacy:
-        return legacy
-    return os.path.join(STORAGE_DIRS["db"], "smart_bethg.db")
+# PostgreSQL is the only application database in every environment.
+# Set DATABASE_URL to a local PostgreSQL instance for development and tests.
+# Legacy SQLite files are read only by the explicit migration utility.
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 
 _SECRET_KEY = os.getenv("SMART_BETHG_SECRET_KEY", "")
@@ -226,7 +214,7 @@ def _validate_runtime_config() -> None:
         if not database_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
             raise RuntimeError(
                 "Production requires DATABASE_URL pointing to PostgreSQL; "
-                "SQLite is permitted only in development and tests."
+                "SQLite is supported only as a read-only migration source."
             )
         if not SESSION_HTTPS_ONLY:
             raise RuntimeError(
