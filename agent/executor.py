@@ -175,8 +175,8 @@ class AgentExecutor:
             # request details, or other deployment information. Keep the
             # user-facing response generic and log only the exception type.
             logger.warning(
-                "Search failed: user=%s query=%r error_type=%s",
-                agent_request.user["id"], query, type(exc).__name__,
+                "Search failed: user=%s error_type=%s",
+                agent_request.user["id"], type(exc).__name__,
             )
             chat_result = self._persist_synthesized_exchange(
                 agent_request,
