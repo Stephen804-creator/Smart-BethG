@@ -53,7 +53,7 @@ def login(payload: LoginRequest, request: Request, _csrf=Depends(require_csrf)):
 
     user = authenticate_user(payload.username, payload.password)
     if not user:
-        logger.info("Failed login attempt for username=%r", payload.username)
+        logger.info("Failed login attempt")
         return {"authenticated": False, "error": "Invalid credentials."}
     request.session.clear()
     request.session["user_id"] = user["id"]
