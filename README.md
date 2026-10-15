@@ -3,7 +3,7 @@
 **Status:** Active development — not yet cleared for unrestricted public launch.  
 **Last updated:** 2026-10-10 UTC. See [the decision log](docs/DECISION_LOG.md) and [architecture decisions](architecture.md) for dated records.
 
-Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, file/knowledge features, and security-governed tools. The repository is being prepared for a public launch, but several security, product, and operational release gates remain open. Do not expose unrestricted registration or sensitive production data until those gates are verified.
+Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, file/knowledge features, and security-governed tools. This branch enables open self-registration for testing. Anyone who can reach the deployed site can attempt to create an account; this does not mean the product has passed public-launch security, product, or operational review.
 
 ## Architecture decisions
 
@@ -11,7 +11,7 @@ Smart BethG is an AI-assisted agent workspace with chat, provider routing, memor
 - **Scaling:** one or multiple application instances use the same PostgreSQL database. Authentication rate-limit events are shared through the database.
 - **Files and workspaces:** local storage works for development and single-instance testing. Multiple instances require a shared durable storage mount for uploads, generated artifacts, and workspaces. PostgreSQL does not share local files between replicas.
 - **Hosting:** provider-neutral Python/ASGI application. No Render-specific manifest, API, or runtime is required. Deploy to any compatible Linux/Python host that can provide PostgreSQL and durable storage.
-- **Security:** registration is closed by default. Training export is disabled until opt-in consent controls exist. High-risk tool actions require approval. Unsandboxed host Python execution is disabled in production.
+- **Security:** self-registration is open in this branch. Training export is disabled until opt-in consent controls exist. High-risk tool actions require approval. Unsandboxed host Python execution is disabled in production.
 
 ## Requirements
 
@@ -93,7 +93,6 @@ Set these variables in the hosting provider's secret/configuration manager:
 - `DATABASE_URL=postgresql://...` — use the database provider's TLS-enabled connection URL when available.
 - `SMART_BETHG_SECRET_KEY` — generate a long random secret; never commit it.
 - `SMART_BETHG_SESSION_HTTPS_ONLY=true`
-- `SMART_BETHG_REGISTRATION_OPEN=false`
 - `SMART_BETHG_STORAGE_ROOT=/absolute/path/to/durable/storage`
 - `SMART_BETHG_ALLOWED_ORIGINS` — comma-separated exact browser origins only if a separate frontend origin needs CORS.
 - Provider API keys as needed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`.
@@ -116,7 +115,7 @@ Never paste the generated value into source code or commit history.
 
 ## Initial administrator
 
-Registration is intentionally closed by default. After setting up the production PostgreSQL database, create the first administrator from a trusted terminal:
+Self-registration creates ordinary user accounts, not administrators. After setting up the production PostgreSQL database, create the first administrator from a trusted terminal:
 
 ```bash
 python scripts/manage_user.py create-admin
