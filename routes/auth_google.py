@@ -72,12 +72,12 @@ async def google_callback(request: Request):
 
     try:
         user = find_or_create_oauth_user(
-            email, "google", subject, allow_create=config.REGISTRATION_OPEN
+            email, "google", subject, allow_create=True
         )
     except PermissionError:
         raise HTTPException(
             status_code=403,
-            detail="Registration is closed. Use an existing linked account or password sign-in.",
+            detail="Could not create or link this account. Please sign in with an existing account or use password registration.",
         )
     current_user = get_user_by_id(user["id"])
     if not current_user:
