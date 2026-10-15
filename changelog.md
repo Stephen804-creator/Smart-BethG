@@ -4,6 +4,15 @@ Records what actually changed in the software. Compare against
 `v1_capabilities.md` for current capability status; do not infer status
 from this list alone.
 
+## 2026-10-15
+
+### Changed
+- Enabled account self-registration in the application code instead of requiring a deployment variable to open it.
+- Removed invite-code configuration, validation, and the invite-code field from the registration UI and request payload.
+- Enabled new-user creation through Google OAuth when Google sign-in is configured. Standard registrations still create ordinary user accounts; administrator privileges must be assigned separately.
+- Added an HTTP regression test for registration without an invite code.
+
+
 ## 2026-09-19
 
 ### Fixed
