@@ -82,10 +82,8 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
-# Development stays convenient, but production registration is closed unless
-# the operator explicitly opts in. Existing users can still log in.
-REGISTRATION_OPEN = os.getenv("SMART_BETHG_REGISTRATION_OPEN", "false").lower() == "true"
-REGISTRATION_INVITE_CODE = os.getenv("SMART_BETHG_INVITE_CODE", "")
+# Account self-registration is open. Access is protected by password hashing,
+# CSRF validation, and database-backed rate limiting in the authentication routes.
 
 # Database-backed rate limiting uses these limits across processes and replicas.
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_MAX", "10"))
