@@ -196,18 +196,18 @@ Required capability:
 
 ## 14. Storage and Database Foundation
 
-V1 should maintain persistent local storage.
+V1 must use PostgreSQL as its single application database in local development, tests, and production.
 
 Required capability:
-- SQLite support for the current V1.
-- Database configuration through `DATABASE_URL`.
-- A clear boundary preventing non-SQLite URLs from being passed to `sqlite3.connect()`.
+- PostgreSQL connection configuration through `DATABASE_URL` in every environment.
+- No SQLite runtime fallback or second schema-initialization path.
 - Automatic creation of required storage directories.
-- Persistent database tables for V1 systems.
+- Persistent database tables for V1 systems, created through ordered PostgreSQL migrations.
 - Transaction commit/rollback handling.
 - Safe connection cleanup.
+- A separate, explicit one-way utility to import legacy SQLite data into a fresh PostgreSQL database without modifying the source.
 
-`DATABASE_URL` is retained now as a configuration boundary for future database-engine migration. It does not mean PostgreSQL/MySQL support is already implemented.
+PostgreSQL support is implemented in the application code, but the PostgreSQL-only refactor on branch `feat/postgresql-only-2026-10-13` still requires CI and migration-rehearsal verification before merge.
 
 ## 15. V1 Storage Areas
 
@@ -401,7 +401,7 @@ matching review - treat it as a snapshot, not a guarantee.
 | Social content | STRUCTURALLY PREPARED | `social_content` table now exists. No connector, no writer. |
 | Projects | STRUCTURALLY PREPARED | `projects` table now exists. No CRUD yet. |
 | Logging | STRUCTURALLY PREPARED | `logs` table now exists. Nothing writes to it yet (audit_events is separate and does have a writer). |
-| Storage/database foundation | IMPLEMENTED | `DATABASE_URL` boundary enforced (sqlite only, fails fast otherwise). Storage directories auto-created via `config.ensure_storage_dirs()`. |
+| Storage/database foundation | IMPLEMENTED (PostgreSQL-only runtime; verification pending on this branch) | `DATABASE_URL` must point to PostgreSQL in every environment; no SQLite runtime fallback. Storage directories auto-created via `config.ensure_storage_dirs()`. Legacy SQLite import remains a separate one-way migration tool. |
 | Testing | IMPLEMENTED (foundation only) | 42 real unit tests in `tests/`, run via `python -m unittest discover -s tests`. Covers service/logic layer. No integration or end-to-end tests against a running server yet (still can't run the actual FastAPI app in the environment this was built in). |
 | Logging | IMPLEMENTED | Structured logging to stdout + best-effort rotating files. Named loggers per subsystem. Request logging middleware logs every request's method/path/status/duration. |
 | Error handling | IMPLEMENTED | Centralized handlers for HTTP exceptions, validation errors, and unexpected exceptions. Consistent `{"error": {...}}` response shape. Tracebacks logged server-side only. |

@@ -42,5 +42,5 @@ pypdf>=6.19.0,<7.0
 # HTTP client
 requests>=2.32,<3.0
 
-# PostgreSQL production database (SQLite remains for local development/tests)
+# PostgreSQL database driver (required for local development, tests, and production)
 psycopg[binary]>=3.2,<4.0

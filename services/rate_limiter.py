@@ -1,10 +1,10 @@
 """
 Shared, database-backed authentication rate limiter.
 
-PostgreSQL is the production backend, so all application replicas share the
-same counters. PostgreSQL transaction-scoped advisory locks serialize updates
-for one hashed key; SQLite uses BEGIN IMMEDIATE for local development/tests.
-No client IP or raw limiter key is persisted, only a SHA-256 digest.
+PostgreSQL is the only application database, so local and deployed instances
+use the same concurrency-safe counter implementation. PostgreSQL transaction-
+scoped advisory locks serialize updates for one hashed key. No client IP or
+raw limiter key is persisted, only a SHA-256 digest.
 """
 import hashlib
 import time
@@ -25,30 +25,18 @@ def check_rate_limit(key: str, max_attempts=None, window_seconds=None) -> bool:
     if limit < 1 or window < 1:
         raise ValueError("Rate-limit attempts and window must be positive.")
     cutoff = now - window
-    database_url = (config.DATABASE_URL or "").strip()
-    is_postgres = database_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://"))
-
     conn = get_connection()
     try:
-        if is_postgres:
-            # Explicit transaction-level advisory lock serializes the entire
-            # count-and-insert critical section across all PostgreSQL replicas.
-            # Keep the shared lock-row upsert for observability/cleanup, but do
-            # not rely on that upsert alone as the concurrency guarantee.
-            conn.execute("SELECT pg_advisory_xact_lock(hashtext(?))", (key_hash,))
-            conn.execute(
-                "INSERT INTO auth_rate_limit_locks(key_hash, last_seen_epoch) VALUES (?, ?) "
-                "ON CONFLICT(key_hash) DO UPDATE SET last_seen_epoch=excluded.last_seen_epoch",
-                (key_hash, now),
-            )
-        else:
-            # Serialize read-count-insert on the local SQLite database.
-            conn.execute("BEGIN IMMEDIATE")
-            conn.execute(
-                "INSERT INTO auth_rate_limit_locks(key_hash, last_seen_epoch) VALUES (?, ?) "
-                "ON CONFLICT(key_hash) DO UPDATE SET last_seen_epoch=excluded.last_seen_epoch",
-                (key_hash, now),
-            )
+        # Explicit transaction-level advisory lock serializes the entire
+        # count-and-insert critical section across all PostgreSQL instances.
+        # Keep the shared lock-row upsert for observability/cleanup, but do
+        # not rely on that upsert alone as the concurrency guarantee.
+        conn.execute("SELECT pg_advisory_xact_lock(hashtext(?))", (key_hash,))
+        conn.execute(
+            "INSERT INTO auth_rate_limit_locks(key_hash, last_seen_epoch) VALUES (?, ?) "
+            "ON CONFLICT(key_hash) DO UPDATE SET last_seen_epoch=excluded.last_seen_epoch",
+            (key_hash, now),
+        )
 
         conn.execute(
             "DELETE FROM auth_rate_limit_events WHERE key_hash=? AND hit_epoch < ?",

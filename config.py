@@ -29,7 +29,6 @@ STORAGE_DIRS = {
     "artifacts": os.path.join(STORAGE_ROOT, "artifacts"),
     "workflows": os.path.join(STORAGE_ROOT, "workflows"),
     "logs": os.path.join(STORAGE_ROOT, "logs"),
-    "db": os.path.join(STORAGE_ROOT, "db"),
 }
 
 
@@ -39,22 +38,10 @@ def ensure_storage_dirs():
         os.makedirs(path, exist_ok=True)
 
 
-# PostgreSQL is the production backend; SQLite is reserved for local development/tests.
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-
-
-def resolve_sqlite_path() -> str:
-    """Resolve the on-disk SQLite path from DATABASE_URL / legacy env var."""
-    if DATABASE_URL:
-        if DATABASE_URL.startswith("sqlite:///"):
-            return DATABASE_URL.replace("sqlite:///", "", 1)
-        if DATABASE_URL.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
-            return os.path.join(STORAGE_DIRS["db"], "smart_bethg.db")
-        raise ValueError(f"Unsupported DATABASE_URL scheme: {DATABASE_URL!r}")
-    legacy = os.getenv("SMART_BETHG_DB")
-    if legacy:
-        return legacy
-    return os.path.join(STORAGE_DIRS["db"], "smart_bethg.db")
+# PostgreSQL is the only application database in every environment.
+# Set DATABASE_URL to a local PostgreSQL instance for development and tests.
+# Legacy SQLite files are read only by the explicit migration utility.
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 
 _SECRET_KEY = os.getenv("SMART_BETHG_SECRET_KEY", "")
@@ -162,3 +149,77 @@ FILE_INGEST_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_FILE_INGEST_R
 MAX_KNOWLEDGE_CHARS_PER_FILE = int(os.getenv("SMART_BETHG_MAX_KNOWLEDGE_CHARS_PER_FILE", "160000"))
 MAX_KNOWLEDGE_CHUNKS_PER_FILE = int(os.getenv("SMART_BETHG_MAX_KNOWLEDGE_CHUNKS_PER_FILE", "200"))
 EMBEDDING_BATCH_SIZE = int(os.getenv("SMART_BETHG_EMBEDDING_BATCH_SIZE", "16"))
+
+
+def _validate_runtime_config() -> None:
+    """Fail fast when resource limits or production security settings are unsafe."""
+    positive_integer_settings = {
+        "AUTH_RATE_LIMIT_MAX_ATTEMPTS": AUTH_RATE_LIMIT_MAX_ATTEMPTS,
+        "AUTH_RATE_LIMIT_WINDOW_SECONDS": AUTH_RATE_LIMIT_WINDOW_SECONDS,
+        "MAX_UPLOAD_SIZE_BYTES": MAX_UPLOAD_SIZE_BYTES,
+        "CHAT_RATE_LIMIT_MAX_ATTEMPTS": CHAT_RATE_LIMIT_MAX_ATTEMPTS,
+        "CHAT_RATE_LIMIT_WINDOW_SECONDS": CHAT_RATE_LIMIT_WINDOW_SECONDS,
+        "UPLOAD_RATE_LIMIT_MAX_ATTEMPTS": UPLOAD_RATE_LIMIT_MAX_ATTEMPTS,
+        "UPLOAD_RATE_LIMIT_WINDOW_SECONDS": UPLOAD_RATE_LIMIT_WINDOW_SECONDS,
+        "TASK_RATE_LIMIT_MAX_ATTEMPTS": TASK_RATE_LIMIT_MAX_ATTEMPTS,
+        "TASK_RATE_LIMIT_WINDOW_SECONDS": TASK_RATE_LIMIT_WINDOW_SECONDS,
+        "MAX_CHAT_MESSAGE_CHARS": MAX_CHAT_MESSAGE_CHARS,
+        "MAX_PROVIDER_ATTEMPTS_PER_CHAT": MAX_PROVIDER_ATTEMPTS_PER_CHAT,
+        "MAX_CHAT_CONTEXT_CHARS": MAX_CHAT_CONTEXT_CHARS,
+        "CHAT_MAX_OUTPUT_TOKENS": CHAT_MAX_OUTPUT_TOKENS,
+        "USER_DAILY_TOKEN_BUDGET": USER_DAILY_TOKEN_BUDGET,
+        "GLOBAL_DAILY_TOKEN_BUDGET": GLOBAL_DAILY_TOKEN_BUDGET,
+        "USER_DAILY_REQUEST_BUDGET": USER_DAILY_REQUEST_BUDGET,
+        "GLOBAL_DAILY_REQUEST_BUDGET": GLOBAL_DAILY_REQUEST_BUDGET,
+        "SESSION_MAX_AGE_SECONDS": SESSION_MAX_AGE_SECONDS,
+        "KNOWLEDGE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS": KNOWLEDGE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS,
+        "KNOWLEDGE_SEARCH_RATE_LIMIT_WINDOW_SECONDS": KNOWLEDGE_SEARCH_RATE_LIMIT_WINDOW_SECONDS,
+        "MAX_EXTRACTED_TEXT_CHARS": MAX_EXTRACTED_TEXT_CHARS,
+        "MAX_FILE_SEARCH_CHARS": MAX_FILE_SEARCH_CHARS,
+        "MAX_PDF_PAGES": MAX_PDF_PAGES,
+        "FILE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS": FILE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS,
+        "FILE_SEARCH_RATE_LIMIT_WINDOW_SECONDS": FILE_SEARCH_RATE_LIMIT_WINDOW_SECONDS,
+        "FILE_EXTRACT_RATE_LIMIT_MAX_ATTEMPTS": FILE_EXTRACT_RATE_LIMIT_MAX_ATTEMPTS,
+        "FILE_EXTRACT_RATE_LIMIT_WINDOW_SECONDS": FILE_EXTRACT_RATE_LIMIT_WINDOW_SECONDS,
+        "FILE_INGEST_RATE_LIMIT_MAX_ATTEMPTS": FILE_INGEST_RATE_LIMIT_MAX_ATTEMPTS,
+        "FILE_INGEST_RATE_LIMIT_WINDOW_SECONDS": FILE_INGEST_RATE_LIMIT_WINDOW_SECONDS,
+        "MAX_KNOWLEDGE_CHARS_PER_FILE": MAX_KNOWLEDGE_CHARS_PER_FILE,
+        "MAX_KNOWLEDGE_CHUNKS_PER_FILE": MAX_KNOWLEDGE_CHUNKS_PER_FILE,
+        "EMBEDDING_BATCH_SIZE": EMBEDDING_BATCH_SIZE,
+    }
+    invalid = [
+        f"{name} must be greater than zero"
+        for name, value in positive_integer_settings.items()
+        if value <= 0
+    ]
+    positive_money_settings = {
+        "USER_DAILY_SPEND_USD": USER_DAILY_SPEND_USD,
+        "GLOBAL_DAILY_SPEND_USD": GLOBAL_DAILY_SPEND_USD,
+        "UNKNOWN_MODEL_INPUT_USD_PER_MILLION": UNKNOWN_MODEL_INPUT_USD_PER_MILLION,
+        "UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION": UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION,
+    }
+    import math
+
+    invalid.extend(
+        f"{name} must be a finite number greater than zero"
+        for name, value in positive_money_settings.items()
+        if not math.isfinite(value) or value <= 0
+    )
+    if invalid:
+        raise RuntimeError("Invalid Smart BethG configuration: " + "; ".join(invalid) + ".")
+
+    if IS_PRODUCTION:
+        database_url = DATABASE_URL.strip().lower()
+        if not database_url.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
+            raise RuntimeError(
+                "Production requires DATABASE_URL pointing to PostgreSQL; "
+                "SQLite is supported only as a read-only migration source."
+            )
+        if not SESSION_HTTPS_ONLY:
+            raise RuntimeError(
+                "SMART_BETHG_SESSION_HTTPS_ONLY must be true in production "
+                "so session cookies are not sent over plain HTTP."
+            )
+
+
+_validate_runtime_config()

@@ -70,9 +70,18 @@ class AgentExecutor:
                     agent_request.workspace,
                     extra_context="\n\n".join(context_parts) if context_parts else None,
                 )
+                # A configured provider is not proof that generation succeeded.
+                # ChatService marks exhausted provider attempts with error=True;
+                # propagate that failure instead of reporting a false completion.
+                if chat_result.get("error"):
+                    outcome_status = "failed"
+                elif not chat_result.get("provider_configured"):
+                    outcome_status = "no_provider"
+                else:
+                    outcome_status = "completed"
                 return {
                     "intent": intent,
-                    "status": "completed" if chat_result.get("provider_configured") else "no_provider",
+                    "status": outcome_status,
                     "result": chat_result,
                 }
 
@@ -162,9 +171,17 @@ class AgentExecutor:
         try:
             results = self.search_service.search(query)
         except Exception as exc:
-            logger.error("Search failed: user=%s query=%r error=%s", agent_request.user["id"], query, exc)
+            # Provider/network exception messages can contain internal URLs,
+            # request details, or other deployment information. Keep the
+            # user-facing response generic and log only the exception type.
+            logger.warning(
+                "Search failed: user=%s error_type=%s",
+                agent_request.user["id"], type(exc).__name__,
+            )
             chat_result = self._persist_synthesized_exchange(
-                agent_request, f"I couldn't search the web for that: {exc}"
+                agent_request,
+                "I couldn't complete the web search because the search service failed. "
+                "Please try again later.",
             )
             return None, {"intent": RESEARCH, "status": "search_failed", "result": chat_result}
 
