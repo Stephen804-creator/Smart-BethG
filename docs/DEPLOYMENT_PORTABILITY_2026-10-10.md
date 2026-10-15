@@ -30,7 +30,7 @@ Required configuration contract:
 - `SMART_BETHG_SECRET_KEY` set to a long, random, persistent secret. Changing it invalidates signed sessions.
 - `SMART_BETHG_SESSION_HTTPS_ONLY=true` behind HTTPS.
 - `SMART_BETHG_STORAGE_ROOT` set to a durable writable storage location, or configure a future shared-storage backend when available.
-- `SMART_BETHG_REGISTRATION_OPEN=false` until the public-launch gates are approved.
+- Self-registration is enabled in this branch. Anyone who can reach the deployment can attempt to create an account; restrict access to the intended test group until public-launch gates are approved.
 - `SMART_BETHG_ALLOWED_ORIGINS` set to exact trusted browser origins; leave empty if no cross-origin browser client is needed.
 - Provider API keys supplied through the host's secret manager/environment, never committed to Git.
 
@@ -64,7 +64,7 @@ Do not add a mandatory Render manifest or Render SDK to the app. Optional deploy
 
 - [ ] Current-head unit tests, PostgreSQL integration tests, dependency audit, and secret scan are green.
 - [ ] Production starts only with PostgreSQL and a persistent secret.
-- [ ] Registration remains closed until public-launch review is complete.
+- [ ] Review access controls for open self-registration; restrict the deployment to the intended test group until public-launch review is complete.
 - [ ] HTTPS, cookie flags, trusted origins, health checks, and proxy client-IP behavior are verified.
 - [ ] Database migration, backup, and restoration are rehearsed on a disposable copy.
 - [ ] File storage and workspace behavior are verified after restart/redeployment.
