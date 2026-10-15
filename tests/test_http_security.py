@@ -114,28 +114,21 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
                 self.assertEqual(response.status_code, 401)
 
     def test_registration_is_open_without_operator_toggle_or_invite_code(self):
+        import uuid
         from services.auth_service import authenticate_user
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            old_db_path = database.DB_PATH
-            old_database_url = config.DATABASE_URL
-            database.DB_PATH = os.path.join(temp_dir, "registration-test.db")
-            config.DATABASE_URL = ""
-            try:
-                database.initialize_database()
-                client = TestClient(create_app())
-                token = client.get("/auth/csrf").json()["csrf_token"]
-                response = client.post(
-                    "/auth/register",
-                    headers={"X-CSRF-Token": token},
-                    json={"username": "open-registration-test", "password": "registration-password"},
-                )
-                self.assertEqual(response.status_code, 200, response.text)
-                self.assertTrue(response.json()["created"])
-                self.assertIsNotNone(authenticate_user("open-registration-test", "registration-password"))
-            finally:
-                database.DB_PATH = old_db_path
-                config.DATABASE_URL = old_database_url
+        client = TestClient(create_app())
+        token = client.get("/auth/csrf").json()["csrf_token"]
+        username = f"registration-test-{uuid.uuid4().hex}"
+        password = "registration-password"
+        response = client.post(
+            "/auth/register",
+            headers={"X-CSRF-Token": token},
+            json={"username": username, "password": password},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["created"])
+        self.assertIsNotNone(authenticate_user(username, password))
 
     def test_cors_preflight_accepts_only_configured_origin(self):
         with patch.object(config, "ALLOWED_ORIGINS", ["https://allowed.example"]):
