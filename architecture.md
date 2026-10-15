@@ -6,7 +6,7 @@
 
 ## Product goal and release posture
 
-Smart BethG is being built for a public launch, not only for personal use or a small trusted group. Public launch is the target architecture; it is not yet a claim that the current application is safe or ready for unrestricted public access. Registration remains closed by default until the release gates in this document are met.
+Smart BethG is being built for a public launch, not only for personal use or a small trusted group. Public launch is the target architecture; it is not yet a claim that the current application is safe or ready for unrestricted public access. This branch enables self-registration without invite codes for testing; until release gates are met, anyone who can reach the deployment may attempt to create an account.
 
 ## Database: PostgreSQL is the production standard
 
