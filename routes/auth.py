@@ -3,7 +3,6 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
-import config
 from services.auth_service import authenticate_user, create_user, revoke_user_sessions
 from services.rate_limiter import check_rate_limit
 from api.dependencies import get_current_user, require_csrf
