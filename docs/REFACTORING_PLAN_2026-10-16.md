@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-16  
 **Branch:** `refactor/codebase-foundation-2026-10-16`  
-**Status:** Baseline reviewed; implementation proceeds in small, test-gated batches.
+**Status:** Baseline investigation in progress; structural extraction is blocked until CI failures are diagnosed and the relevant baseline is verified.
 
 ## Purpose and rationale
 
@@ -106,3 +106,10 @@ The security test module now documents why it uses PostgreSQL isolation and what
 The repository and workflow configuration have been inspected through GitHub. The test suite has **not** been confirmed passing. GitHub reports failed test and security checks, and the available integration did not return the failed-step logs. Therefore, the failure causes remain unverified; no claim is made that the suite passes. Retrieve the actionable CI output, fix confirmed failures, and rerun the affected tests plus the full suite before extracting application composition from `main_fastapi.py`.
 
 The next structural target remains `main_fastapi.py`, which currently combines application construction, middleware definitions, template wiring, and router registration. Extract those responsibilities only after the test baseline is green.
+
+
+## Coding standards and test quality gates
+
+The shared engineering conventions and test strategy are documented in [`docs/ENGINEERING_STANDARDS.md`](ENGINEERING_STANDARDS.md). That document defines naming and formatting expectations, comments/docstrings that explain intent and invariants, PostgreSQL-only database testing, and the roles of unit, integration, and end-to-end tests.
+
+Apply standards incrementally: keep touched code consistent, avoid repository-wide formatting churn, and introduce automated formatting/lint/type checks only after the current CI baseline and security findings are understood. Do not add new quality gates in a way that hides or conflates existing failures. For every failed check, capture its actual output and fix only verified causes. The current workflow logs could not be retrieved through the available GitHub integration, so the test, dependency-audit, and secret-scan failures remain unresolved and must not be described as passing.
