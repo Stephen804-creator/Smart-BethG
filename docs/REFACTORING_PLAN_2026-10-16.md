@@ -4,6 +4,31 @@
 **Branch:** `refactor/codebase-foundation-2026-10-16`  
 **Status:** Baseline reviewed; implementation proceeds in small, test-gated batches.
 
+## Purpose and rationale
+
+Smart BethG is being refactored to make responsibilities easier to locate, test,
+change, and review without changing product behavior accidentally. The aim is
+not to reorganize files for appearance alone: each boundary must reduce coupling
+or make a security, persistence, or product contract easier to verify.
+
+The first issue addressed is in the test foundation. Some HTTP security tests
+created temporary SQLite databases by patching `database.DB_PATH` and clearing
+`config.DATABASE_URL`. That approach no longer represents the supported
+PostgreSQL-only runtime, can conceal PostgreSQL-specific defects, and creates a
+second database path that future developers might mistakenly preserve. Those
+tests now use `SmartBethGTestCase`, which provisions an isolated PostgreSQL
+schema for each database-backed test and cleans it up through the shared test
+harness. This improves test fidelity and isolation without changing application
+runtime code.
+
+The test workflow also now runs on pushes to every branch. Previously, the
+push trigger was limited to `main`, which meant developers could not rely on a
+push-triggered test run while working on a feature or refactoring branch. Pull
+requests still run checks against the target branch; branch-wide push checks
+provide earlier feedback during development. This change does not make a failing
+check acceptable: failures must be diagnosed and fixed before the refactor is
+considered verified.
+
 ## Rules
 - Preserve approved product behavior and PostgreSQL-only runtime architecture.
 - Keep clear module boundaries; do not turn the application into a tangled monolith or split it into microservices without an explicit architecture decision.
@@ -54,9 +79,30 @@
 Phase 1 starts with a test-backed extraction of application composition from `main_fastapi.py`. This is intentionally behavior-preserving. Any change to registration policy, database architecture, provider selection, or deployment behavior is out of scope for that extraction and requires its own reviewed change.
 
 
-## Phase 0 findings — 2026-10-16
+## Implementation record
 
-- The current HTTP security tests still referenced `database.DB_PATH` and attempted to switch the application back to SQLite, conflicting with the approved PostgreSQL-only runtime.
-- The first refactoring batch updates those tests to use `SmartBethGTestCase`, which provisions a disposable PostgreSQL schema per test. This removes the obsolete test-only database path without changing application behavior.
-- The current repository snapshot was inspected through GitHub. The test suite has **not** been executed by this refactoring pass; CI must verify this commit before the next source-code extraction.
-- `main_fastapi.py` currently combines application construction, middleware definitions, template wiring, and router registration. Phase 1 will extract these responsibilities only after this test-harness alignment passes CI.
+### Batch 1 — Align security tests with the supported database architecture
+
+**Problem found:** HTTP security and approval-service tests used a temporary SQLite database by changing `database.DB_PATH` and clearing `config.DATABASE_URL`. That creates test behavior the application does not support as its runtime database architecture.
+
+**Correction made:** The affected test classes now inherit from `SmartBethGTestCase`. The shared base provisions an isolated PostgreSQL schema for each test, so database-backed tests exercise the same database engine and adapter used by the application while remaining separated from other tests. The manual SQLite setup and teardown were removed.
+
+**Why this matters to future maintainers:** Do not reintroduce SQLite setup or override the application's database URL in these tests. If a test needs a database, use the shared PostgreSQL test harness. This keeps the test environment representative and makes isolation/cleanup a consistent responsibility of the test base.
+
+### Batch 2 — Make the test workflow useful on development branches
+
+**Problem found:** The workflow's `push` trigger was restricted to `main`. Developers pushing commits to a feature or refactoring branch could not depend on the push event itself to run the suite.
+
+**Correction made:** The branch restriction was removed from the `push` trigger, and an explanatory YAML comment now records why branch-wide testing is intentional.
+
+**Why this matters to future maintainers:** Regression checks should run while work is being developed, not only after it reaches the main branch. A passing check is still required; broadening the trigger does not bypass any test or security requirement.
+
+### Batch 3 — Explain the intent of security and isolation tests
+
+The security test module now documents why it uses PostgreSQL isolation and what its key regression checks protect: security headers and report-only CSP rollout, CSRF enforcement for authenticated writes, canonical API routes, authentication on protected endpoints, operator-controlled registration, configured-origin CORS, owner-scoped approval decisions, and workspace path traversal. These comments explain the contract each test protects so a future refactor does not remove an assertion without understanding its purpose.
+
+### Verification status and next step
+
+The repository and workflow configuration have been inspected through GitHub. The test suite has **not** been confirmed passing. GitHub reports failed test and security checks, and the available integration did not return the failed-step logs. Therefore, the failure causes remain unverified; no claim is made that the suite passes. Retrieve the actionable CI output, fix confirmed failures, and rerun the affected tests plus the full suite before extracting application composition from `main_fastapi.py`.
+
+The next structural target remains `main_fastapi.py`, which currently combines application construction, middleware definitions, template wiring, and router registration. Extract those responsibilities only after the test baseline is green.
