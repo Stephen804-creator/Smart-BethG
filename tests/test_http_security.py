@@ -13,7 +13,7 @@ from services.approval_service import ApprovalService
 from services.tool_service import resolve_workspace_root
 
 
-class TestHttpSecurityBoundaries(unittest.TestCase):
+class TestHttpSecurityBoundaries(SmartBethGTestCase):
     def test_security_headers_are_present(self):
         client = TestClient(create_app())
         response = client.get("/health")
@@ -30,45 +30,34 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
 
 
     def test_all_state_changing_api_routes_require_csrf(self):
-        import database
         from services.auth_service import create_user
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            old_db_path = database.DB_PATH
-            old_database_url = config.DATABASE_URL
-            database.DB_PATH = os.path.join(temp_dir, "csrf-test.db")
-            config.DATABASE_URL = ""
-            try:
-                database.initialize_database()
-                username = "csrf-boundary-test"
-                user = create_user(username, "csrf-test-password")
-                self.assertIsNotNone(user)
-                client = TestClient(create_app())
+        username = "csrf-boundary-test"
+        user = create_user(username, "csrf-test-password")
+        self.assertIsNotNone(user)
+        client = TestClient(create_app())
 
-                token = client.get("/auth/csrf").json()["csrf_token"]
-                login = client.post(
-                    "/auth/login",
-                    headers={"X-CSRF-Token": token},
-                    json={"username": username, "password": "csrf-test-password"},
-                )
-                self.assertEqual(login.status_code, 200, login.text)
-                fresh_token = client.get("/auth/csrf").json()["csrf_token"]
+        token = client.get("/auth/csrf").json()["csrf_token"]
+        login = client.post(
+            "/auth/login",
+            headers={"X-CSRF-Token": token},
+            json={"username": username, "password": "csrf-test-password"},
+        )
+        self.assertEqual(login.status_code, 200, login.text)
+        fresh_token = client.get("/auth/csrf").json()["csrf_token"]
 
-                blocked = client.post(
-                    "/api/v1/projects",
-                    json={"name": "should not be created"},
-                )
-                self.assertEqual(blocked.status_code, 403)
+        blocked = client.post(
+            "/api/v1/projects",
+            json={"name": "should not be created"},
+        )
+        self.assertEqual(blocked.status_code, 403)
 
-                allowed = client.post(
-                    "/api/v1/projects",
-                    headers={"X-CSRF-Token": fresh_token},
-                    json={"name": "csrf-protected project"},
-                )
-                self.assertEqual(allowed.status_code, 200, allowed.text)
-            finally:
-                database.DB_PATH = old_db_path
-                config.DATABASE_URL = old_database_url
+        allowed = client.post(
+            "/api/v1/projects",
+            headers={"X-CSRF-Token": fresh_token},
+            json={"name": "csrf-protected project"},
+        )
+        self.assertEqual(allowed.status_code, 200, allowed.text)
 
     def test_approvals_endpoint_requires_authentication(self):
         client = TestClient(create_app())
@@ -147,19 +136,10 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         self.assertNotEqual(denied.headers.get("access-control-allow-origin"), "https://untrusted.example")
 
 
-class TestApprovalService(unittest.TestCase):
+class TestApprovalService(SmartBethGTestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.db_path_patch = patch.object(
-            database, "DB_PATH", os.path.join(self.temp_dir.name, "test.db")
-        )
-        self.db_path_patch.start()
-        database.initialize_database()
+        super().setUp()
         self.service = ApprovalService()
-
-    def tearDown(self):
-        self.db_path_patch.stop()
-        self.temp_dir.cleanup()
 
     def test_pending_approval_is_persisted_and_scoped_to_owner(self):
         created = self.service.create(10, "delete_file", "report.txt")
