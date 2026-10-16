@@ -52,3 +52,11 @@
 
 ## First implementation target
 Phase 1 starts with a test-backed extraction of application composition from `main_fastapi.py`. This is intentionally behavior-preserving. Any change to registration policy, database architecture, provider selection, or deployment behavior is out of scope for that extraction and requires its own reviewed change.
+
+
+## Phase 0 findings — 2026-10-16
+
+- The current HTTP security tests still referenced `database.DB_PATH` and attempted to switch the application back to SQLite, conflicting with the approved PostgreSQL-only runtime.
+- The first refactoring batch updates those tests to use `SmartBethGTestCase`, which provisions a disposable PostgreSQL schema per test. This removes the obsolete test-only database path without changing application behavior.
+- The current repository snapshot was inspected through GitHub. The test suite has **not** been executed by this refactoring pass; CI must verify this commit before the next source-code extraction.
+- `main_fastapi.py` currently combines application construction, middleware definitions, template wiring, and router registration. Phase 1 will extract these responsibilities only after this test-harness alignment passes CI.
