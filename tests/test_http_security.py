@@ -6,8 +6,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
+from tests.base import SmartBethGTestCase
+
 import config
-import database
 from main_fastapi import create_app
 from services.approval_service import ApprovalService
 from services.tool_service import resolve_workspace_root
