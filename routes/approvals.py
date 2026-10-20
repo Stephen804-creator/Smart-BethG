@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from pydantic import BaseModel, Field
 
-from api.dependencies import get_current_user, get_approval_service, get_tool_service
+from api.dependencies import get_current_user, get_approval_service
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 
@@ -35,7 +35,6 @@ def decide(
     payload: Decision,
     user=Depends(get_current_user),
     service=Depends(get_approval_service),
-    tool_service=Depends(get_tool_service),
 ):
     current = service.get_for_user(approval_id, user["id"])
     if not current:
