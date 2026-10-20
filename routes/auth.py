@@ -79,25 +79,10 @@ def logout(request: Request, _csrf=Depends(require_csrf)):
 @router.post("/register")
 def register(payload: RegisterRequest, request: Request, _csrf=Depends(require_csrf)):
     """
-    Self-registration, gated by two independent operator controls:
-
-    - SMART_BETHG_REGISTRATION_OPEN=false disables this endpoint entirely
-      (useful once you've created your own account and don't want anyone
-      else signing up).
-    - SMART_BETHG_INVITE_CODE, if set, requires the caller to supply the
-      same code - a lightweight gate for "friends and family" testing
-      without full user management.
-
-    Registration defaults to closed in every environment. An operator must
-    explicitly enable it after the public-launch security gates are met.
+    Public self-registration remains open for continuous testing.
+    Rate limiting, password validation, and duplicate-account checks remain active.
+    No deployment flag or invite code can silently disable registration.
     """
-    if not config.REGISTRATION_OPEN:
-        raise HTTPException(status_code=403, detail="Registration is currently closed.")
-
-    if config.REGISTRATION_INVITE_CODE and payload.invite_code != config.REGISTRATION_INVITE_CODE:
-        logger.warning("Registration attempt with invalid invite code from %s", _client_ip(request))
-        raise HTTPException(status_code=403, detail="A valid invite code is required to register.")
-
     if not check_rate_limit(f"register:{_client_ip(request)}"):
         logger.warning("Registration rate-limited for %s", _client_ip(request))
         raise HTTPException(status_code=429, detail="Too many attempts. Please wait and try again.")
