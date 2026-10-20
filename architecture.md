@@ -57,7 +57,7 @@ Local filesystem storage is for development and single-instance testing. Product
 
 Before unrestricted public registration:
 - Complete authentication, session, CSRF, ownership-isolation, and authorization tests across every API route.
-- Keep registration closed by default and add abuse controls for registration, login, provider calls, uploads, and tool execution.
+- Keep self-registration available for testing and enforce abuse controls for registration, login, provider calls, uploads, and connector actions. Do not treat an open test signup page as proof that public launch gates have passed.
 - Publish reviewed Terms of Service and Privacy Policy; draft documents are tracked separately and are not legal approval.
 - Obtain explicit, informed, recorded, revocable consent before a user's conversation is eligible for training export. Admin permission is not user consent.
 - Run dependency and secret scanning in CI; remediate high/critical findings or document a time-bounded exception.
