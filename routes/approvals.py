@@ -46,6 +46,15 @@ def decide(
         decision = service.decide(approval_id, user["id"], False)
         return {"approval": decision, "execution": None}
 
+    # Current approval records belong to the retired host-tool executor.
+    # Do not approve/execute them. Connector actions will receive a dedicated
+    # connector-aware dispatcher before positive approvals are enabled again.
+    from fastapi import HTTPException, status
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Direct server-side actions are disabled. Connector approvals are not yet available.",
+    )
+
     if current["status"] == "pending":
         decision = service.decide(approval_id, user["id"], True)
     elif current["status"] == "approved" and current.get("execution_status") == "pending":
