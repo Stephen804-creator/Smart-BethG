@@ -21,7 +21,6 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=1, max_length=254)
     password: str = Field(min_length=8, max_length=1024)
-    invite_code: str | None = None
 
     @field_validator("username")
     @classmethod
