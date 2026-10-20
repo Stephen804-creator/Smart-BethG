@@ -45,7 +45,7 @@ Prepare these items so counsel reviews the real service rather than generic word
 
 ## 4. Required product controls before publication
 
-- [ ] Keep public registration disabled until the public-launch security gate is signed off.
+- [ ] Keep registration available for controlled testing, with rate limits and abuse monitoring. Do not describe the service as public-launch-ready until the remaining security and privacy gates are signed off.
 - [ ] Show the current Terms and Privacy Policy at registration and in account settings.
 - [ ] Record which policy version a user accepted and when; do not bundle optional training consent into required service acceptance.
 - [ ] Provide a separate opt-in training consent with purpose, scope, withdrawal, and consequences clearly explained.
