@@ -6,7 +6,7 @@
 
 ## Product goal and release posture
 
-Smart BethG is being built for a public launch, not only for personal use or a small trusted group. Public launch is the target architecture; it is not yet a claim that the current application is safe or ready for unrestricted public access. Registration remains closed by default until the release gates in this document are met.
+Smart BethG is being built for a public launch, not only for personal use or a small trusted group. Public launch is the target architecture; it is not yet a claim that the current application is safe or ready for unrestricted public access. Self-registration remains open for continuous testing in this branch. That is not approval for a public launch; the release gates below still apply.
 
 ## Database: PostgreSQL is the production standard
 
@@ -28,11 +28,14 @@ The database-backed authentication limiter uses PostgreSQL transaction-scoped ad
 
 Keep the fixed-shape planner until tool authorization, action/resource binding, durable approvals, cancellation, bounded execution, audit events, and adversarial tests are enforced end to end. General autonomous planning is not a prerequisite for launch and must not bypass the security policy.
 
-## Approval workflow
+## Connector-first approval workflow
 
-An approval must refer to one authenticated owner, one exact action, one exact resource/workspace, and a bounded set of arguments. On approval, the application should resume that saved operation once, after re-checking current permissions and validating the action/resource binding. It must reject changed payloads, expired approvals, rejected requests, and duplicate execution attempts.
+Direct server-side filesystem, Git, terminal, outbound-network, and Docker actions are disabled. They must not be re-enabled as a shortcut: executing user-directed commands on the application host creates an unnecessary privilege boundary and blast radius.
 
-A decision record by itself is not execution. The current review branch now has a route that resumes the exact saved operation after approval, rechecks authorization, claims execution atomically, records the outcome, and refuses duplicate execution. The route test verifies a Git operation executes once; a recovery test also covers the narrow case where the decision was committed before execution was claimed. That new recovery test must pass the latest CI run before merge. If the process crashes after the operation is claimed or during an external side effect, the record must not be blindly replayed; it requires an explicit reconciliation path because the outcome may be indeterminate.
+The target design is an explicit connector registry for real applications (initially social-media accounts and other user-selected services). A connector must declare its provider, scopes, supported actions, and credential/OAuth state. Users connect it themselves, grant only the required permissions, and approve consequential actions with a preview of the exact target and payload. Tokens must be encrypted at rest, never returned to the browser after storage, and revocable. Connector callbacks and actions need owner-scoped authorization, audit events, idempotency, and provider-side error handling.
+
+The existing generic approval records are not currently wired to connectors. Positive approval execution is therefore disabled for legacy host-tool operations. Do not describe connector approvals as implemented until the connector-aware dispatcher, permission checks, and end-to-end tests exist. Rejections remain available for any legacy pending records.
+
 
 ## Token budgets and spending
 
