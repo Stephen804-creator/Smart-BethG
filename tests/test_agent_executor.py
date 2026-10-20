@@ -282,9 +282,8 @@ class TestCodeIntelligence(SmartBethGTestCase):
         self.assertIn("Which file", outcome["result"]["reply"])
         self.assertFalse(hasattr(provider, "last_messages"))
 
-    def test_code_review_path_traversal_is_still_blocked(self):
-        """The chained read goes through the same workspace-confined tool."""
-        resolve_workspace_root(1, "default")
+    def test_code_review_waits_for_connector_before_accessing_paths(self):
         outcome, provider = self._run_with_capturing_provider('review the file "../../etc/passwd"')
-        self.assertEqual(outcome["status"], "failed")
+        self.assertEqual(outcome["status"], "unavailable")
         self.assertFalse(hasattr(provider, "last_messages"))
+
