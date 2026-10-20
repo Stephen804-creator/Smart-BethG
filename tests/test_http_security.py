@@ -1,3 +1,11 @@
+"""Regression tests for HTTP security boundaries and tenant isolation.
+
+These tests deliberately use SmartBethGTestCase so every database-backed test
+runs against an isolated PostgreSQL schema. Do not replace this with SQLite or
+mutate database configuration in a test: doing so would test a different
+persistence path from the application's supported runtime.
+"""
+
 import os
 import tempfile
 import unittest
@@ -6,15 +14,26 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
+from tests.base import SmartBethGTestCase
+
 import config
-import database
 from main_fastapi import create_app
 from services.approval_service import ApprovalService
 from services.tool_service import resolve_workspace_root
 
 
-class TestHttpSecurityBoundaries(unittest.TestCase):
+class TestHttpSecurityBoundaries(SmartBethGTestCase):
+    """Protect externally observable HTTP security and routing contracts.
+
+    The assertions here are regression guards: refactoring app construction or
+    middleware must not silently weaken headers, CSRF enforcement, authentication,
+    CORS restrictions, registration policy, or canonical API paths.
+    """
     def test_security_headers_are_present(self):
+        # These headers reduce MIME sniffing, clickjacking, referrer leakage, and
+        # unsafe script/object embedding. CSP is report-only during rollout, so
+        # this test intentionally verifies the report-only header rather than
+        # asserting that an enforcing Content-Security-Policy is already active.
         client = TestClient(create_app())
         response = client.get("/health")
         self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
@@ -30,45 +49,37 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
 
 
     def test_all_state_changing_api_routes_require_csrf(self):
-        import database
+        # A valid login establishes the session first; the next requests prove
+        # that cookie-authenticated writes are rejected without a CSRF token and
+        # accepted with the token issued for that authenticated session.
         from services.auth_service import create_user
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            old_db_path = database.DB_PATH
-            old_database_url = config.DATABASE_URL
-            database.DB_PATH = os.path.join(temp_dir, "csrf-test.db")
-            config.DATABASE_URL = ""
-            try:
-                database.initialize_database()
-                username = "csrf-boundary-test"
-                user = create_user(username, "csrf-test-password")
-                self.assertIsNotNone(user)
-                client = TestClient(create_app())
+        username = "csrf-boundary-test"
+        user = create_user(username, "csrf-test-password")
+        self.assertIsNotNone(user)
+        client = TestClient(create_app())
 
-                token = client.get("/auth/csrf").json()["csrf_token"]
-                login = client.post(
-                    "/auth/login",
-                    headers={"X-CSRF-Token": token},
-                    json={"username": username, "password": "csrf-test-password"},
-                )
-                self.assertEqual(login.status_code, 200, login.text)
-                fresh_token = client.get("/auth/csrf").json()["csrf_token"]
+        token = client.get("/auth/csrf").json()["csrf_token"]
+        login = client.post(
+            "/auth/login",
+            headers={"X-CSRF-Token": token},
+            json={"username": username, "password": "csrf-test-password"},
+        )
+        self.assertEqual(login.status_code, 200, login.text)
+        fresh_token = client.get("/auth/csrf").json()["csrf_token"]
 
-                blocked = client.post(
-                    "/api/v1/projects",
-                    json={"name": "should not be created"},
-                )
-                self.assertEqual(blocked.status_code, 403)
+        blocked = client.post(
+            "/api/v1/projects",
+            json={"name": "should not be created"},
+        )
+        self.assertEqual(blocked.status_code, 403)
 
-                allowed = client.post(
-                    "/api/v1/projects",
-                    headers={"X-CSRF-Token": fresh_token},
-                    json={"name": "csrf-protected project"},
-                )
-                self.assertEqual(allowed.status_code, 200, allowed.text)
-            finally:
-                database.DB_PATH = old_db_path
-                config.DATABASE_URL = old_database_url
+        allowed = client.post(
+            "/api/v1/projects",
+            headers={"X-CSRF-Token": fresh_token},
+            json={"name": "csrf-protected project"},
+        )
+        self.assertEqual(allowed.status_code, 200, allowed.text)
 
     def test_approvals_endpoint_requires_authentication(self):
         client = TestClient(create_app())
@@ -76,6 +87,8 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_api_routes_have_canonical_versioned_paths(self):
+        # Canonical /api/v1 paths must remain mounted. Old duplicated /api/v1/api
+        # aliases should stay absent so clients do not depend on accidental routes.
         client = TestClient(create_app())
         chat = client.get("/api/v1/chat/conversations")
         old_chat = client.get("/api/v1/api/chat/conversations")
@@ -96,6 +109,9 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_new_feature_apis_are_mounted_and_authenticated(self):
+        # A 401 response proves the route exists and its authentication boundary
+        # runs before protected data can be read; a 404 would indicate a missing
+        # route, while a 200 would indicate a possible authorization regression.
         client = TestClient(create_app())
         paths = [
             "/api/v1/projects",
@@ -114,6 +130,9 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
                 self.assertEqual(response.status_code, 401)
 
     def test_registration_can_be_closed_by_operator(self):
+        # Operators must be able to disable public account creation without
+        # changing the route or database layer. Patch only the policy setting so
+        # the test exercises the same registration handler used in production.
         with patch.object(config, "REGISTRATION_OPEN", False):
             client = TestClient(create_app())
             token = client.get("/auth/csrf").json()["csrf_token"]
@@ -126,6 +145,9 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         self.assertIn("closed", response.json()["error"]["message"].lower())
 
     def test_cors_preflight_accepts_only_configured_origin(self):
+        # Browsers should receive CORS permission only for explicitly configured
+        # origins; a successful preflight for an arbitrary origin could expose
+        # credentialed endpoints to an untrusted site.
         with patch.object(config, "ALLOWED_ORIGINS", ["https://allowed.example"]):
             client = TestClient(create_app())
             allowed = client.options(
@@ -147,19 +169,16 @@ class TestHttpSecurityBoundaries(unittest.TestCase):
         self.assertNotEqual(denied.headers.get("access-control-allow-origin"), "https://untrusted.example")
 
 
-class TestApprovalService(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.db_path_patch = patch.object(
-            database, "DB_PATH", os.path.join(self.temp_dir.name, "test.db")
-        )
-        self.db_path_patch.start()
-        database.initialize_database()
-        self.service = ApprovalService()
+class TestApprovalService(SmartBethGTestCase):
+    """Verify approval state is durable and restricted to its owning user.
 
-    def tearDown(self):
-        self.db_path_patch.stop()
-        self.temp_dir.cleanup()
+    These are database-backed service tests, not isolated mocks: approval
+    ownership, persistence, and one-way decisions must hold at the service layer
+    even when callers bypass the HTTP routes.
+    """
+    def setUp(self):
+        super().setUp()
+        self.service = ApprovalService()
 
     def test_pending_approval_is_persisted_and_scoped_to_owner(self):
         created = self.service.create(10, "delete_file", "report.txt")
@@ -190,6 +209,11 @@ class TestApprovalService(unittest.TestCase):
 
 
 class TestWorkspaceIsolation(unittest.TestCase):
+    """Check filesystem tenant boundaries without needing a database.
+
+    A temporary directory prevents the test from touching real user files while
+    allowing the path resolver's isolation rules to be checked directly.
+    """
     def test_workspaces_are_isolated_by_authenticated_user(self):
         with tempfile.TemporaryDirectory() as root:
             with patch.dict(config.STORAGE_DIRS, {"projects": root}):
@@ -200,6 +224,9 @@ class TestWorkspaceIsolation(unittest.TestCase):
                 self.assertTrue(user_two.startswith(os.path.join(root, "202")))
 
     def test_workspace_name_cannot_escape_user_root(self):
+        # Treat the workspace name as untrusted input. Traversal strings such as
+        # ../../another-user must never resolve outside the authenticated user's
+        # storage directory, even if the caller supplies a malicious name.
         with tempfile.TemporaryDirectory() as root:
             with patch.dict(config.STORAGE_DIRS, {"projects": root}):
                 resolved = resolve_workspace_root(101, "../../another-user")
