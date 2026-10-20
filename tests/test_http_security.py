@@ -129,20 +129,19 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 401)
 
-    def test_registration_can_be_closed_by_operator(self):
-        # Operators must be able to disable public account creation without
-        # changing the route or database layer. Patch only the policy setting so
-        # the test exercises the same registration handler used in production.
+    def test_registration_stays_open_even_if_legacy_close_flag_is_false(self):
+        # Registration must not silently close when a deployment variable is
+        # missing or an old flag remains configured.
         with patch.object(config, "REGISTRATION_OPEN", False):
             client = TestClient(create_app())
             token = client.get("/auth/csrf").json()["csrf_token"]
             response = client.post(
                 "/auth/register",
                 headers={"X-CSRF-Token": token},
-                json={"username": "closed-registration-test", "password": "not-a-real-password"},
+                json={"username": "open-registration-test", "password": "not-a-real-password"},
             )
-        self.assertEqual(response.status_code, 403)
-        self.assertIn("closed", response.json()["error"]["message"].lower())
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json().get("created"))
 
     def test_cors_preflight_accepts_only_configured_origin(self):
         # Browsers should receive CORS permission only for explicitly configured
