@@ -46,7 +46,7 @@ class ToolService:
         user_id = user.get("id") if isinstance(user, dict) else None
         workspace = normalize_workspace_name(workspace)
         resource = f"workspace:{workspace}"
-        if user_id is not None:
+        if user_id is not None and callable(getattr(self.audit, "record", None)):
             try:
                 self.audit.record(
                     user_id, action, resource, "blocked",
