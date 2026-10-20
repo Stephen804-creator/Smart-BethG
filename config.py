@@ -82,10 +82,11 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
-# Development stays convenient, but production registration is closed unless
-# the operator explicitly opts in. Existing users can still log in.
-REGISTRATION_OPEN = os.getenv("SMART_BETHG_REGISTRATION_OPEN", "false").lower() == "true"
-REGISTRATION_INVITE_CODE = os.getenv("SMART_BETHG_INVITE_CODE", "")
+# Self-registration is intentionally open for ongoing product testing.
+# It cannot silently close because a deployment variable is absent.
+# Invite codes are disabled; rate limits and password validation remain active.
+REGISTRATION_OPEN = True
+REGISTRATION_INVITE_CODE = ""
 
 # Database-backed rate limiting uses these limits across processes and replicas.
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_MAX", "10"))
