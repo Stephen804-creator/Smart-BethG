@@ -3,7 +3,7 @@
 **Status:** Active development — not yet cleared for unrestricted public launch.  
 **Last updated:** 2026-10-10 UTC. See [the decision log](docs/DECISION_LOG.md) and [architecture decisions](architecture.md) for dated records.
 
-Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, file/knowledge features, and security-governed tools. The repository is being prepared for a public launch, but several security, product, and operational release gates remain open. Do not expose unrestricted registration or sensitive production data until those gates are verified.
+Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration is kept open for continuous testing. Public launch is still blocked by unfinished account/privacy controls, legal review, and connector implementation; do not expose a production deployment to the public until those gates are completed.
 
 ## Architecture decisions
 
@@ -11,7 +11,7 @@ Smart BethG is an AI-assisted agent workspace with chat, provider routing, memor
 - **Scaling:** one or multiple application instances use the same PostgreSQL database. Authentication rate-limit events are shared through the database.
 - **Files and workspaces:** local storage works for development and single-instance testing. Multiple instances require a shared durable storage mount for uploads, generated artifacts, and workspaces. PostgreSQL does not share local files between replicas.
 - **Hosting:** provider-neutral Python/ASGI application. No Render-specific manifest, API, or runtime is required. Deploy to any compatible Linux/Python host that can provide PostgreSQL and durable storage.
-- **Security:** registration is closed by default. Training export is disabled until opt-in consent controls exist. High-risk tool actions require approval. Unsandboxed host Python execution is disabled in production.
+- **Security:** self-registration stays open for testing. Direct host-side filesystem, Git, terminal, network, and Docker actions are disabled; application connectors will be the only future action path. Positive approval execution remains disabled until connector-aware authorization is implemented. Training export remains disabled until opt-in consent controls exist.
 
 ## Requirements
 
@@ -93,7 +93,6 @@ Set these variables in the hosting provider's secret/configuration manager:
 - `DATABASE_URL=postgresql://...` — use the database provider's TLS-enabled connection URL when available.
 - `SMART_BETHG_SECRET_KEY` — generate a long random secret; never commit it.
 - `SMART_BETHG_SESSION_HTTPS_ONLY=true`
-- `SMART_BETHG_REGISTRATION_OPEN=false`
 - `SMART_BETHG_STORAGE_ROOT=/absolute/path/to/durable/storage`
 - `SMART_BETHG_ALLOWED_ORIGINS` — comma-separated exact browser origins only if a separate frontend origin needs CORS.
 - Provider API keys as needed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`.
@@ -116,13 +115,13 @@ Never paste the generated value into source code or commit history.
 
 ## Initial administrator
 
-Registration is intentionally closed by default. After setting up the production PostgreSQL database, create the first administrator from a trusted terminal:
+Self-registration is open for testing and is not a public-launch approval. After setting up the production PostgreSQL database, create the first administrator from a trusted terminal:
 
 ```bash
 python scripts/manage_user.py create-admin
 ```
 
-The command prompts for a username and password. Run it only in a trusted environment connected to the intended database. It does not print the password. Keep administrator access limited and enable multi-factor authentication before public launch once the feature is implemented.
+The command prompts for a username and password. Run it only in a trusted environment connected to the intended database. It does not print the password. Keep administrator access limited. Multi-factor authentication, recovery, and account data export/deletion are not yet implemented; complete them before public launch.
 
 ## SQLite to PostgreSQL migration
 
@@ -153,7 +152,7 @@ A passing CI run covers only the tests that ran. It is not a penetration test, l
 
 ## Current limitations and launch gates
 
-See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). Current open items include broader PostgreSQL regression coverage and rehearsed upgrades from prior schemas; shared object storage for multiple instances; a durable isolated job runner; a finished user-facing workspace for the capability APIs; password recovery and account-management flows; account data export/deletion; CSP/CSRF adversarial verification; independent tool-security review; legal review; monitoring/load tests; and backup/restore drills. Server-side session-version checks now invalidate copied signed cookies after logout, with regression tests; confirm the current CI run before merging. The approval execution path, database-backed rate limiting, per-user/global usage budgets, dependency audit, secret scan, and core PostgreSQL smoke tests have implementation and CI coverage, but still require deeper production validation.
+See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). Current open items include broader PostgreSQL regression coverage and rehearsed upgrades from prior schemas; shared object storage for multiple instances; a durable isolated job runner; password recovery and account-management flows; account data export/deletion; connector registry/OAuth, permission scopes, and connector-aware approvals; CSP/CSRF adversarial verification; independent security review; legal review; monitoring/load tests; and backup/restore drills. Server-side session-version checks now invalidate copied signed cookies after logout, with regression tests; confirm the current CI run before merging. Database-backed rate limiting and per-user/global usage budgets have implementation coverage but require deeper production validation. Direct host execution and its approval-resume path have been disabled while the connector-first design is built. Confirm the latest CI results before merging.
 
 ## Security reporting
 

@@ -2,15 +2,12 @@
 
 The controller is the application orchestration boundary used by the API.
 
-Previously this only ever recorded a "queued" task row and stopped -
-nothing downstream ever read or acted on it. Every request sat in the
-tasks table forever, no matter what it asked for. Now it also runs the
-request through the real agent loop (agent/executor.py), which
-classifies intent, builds a (single-step) plan, and either replies via
-chat or executes a real tool through the full
-permission/risk/approval/verification pipeline. The task row is kept
-for history, and its status is updated to reflect what actually
-happened - not left as "queued" forever.
+The controller runs requests through the agent loop (agent/executor.py),
+which classifies intent and builds a plan. Chat, memory, and configured
+research can run through their supported services. Direct host-side tools
+are disabled; tool intents fail closed until a real application connector,
+scoped authorization, and connector-aware approvals are implemented.
+Task history records the actual outcome instead of leaving requests queued.
 """
 
 from services.task_service import TaskService
@@ -25,50 +22,10 @@ class ToolOrchestrator:
     """Registry of controlled tool capabilities exposed by Smart BethG."""
 
     def __init__(self):
-        self._tools = [
-            {
-                "name": "filesystem.read",
-                "description": "Read files inside an assigned workspace.",
-                "permission": "filesystem.read",
-                "risk": "low",
-            },
-            {
-                "name": "filesystem.write",
-                "description": "Write files inside an assigned workspace.",
-                "permission": "filesystem.write",
-                "risk": "medium",
-            },
-            {
-                "name": "terminal.execute",
-                "description": "Execute an explicitly allowed program through the controlled runner.",
-                "permission": "terminal.execute",
-                "risk": "high",
-            },
-            {
-                "name": "git.read",
-                "description": "Read Git repository state.",
-                "permission": "git.read",
-                "risk": "low",
-            },
-            {
-                "name": "git.write",
-                "description": "Perform approved Git write operations.",
-                "permission": "git.write",
-                "risk": "high",
-            },
-            {
-                "name": "network.request",
-                "description": "Make an approved outbound network request.",
-                "permission": "network.request",
-                "risk": "high",
-            },
-            {
-                "name": "docker.run",
-                "description": "Run an approved Docker operation.",
-                "permission": "docker.run",
-                "risk": "high",
-            },
-        ]
+        # Direct server-side tools are intentionally disabled.
+        # Capabilities will be exposed only through explicit application connectors
+        # with scoped permissions and per-action approval.
+        self._tools = []
 
     def list_tools(self):
         return list(self._tools)

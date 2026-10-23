@@ -36,22 +36,17 @@ class TestController(SmartBethGTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertNotEqual(tasks[0]["status"], "queued")
 
-    def test_git_intent_updates_task_status_to_real_outcome(self):
-        workspace_root = resolve_workspace_root(1, "default")
-        subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
-
+    def test_git_intent_is_blocked_until_a_connector_is_available(self):
         result = self.controller.handle_request("git status", user=self.user, workspace="default")
-        self.assertEqual(result["status"], "executed")
+        self.assertEqual(result["status"], "unavailable")
+        self.assertTrue(result["result"]["tool_result"]["connector_required"])
 
         tasks = self.controller.task_service.list_tasks(self.user["id"])
-        self.assertEqual(tasks[0]["status"], "executed")
+        self.assertEqual(tasks[0]["status"], "unavailable")
 
     def test_blank_request_rejected(self):
         with self.assertRaises(ValueError):
             self.controller.handle_request("   ", user=self.user)
 
-    def test_tool_orchestrator_lists_tools(self):
-        tools = self.controller.tool_orchestrator.list_tools()
-        names = {t["name"] for t in tools}
-        self.assertIn("git.read", names)
-        self.assertIn("terminal.execute", names)
+    def test_tool_orchestrator_exposes_no_direct_host_tools(self):
+        self.assertEqual(self.controller.tool_orchestrator.list_tools(), [])

@@ -32,44 +32,22 @@ class TestAgentExecutor(SmartBethGTestCase):
         self.assertEqual(outcome["status"], "no_provider")  # no API key in tests
         self.assertIn("isn't connected", outcome["result"]["reply"])
 
-    def test_git_read_intent_executes_real_tool(self):
-        workspace_root = resolve_workspace_root(1, "default")
-        subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
-
-        req = AgentRequest(text="what's the git status?", user=self.user, workspace="default")
-        outcome = self.executor.run(req)
+    def test_git_read_intent_requires_a_connector(self):
+        outcome = self.executor.run(AgentRequest(text="what's the git status?", user=self.user))
         self.assertEqual(outcome["intent"], "git.read")
-        self.assertEqual(outcome["status"], "executed")
-        self.assertTrue(outcome["result"]["tool_result"]["success"])
-
-    def test_git_read_intent_on_non_repo_reports_failure_honestly(self):
-        resolve_workspace_root(1, "default")
-        req = AgentRequest(text="check repo status", user=self.user, workspace="default")
-        outcome = self.executor.run(req)
+        self.assertEqual(outcome["status"], "unavailable")
+        self.assertTrue(outcome["result"]["tool_result"]["connector_required"])
+    def test_git_read_intent_is_unavailable_without_a_connector(self):
+        outcome = self.executor.run(AgentRequest(text="check repo status", user=self.user))
         self.assertEqual(outcome["intent"], "git.read")
-        self.assertEqual(outcome["status"], "command_failed")
-        self.assertFalse(outcome["result"]["tool_result"]["success"])
-
-    def test_tool_triggered_exchange_is_recorded_in_conversation_history(self):
-        """
-        Before this fix, a tool-triggered request never touched the
-        conversation at all - only plain chat replies were stored. Now
-        both the user's text and a synthesized summary of what actually
-        happened show up in history, same as a normal exchange.
-        """
-        workspace_root = resolve_workspace_root(1, "default")
-        subprocess.run(["git", "init"], cwd=workspace_root, capture_output=True, check=True)
-
-        req = AgentRequest(text="git status", user=self.user, workspace="default")
-        outcome = self.executor.run(req)
+        self.assertEqual(outcome["status"], "unavailable")
+    def test_blocked_tool_exchange_is_recorded_in_conversation_history(self):
+        outcome = self.executor.run(AgentRequest(text="git status", user=self.user))
         conversation_id = outcome["result"]["conversation_id"]
-
         history = self.executor.chat_service.history(self.user["id"], conversation_id)
-        roles = [m["role"] for m in history]
-        self.assertEqual(roles, ["user", "assistant"])
+        self.assertEqual([m["role"] for m in history], ["user", "assistant"])
         self.assertEqual(history[0]["content"], "git status")
-        self.assertIn("Repository status", history[1]["content"])
-
+        self.assertIn("connector", history[1]["content"].lower())
     def test_approval_required_is_summarized_honestly_not_hidden(self):
         req = AgentRequest(text="git status", user=self.user, workspace="default")
         # Force a HIGH-risk-style outcome by using a fake tool_service.
@@ -145,17 +123,11 @@ class TestAgentExecutor(SmartBethGTestCase):
         combined = " ".join(m["content"] for m in fake_provider.last_messages)
         self.assertIn("I prefer Python", combined)
 
-    def test_filesystem_read_with_clear_path_executes_for_real(self):
-        workspace_root = resolve_workspace_root(1, "default")
-        with open(f"{workspace_root}/notes.txt", "w") as f:
-            f.write("hello from a real file")
-
-        req = AgentRequest(text='read the file "notes.txt"', user=self.user, workspace="default")
-        outcome = self.executor.run(req)
+    def test_filesystem_read_requires_a_connector(self):
+        outcome = self.executor.run(AgentRequest(text='read the file "notes.txt"', user=self.user))
         self.assertEqual(outcome["intent"], "filesystem.read")
-        self.assertEqual(outcome["status"], "executed")
-        self.assertIn("hello from a real file", outcome["result"]["reply"])
-
+        self.assertEqual(outcome["status"], "unavailable")
+        self.assertTrue(outcome["result"]["tool_result"]["connector_required"])
     def test_filesystem_read_without_clear_path_asks_instead_of_guessing(self):
         req = AgentRequest(text="please read the file for me", user=self.user)
         outcome = self.executor.run(req)
@@ -290,53 +262,28 @@ class TestCodeIntelligence(SmartBethGTestCase):
             config.DEFAULT_PROVIDER = orig_default
         return outcome, fake_provider
 
-    def test_code_explain_injects_real_file_contents_into_the_ai_call(self):
-        root = resolve_workspace_root(1, "default")
-        with open(f"{root}/calc.py", "w") as f:
-            f.write("def add(a, b):\n    return a + b\n")
-
+    def test_code_explain_waits_for_a_file_connector(self):
         outcome, provider = self._run_with_capturing_provider('explain the file "calc.py"')
         self.assertEqual(outcome["intent"], "code.explain")
-        self.assertEqual(outcome["status"], "completed")
-
-        combined = " ".join(m["content"] for m in provider.last_messages)
-        self.assertIn("def add(a, b)", combined)
-        self.assertIn("Explain what the code above does", combined)
-
-    def test_code_review_injects_contents_and_review_instruction(self):
-        root = resolve_workspace_root(1, "default")
-        with open(f"{root}/risky.py", "w") as f:
-            f.write("def divide(a, b):\n    return a / b\n")
-
+        self.assertEqual(outcome["status"], "unavailable")
+        self.assertFalse(hasattr(provider, "last_messages"))
+    def test_code_review_waits_for_a_file_connector(self):
         outcome, provider = self._run_with_capturing_provider('review the file "risky.py"')
         self.assertEqual(outcome["intent"], "code.review")
-
-        combined = " ".join(m["content"] for m in provider.last_messages)
-        self.assertIn("def divide(a, b)", combined)
-        self.assertIn("Review the code above", combined)
-        # The anti-fabrication instruction must actually be present.
-        self.assertIn("instead of inventing one", combined)
-
-    def test_code_explain_on_missing_file_stops_and_reports_not_fabricates(self):
-        """
-        The read step fails, so the plan must stop there - the AI must
-        never be asked to "explain" a file whose contents were never
-        actually retrieved.
-        """
-        resolve_workspace_root(1, "default")
-        outcome, provider = self._run_with_capturing_provider('explain the file "does_not_exist.py"')
-        self.assertEqual(outcome["status"], "failed")
+        self.assertEqual(outcome["status"], "unavailable")
         self.assertFalse(hasattr(provider, "last_messages"))
-
+    def test_code_explain_waits_for_connector_even_when_file_is_missing(self):
+        outcome, provider = self._run_with_capturing_provider('explain the file "does_not_exist.py"')
+        self.assertEqual(outcome["status"], "unavailable")
+        self.assertFalse(hasattr(provider, "last_messages"))
     def test_code_explain_without_path_asks_instead_of_guessing(self):
         outcome, provider = self._run_with_capturing_provider("explain the file for me")
         self.assertEqual(outcome["status"], "needs_clarification")
         self.assertIn("Which file", outcome["result"]["reply"])
         self.assertFalse(hasattr(provider, "last_messages"))
 
-    def test_code_review_path_traversal_is_still_blocked(self):
-        """The chained read goes through the same workspace-confined tool."""
-        resolve_workspace_root(1, "default")
+    def test_code_review_waits_for_connector_before_accessing_paths(self):
         outcome, provider = self._run_with_capturing_provider('review the file "../../etc/passwd"')
-        self.assertEqual(outcome["status"], "failed")
+        self.assertEqual(outcome["status"], "unavailable")
         self.assertFalse(hasattr(provider, "last_messages"))
+

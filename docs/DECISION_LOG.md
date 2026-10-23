@@ -91,3 +91,8 @@ Commit `022f057765f0b0ed4104f7898eeb0b95903b7a0e` passed 317 unit tests, 9 Postg
 **Reason:** Keeping two runtime database engines requires duplicate initialization, query compatibility behavior, and separate test paths, increasing the risk that local tests pass while production PostgreSQL fails. Using PostgreSQL everywhere makes local behavior closer to deployment and makes schema migration behavior consistent.
 
 **Implementation status:** Code and CI configuration changed on branch `feat/postgresql-only-2026-10-13`. A local PostgreSQL Compose service and PostgreSQL-schema-isolated unit-test setup were added. Tests have deliberately not been run in this correction pass. Do not merge or deploy until CI, PostgreSQL integration, legacy-data migration rehearsal, and backup/restore checks pass. The main branch remains unchanged.
+
+
+## 2026-10-20 — Keep registration open for testing; retire direct host tools
+**Status:** Implemented on branch `fix/open-registration-connector-first`; CI verification pending
+Self-registration must not silently close because an environment variable or invite code is missing. Registration is open for continuous testing, while public launch remains blocked by account/privacy and legal release gates. Direct filesystem, Git, terminal, network, and Docker tool execution on the application host is disabled. Empty Developer, Study, and Automation templates are removed. The next action system must be built around explicit user-connected application connectors with least-privilege scopes and connector-aware approvals. Existing approval records must not resume direct host operations.
