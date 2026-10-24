@@ -10,11 +10,11 @@ A trusted code-defined registry describes connector actions, accepted argument t
 ## Unit 6: connector platform
 
 - Authenticated API endpoints expose a connector catalog, create/list/disconnect owner-scoped installations, and request registered actions.
-- Installations store granted permission names, not raw access tokens. The optional `credential_ref` field is intended for a trusted secret-manager reference and is never returned by the user API.
+- Installations store app-level permission names, not raw access tokens. Encrypted token payloads live in the separate `connector_credentials` table; the internal `credential_ref` locator is never returned by the user API.
 - A trusted adapter registry is the only execution route. The built-in Smart BethG knowledge-search adapter provides a read-only internal connector.
 - GitHub, Google Drive, and Slack have OAuth authorization-code flows, single-use owner-bound state, Google PKCE, encrypted token storage, disconnect cleanup/revocation where supported, and trusted HTTP adapters.
 - Supported actions: GitHub issue listing and issue creation; Google Drive file search; Slack message sending. Write actions still require Unit 7 approval. OAuth provider scopes are GitHub `repo read:user`, Google Drive `drive.readonly`, and Slack `chat:write channels:read`. App-level permissions must also be granted on the installation; OAuth scopes alone do not bypass the policy engine.
-- OAuth secrets are never returned by the installation API. Provider OAuth client credentials are deployment environment variables; token payloads are Fernet-encrypted in PostgreSQL using a key derived from the stable `SMART_BETHG_SECRET_KEY`.
+- OAuth secrets are never returned by the installation API. Provider client credentials are deployment environment variables; token payloads are Fernet-encrypted in PostgreSQL using a key derived from the stable `SMART_BETHG_SECRET_KEY`. OAuth apps need these variables: `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET`, and `SLACK_OAUTH_CLIENT_ID` / `SLACK_OAUTH_CLIENT_SECRET`. Register callbacks at `https://YOUR_PUBLIC_HOST/connectors/oauth/github/callback`, `https://YOUR_PUBLIC_HOST/connectors/oauth/google_drive/callback`, and `https://YOUR_PUBLIC_HOST/connectors/oauth/slack/callback`. Set `SMART_BETHG_PUBLIC_BASE_URL` if reverse-proxy headers cannot reconstruct the public origin.
 - Google Drive access tokens are refreshed when possible. If refresh cannot be performed, the adapter asks the user to reconnect.
 - The catalog distinguishes adapter code availability from whether the deployment has configured provider OAuth credentials. An adapter is not a connected account until the user completes OAuth.
 
