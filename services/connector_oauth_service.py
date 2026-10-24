@@ -111,7 +111,7 @@ class ConnectorOAuthService:
     profile=httpx.get("https://www.googleapis.com/drive/v3/about",params={"fields":"user(emailAddress,displayName)"},
        headers={"Authorization":"Bearer "+access},timeout=15.0)
     profile.raise_for_status(); user=profile.json().get("user",{}); account=user.get("emailAddress","")
-    scopes=token.get("scope","").split()
+    scopes=(token.get("scope") or "").split()
    else:
     account=(token.get("authed_user") or {}).get("id") or (token.get("team") or {}).get("name","")
     scopes=(token.get("scope") or "").split(",")
