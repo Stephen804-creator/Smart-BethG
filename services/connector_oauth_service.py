@@ -102,18 +102,21 @@ class ConnectorOAuthService:
    raise RuntimeError("Provider returned no access token.")
   account=""
   scopes=[]
-  if provider=="github":
-   profile=httpx.get("https://api.github.com/user",headers={"Authorization":"Bearer "+access,"Accept":"application/vnd.github+json"},timeout=15.0)
-   profile.raise_for_status(); account=profile.json().get("login","")
-   scopes=[s for s in profile.headers.get("X-OAuth-Scopes","").split(", ") if s]
-  elif provider=="google_drive":
-   profile=httpx.get("https://www.googleapis.com/drive/v3/about",params={"fields":"user(emailAddress,displayName)"},
-      headers={"Authorization":"Bearer "+access},timeout=15.0)
-   profile.raise_for_status(); user=profile.json().get("user",{}); account=user.get("emailAddress","")
-   scopes=token.get("scope","").split()
-  else:
-   account=(token.get("authed_user") or {}).get("id") or (token.get("team") or {}).get("name","")
-   scopes=(token.get("scope") or "").split(",")
+  try:
+   if provider=="github":
+    profile=httpx.get("https://api.github.com/user",headers={"Authorization":"Bearer "+access,"Accept":"application/vnd.github+json"},timeout=15.0)
+    profile.raise_for_status(); account=profile.json().get("login","")
+    scopes=[s for s in profile.headers.get("X-OAuth-Scopes","").split(", ") if s]
+   elif provider=="google_drive":
+    profile=httpx.get("https://www.googleapis.com/drive/v3/about",params={"fields":"user(emailAddress,displayName)"},
+       headers={"Authorization":"Bearer "+access},timeout=15.0)
+    profile.raise_for_status(); user=profile.json().get("user",{}); account=user.get("emailAddress","")
+    scopes=token.get("scope","").split()
+   else:
+    account=(token.get("authed_user") or {}).get("id") or (token.get("team") or {}).get("name","")
+    scopes=(token.get("scope") or "").split(",")
+  except Exception as exc:
+   raise RuntimeError("Provider account verification failed.") from exc
   credential={"access_token":access}
   if token.get("refresh_token"): credential["refresh_token"]=token["refresh_token"]
   if token.get("token_type"): credential["token_type"]=token["token_type"]
