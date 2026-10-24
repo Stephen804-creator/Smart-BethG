@@ -104,16 +104,17 @@ Content guardrails:
 - No backend/frontend, server, database, infrastructure, configuration, or setup jargon in user-facing onboarding.
 - Do not expose model/provider selection; present **Auto** as the user-facing choice.
 - Describe only current, working capabilities. Label unavailable or planned capabilities as unavailable/planned in internal planning, not as something the user can already do.
-- Keep each step short, plain-language, and skippable; let users reopen the guide later from Help.
-- Do not force users through onboarding before they can start using the product.
+- Keep each step short, plain-language, and skippable; automatically show it on the first visit and let users reopen it later from Help.
+- Closing or skipping remembers the choice, so onboarding does not repeatedly interrupt returning users.
 
 
 ## 2026-10-24 — User-facing onboarding implementation
 
 - Added a six-step, plain-language Smart BethG quick tour: welcome, describe a task, refine the conversation, organize projects/missions, review requested actions, and begin.
 - Added a visual step illustration, progress indicator, step dots, back/next controls, skip, close, Escape support, and focus return.
-- Added both a visible “Take a quick tour” hero action and a persistent Help button so users can reopen the guide.
-- The tour is **not forced**: the dashboard remains usable without opening it. Completion/skip is remembered in local storage when available; Help can reopen it at any time.
+- Added a visible “Take a quick tour” hero action and a persistent Help button so users can reopen the guide.
+- The guide automatically opens on first visit on both the login screen and dashboard. On the login screen, “Start using Smart BethG” closes the guide and focuses sign-in; after successful login, the existing auth flow redirects to `/`. On the dashboard, it continues to chat.
+- Completion/skip is remembered in local storage when available; Help can reopen it at any time.
 - The guide describes only the user journey and does not expose model/provider names or internal implementation details. It does not claim that an action has completed just because it was suggested.
 - Added a separate responsive stylesheet and JavaScript file so this experience remains isolated from the shared application styles.
 - Verification at this point is source-level only. Browser/Jinja rendering, keyboard and mobile behavior, and CI still need to be run before merge.
