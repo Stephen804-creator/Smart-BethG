@@ -126,17 +126,19 @@
 
   async function loadConversationList() {
     if (!conversationListEl) return;
+    const status = document.getElementById("conversationStatus");
     try {
       const res = await fetch("/api/chat/conversations", { credentials: "same-origin" });
       if (res.status === 401) {
         window.location.href = "/login";
         return;
       }
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Conversation history request failed.");
       const data = await res.json();
       renderConversationList(data.conversations || []);
+      if (status) status.textContent = "";
     } catch (err) {
-      // Silent: history is a convenience, chat still works without it.
+      if (status) status.textContent = "Conversation history couldn't load. You can still start a new chat.";
     }
   }
 
@@ -191,8 +193,13 @@
       const catalog = data.catalog || {};
       const providerNames = Object.keys(catalog);
 
+      const providerStatus = document.getElementById("providerStatus");
       if (providerNames.length === 0) {
-        providerSelect.style.display = "none";
+        providerSelect.hidden = true;
+        if (providerStatus) {
+          providerStatus.hidden = false;
+          providerStatus.textContent = "No provider choices are available. Chat will use the server's default routing.";
+        }
         return;
       }
 
@@ -224,7 +231,11 @@
         window.localStorage.setItem(SELECTION_KEY, providerSelect.value);
       });
     } catch (err) {
-      // Silent: chat still works with the backend's Auto selection.
+      const providerStatus = document.getElementById("providerStatus");
+      if (providerStatus) {
+        providerStatus.hidden = false;
+        providerStatus.textContent = "Provider choices couldn't load. You can still try chat using the server's default routing.";
+      }
     }
   }
 
