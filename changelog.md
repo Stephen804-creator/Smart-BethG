@@ -4,6 +4,21 @@ Records what actually changed in the software. Compare against
 `v1_capabilities.md` for current capability status; do not infer status
 from this list alone.
 
+## 2026-10-24 — UI/UX recovery and popover refinement
+
+### Changed
+- Added retry controls for failed conversation history and provider catalog requests.
+- Restored the user's prompt to the composer after failed sends, reducing lost work.
+- Prevented switching conversations or starting a new chat while a response is in progress.
+- Added active conversation semantics and visible disabled-state styling.
+- Moved account and usage popover presentation from inline JavaScript styles into shared responsive CSS.
+- Removed the obsolete notifications-panel handler because the corresponding control is not part of the UI.
+
+### Verification
+- JavaScript syntax checks passed for `chat.js`, `app.js`, `topbar.js`, `login.js`, and `workspace-dashboard.js`.
+- Shared CSS brace balance is valid; the reviewed chat/dashboard/login templates have no duplicate static IDs, aside from a repeated Jinja template ID expression used for rendered mission items.
+- Browser/device testing is still outstanding. GitHub Actions remains failing on this branch, and the available connector did not return job details.
+
 ## 2026-10-24 — UI/UX standardization (branch: uiux/standardize-design-system)
 
 ### Changed
