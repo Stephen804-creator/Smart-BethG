@@ -17,7 +17,8 @@ SERIAL_ID_TABLES = {
     "providers", "conversations", "messages", "provider_calls", "missions",
     "mission_runs", "files", "memory", "research", "evidence", "workflows",
     "artifacts", "social_content", "social_content_versions", "projects", "logs", "connector_installations",
-    "knowledge_chunks",
+    "knowledge_chunks", "workflow_runs", "decision_ledger", "agent_team_runs",
+    "agent_evaluations", "account_lifecycle_requests",
 }
 
 
