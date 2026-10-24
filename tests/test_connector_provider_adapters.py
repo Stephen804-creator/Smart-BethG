@@ -38,6 +38,19 @@ class TestProviderAdapters(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertIn("smart-bethg-idempotency:stable-key",post.call_args.kwargs["json"]["body"])
 
+    def test_github_retry_returns_existing_issue_without_creating_duplicate(self):
+        recent=Mock()
+        recent.json.return_value=[{"number":5,"title":"Issue","body":"<!-- smart-bethg-idempotency:stable-key -->","html_url":"https://github.com/a/b/issues/5"}]
+        recent.raise_for_status.return_value=None
+        with patch("services.connector_provider_adapters.httpx.get",return_value=recent), \
+             patch("services.connector_provider_adapters.httpx.post") as post:
+            result=ProviderAdapter("github",FakeSecrets()).execute(
+                "issues.create",{"repository":"a/b","title":"Issue","body":"Body"},
+                {"installation_id":4,"idempotency_key":"stable-key"})
+        self.assertTrue(result["success"])
+        self.assertTrue(result["data"]["deduplicated"])
+        post.assert_not_called()
+
     def test_slack_api_rejection_is_not_reported_as_success(self):
         response=Mock()
         response.json.return_value={"ok":False,"error":"channel_not_found"}
