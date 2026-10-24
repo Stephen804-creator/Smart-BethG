@@ -512,7 +512,7 @@
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
         body: JSON.stringify({
-          message: text,
+          message: messageForApi,
           conversation_id: conversationId,
           selection: providerSelect && providerSelect.value ? providerSelect.value : "auto",
         }),
