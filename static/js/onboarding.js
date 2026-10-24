@@ -64,6 +64,7 @@
     dots.appendChild(dot);
   });
   $("helpButton")?.addEventListener("click", openGuide);
+  document.querySelectorAll("[data-open-onboarding]").forEach((button) => button.addEventListener("click", openGuide));
   back.addEventListener("click", () => { if (index > 0) { index--; render(); } });
   next.addEventListener("click", () => {
     if (index < steps.length - 1) { index++; render(); return; }
@@ -74,10 +75,5 @@
   close.addEventListener("click", () => finish(false));
   dialog.addEventListener("click", (event) => { if (event.target === dialog) finish(false); });
   dialog.addEventListener("cancel", () => { /* Escape closes the guide without blocking the app. */ });
-  try {
-    if (!window.localStorage.getItem(storageKey)) {
-      window.setTimeout(openGuide, 350);
-    }
-  } catch (_) { /* If storage is blocked, keep the guide available through Help without forcing it. */ }
   render();
 })();
