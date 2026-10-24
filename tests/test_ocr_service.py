@@ -19,7 +19,7 @@ class TestOCRBounds(unittest.TestCase):
     def test_rejects_expired_ocr_time_budget(self):
         image = FakeImage((10, 10))
         with patch("services.ocr_service.OCR_TIMEOUT_SECONDS", 1), patch(
-            "services.ocr_service.time.monotonic", side_effect=[10, 12]
+            "services.ocr_service.time.monotonic", return_value=12
         ):
             with self.assertRaises(OCRLimitExceeded):
                 _ocr_image(image, 10)
