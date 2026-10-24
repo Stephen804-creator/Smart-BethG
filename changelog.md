@@ -1,3 +1,18 @@
+## 2026-10-24 — Units 10–15 initial foundations
+
+### Added
+- Durable workflow run records, atomic workflow queue dispatch, worker registration, and run-history endpoints.
+- Owner-scoped specialist assignment planning, decision evidence ledger, deterministic evaluation records, model-route preview, JSON data export, and lifecycle request records.
+- PostgreSQL migration for workflow runs, decision records, specialist plans, evaluations, and lifecycle requests.
+
+### Important limits
+- Workflow execution currently dispatches mission steps only; it does not wait for child mission completion.
+- Specialist roles are plans, not independently running agents.
+- Evaluations are deterministic checks, not an LLM judge or factuality guarantee.
+- Model routing is a preview only; it does not call a provider or reserve/reconcile usage budgets.
+- Account deletion remains a pending lifecycle request and is not executed automatically.
+- Tests and CI have not yet been run for this commit.
+
 # Smart BethG — Changelog
 
 ## 2026-10-24 — Units 5–9 connector and execution foundation
