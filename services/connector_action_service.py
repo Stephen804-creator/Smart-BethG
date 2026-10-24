@@ -1,4 +1,5 @@
 """Policy-governed connector action dispatch."""
+import uuid
 from services.connector_service import ConnectorInstallationService, ConnectorRegistry
 from services.policy_engine import PolicyEngine
 from services.approval_service import ApprovalService
@@ -21,14 +22,16 @@ class ConnectorActionService:
         if decision.decision=="deny":
             self._audit(user_id,capability.permission,"denied",decision.reason)
             return {"status":"denied","detail":decision.reason}
+        action_context = dict(context or {})
+        action_context.setdefault("idempotency_key", f"connector-action:{installation_id}:{uuid.uuid4().hex}")
         payload={"connector_key":installation["connector_key"],"installation_id":installation_id,
-                 "action":action,"arguments":arguments,"context":context or {}}
+                 "action":action,"arguments":arguments,"context":action_context}
         if decision.requires_approval:
             approval=self.approvals.create(user_id,capability.permission,
                                            f"connector:{installation['connector_key']}:{action}",payload=payload)
             self._audit(user_id,capability.permission,"approval_required",decision.reason)
             return {"status":"approval_required","approval":approval}
-        result=self._execute(user_id,installation,capability,arguments,context or {})
+        result=self._execute(user_id,installation,capability,arguments,action_context)
         return {"status":"completed" if result.get("success") else "unavailable","result":result}
 
     def execute_approved(self,user_id,approval_id):
