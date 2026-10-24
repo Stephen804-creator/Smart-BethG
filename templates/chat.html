@@ -159,17 +159,7 @@
 
         <section class="page-content">
 
-            <div class="hero">
-
-                <h1>AI Assistant</h1>
-
-                <p>
-                    Work with Smart BethG through natural language.
-                </p>
-
-            </div>
-
-            <section class="assistant">
+<section class="assistant">
 
                 <div class="assistant-header">
                     <div>
@@ -205,13 +195,16 @@
                     >
                     </select>
 
-                    <input
-                        type="text"
+                    <textarea
                         id="prompt"
-                        placeholder="Message Smart BethG…" maxlength="12000"
+                        class="chat-prompt"
+                        placeholder="Message Smart BethG…"
+                        maxlength="12000"
+                        rows="1"
                         autocomplete="off"
                         aria-label="Message Smart BethG"
-                    >
+                        aria-describedby="promptHelp"
+                    ></textarea>
 
                     <button
                         id="sendMessage"
@@ -222,10 +215,11 @@
                         Send
                     </button>
 
+                    <p id="promptHelp" class="composer-help">Enter to send · Shift + Enter for a new line</p>
+
                 </div>
 
             </section>
-
         </section>
 
         <footer class="footer">
