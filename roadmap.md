@@ -124,3 +124,31 @@ not overstated. A roadmap entry is not evidence that a feature is implemented.
 - [ ] Mission planning from natural language, compensation/saga recovery, and end-to-end external provider tests remain future work.
 
 Status is implementation status, not a claim that live external provider integrations or multi-instance production readiness have been verified.
+
+
+## Numbered implementation status — Units 10–15 (2026-10-24, initial foundations)
+
+### Unit 10 — Reusable workflow execution
+- [x] Durable workflow-run records, atomic queue dispatch for validated workflows, worker dispatch, and execution-history APIs.
+- [x] Mission-dispatch steps execute through the existing mission queue.
+- [ ] Research/artifact/social-content adapters, child-mission completion aggregation, cross-workflow approval pause/resume, crash-safe step idempotency, conditions, and compensation remain open.
+
+### Unit 11 — Specialist coordination
+- [x] Owner-scoped specialist assignment planning and persistence.
+- [ ] Independent model execution, specialist messaging, arbitration, and shared evidence coordination remain disabled.
+
+### Unit 12 — Decision ledger and execution evidence
+- [x] Owner-scoped decision records with bounded evidence and optional mission/workflow links.
+- [ ] Automatic instrumentation of every execution decision and immutable retention policy remain open.
+
+### Unit 13 — Agent evaluation
+- [x] Versioned deterministic evaluation rubric and persisted records.
+- [ ] Labelled benchmark datasets, regression suites, calibrated reliability scoring, and factuality evaluation remain open.
+
+### Unit 14 — Cost-aware model routing
+- [x] Authenticated route-preview endpoint using configured providers and catalog tier/pricing estimates.
+- [ ] Live invocation integration, atomic budget reservation/reconciliation, latency feedback, and catalog verification remain open. Preview makes no provider call.
+
+### Unit 15 — Account recovery and data lifecycle
+- [x] Owner-scoped JSON export and auditable lifecycle request records.
+- [ ] Verified recovery delivery, deletion confirmation/execution, retention policy, export completeness review, and legal/privacy approval remain open. Deletion is not automatic.
