@@ -11,8 +11,12 @@ A trusted code-defined registry describes connector actions, accepted argument t
 
 - Authenticated API endpoints expose a connector catalog, create/list/disconnect owner-scoped installations, and request registered actions.
 - Installations store granted permission names, not raw access tokens. The optional `credential_ref` field is intended for a trusted secret-manager reference and is never returned by the user API.
-- A trusted adapter registry is the only execution route. A small built-in Smart BethG knowledge-search adapter provides a real read-only vertical slice.
-- GitHub, Google Drive, and Slack are catalog contracts only. They have no live OAuth/token lifecycle or trusted runtime adapter in this branch, so they cannot execute actions yet. A catalog entry is not a connected integration.
+- A trusted adapter registry is the only execution route. The built-in Smart BethG knowledge-search adapter provides a read-only internal connector.
+- GitHub, Google Drive, and Slack have OAuth authorization-code flows, single-use owner-bound state, Google PKCE, encrypted token storage, disconnect cleanup/revocation where supported, and trusted HTTP adapters.
+- Supported actions: GitHub issue listing and issue creation; Google Drive file search; Slack message sending. Write actions still require Unit 7 approval.
+- OAuth secrets are never returned by the installation API. Provider OAuth client credentials are deployment environment variables; token payloads are Fernet-encrypted in PostgreSQL using a key derived from the stable `SMART_BETHG_SECRET_KEY`.
+- Google Drive access tokens are refreshed when possible. If refresh cannot be performed, the adapter asks the user to reconnect.
+- The catalog distinguishes adapter code availability from whether the deployment has configured provider OAuth credentials. An adapter is not a connected account until the user completes OAuth.
 
 ## Unit 7: policy and approvals
 
@@ -40,4 +44,4 @@ A trusted code-defined registry describes connector actions, accepted argument t
 
 ## Verification and release gates
 
-CI must pass the full unit suite, PostgreSQL integration job, dependency audit, and secret scan. Before production use, add multi-worker lease-expiry/replay tests, end-to-end approval/resume tests, provider-specific OAuth/scope checks, secret-manager integration, and live connector adapter tests. Do not enable horizontal scaling until the worker and shared-storage recovery tests pass.
+CI must pass the full unit suite, PostgreSQL integration job, dependency audit, and secret scan. Before production use, add multi-worker lease-expiry/replay tests, end-to-end approval/resume tests, external provider sandbox tests, and an operator-managed KMS/secret-manager integration if required by the deployment threat model. Provider OAuth apps must be configured separately, and their callback URLs must exactly match the deployed public URL. Set `SMART_BETHG_PUBLIC_BASE_URL` to the public origin when reverse-proxy headers do not reliably reconstruct it. Set a stable `SMART_BETHG_SECRET_KEY` before connecting accounts; rotating it requires re-encrypting stored connector credentials. Do not enable horizontal scaling until the worker and shared-storage recovery tests pass.
