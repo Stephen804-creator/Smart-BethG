@@ -2529,3 +2529,86 @@ textarea.form-control { min-height: 96px; resize: vertical; }
     color: var(--text-muted);
     font-size: 11px;
 }
+
+
+/* First-chat welcome and prompt starter cards */
+.chat-welcome {
+    width: min(100%, 900px);
+    margin: auto;
+    padding: clamp(20px, 4vw, 44px) 0;
+}
+.chat-welcome > .eyebrow {
+    margin-bottom: 10px;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: .1em;
+}
+.chat-welcome h2 {
+    max-width: 700px;
+    margin: 0;
+    color: var(--text-primary);
+    font-size: clamp(1.8rem, 4vw, 2.7rem);
+    line-height: 1.12;
+    letter-spacing: -.035em;
+}
+.chat-welcome-description {
+    max-width: 640px;
+    margin: 14px 0 26px;
+    color: var(--text-secondary);
+    font-size: var(--text-md);
+    line-height: 1.7;
+}
+.chat-suggestions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.chat-suggestion {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: start;
+    column-gap: 12px;
+    row-gap: 5px;
+    min-height: 98px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+.chat-suggestion:hover {
+    border-color: var(--accent);
+    background: var(--surface-hover);
+    transform: translateY(-1px);
+}
+.chat-suggestion:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+.chat-suggestion > i {
+    grid-row: 1 / span 2;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+.chat-suggestion strong {
+    font-size: var(--text-sm);
+}
+.chat-suggestion span {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+}
+@media (max-width: 560px) {
+    .chat-welcome { padding: 20px 0; }
+    .chat-suggestions { grid-template-columns: 1fr; gap: 9px; }
+    .chat-suggestion { min-height: 82px; padding: 13px; }
+}
