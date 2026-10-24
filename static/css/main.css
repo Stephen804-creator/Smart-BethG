@@ -2475,3 +2475,57 @@ textarea.form-control { min-height: 96px; resize: vertical; }
         width: 100%;
     }
 }
+
+
+/* Account menu quick-access grouping */
+.sbg-panel-section {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+.sbg-panel-section-title {
+    margin: 0 0 8px;
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.sbg-panel-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 10px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-primary);
+    text-align: left;
+}
+.sbg-panel-action:hover,
+.sbg-panel-action:focus-visible {
+    border-color: var(--border);
+    background: var(--surface-hover);
+}
+.sbg-panel-action > i:first-child {
+    width: 20px;
+    color: var(--accent);
+    text-align: center;
+}
+.sbg-panel-action > span {
+    display: grid;
+    flex: 1;
+    gap: 2px;
+}
+.sbg-panel-action strong {
+    font-size: var(--text-sm);
+}
+.sbg-panel-action small {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+}
+.sbg-panel-action-chevron {
+    color: var(--text-muted);
+    font-size: 11px;
+}
