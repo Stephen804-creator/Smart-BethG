@@ -750,3 +750,12 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Changed unit-test setup to use isolated PostgreSQL schemas and updated the CI unit-test job to provide PostgreSQL.
 - Removed the SQLite-specific rate-limiter transaction branch; all environments use PostgreSQL advisory locking.
 - **Verification pending:** tests and CI were not run as part of this code-correction pass. Do not treat the branch as validated until PostgreSQL CI and the legacy migration rehearsal pass.
+
+
+## 2026-10-24 — Dashboard information architecture
+
+- Grouped workspace and exploration destinations in expandable sidebar navigation.
+- Reduced dashboard clutter by placing project management, capabilities, active missions, artifacts, and system status in collapsible sections.
+- Added prominent conversation/workspace entry points and removed the duplicate bottom chat call-to-action.
+- Kept current backend behavior intact; first-run onboarding and dedicated feature views remain follow-up work.
+- **Verification pending:** run template checks, frontend tests, CI, and mobile/keyboard/browser testing before marking this UI pass complete.
