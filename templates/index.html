@@ -123,18 +123,41 @@
 
                     <li>
                         <a href="{{ url_for('main.chat_page') }}">
-                            <i
-                                class="fa-solid fa-comments"
-                                aria-hidden="true"
-                            ></i>
-
+                            <i class="fa-solid fa-comments" aria-hidden="true"></i>
                             <span>Chat</span>
                         </a>
                     </li>
 
-                    <!-- Developer, Study, Social, and Automation actions
-                         will be provided through explicit application connectors,
-                         not separate empty workspaces. -->
+                    <li class="sidebar-nav-dropdown">
+                        <details>
+                            <summary>
+                                <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                                <span>Workspace</span>
+                                <i class="fa-solid fa-chevron-down nav-chevron" aria-hidden="true"></i>
+                            </summary>
+                            <ul>
+                                <li><a href="#workspaceDisclosure"><i class="fa-solid fa-folder-open" aria-hidden="true"></i><span>Projects &amp; missions</span></a></li>
+                                <li><a href="#activeMissionsDisclosure"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Active missions</span></a></li>
+                                <li><a href="#artifactsDisclosure"><i class="fa-solid fa-file-lines" aria-hidden="true"></i><span>Artifacts</span></a></li>
+                            </ul>
+                        </details>
+                    </li>
+
+                    <li class="sidebar-nav-dropdown">
+                        <details>
+                            <summary>
+                                <i class="fa-solid fa-compass" aria-hidden="true"></i>
+                                <span>Explore</span>
+                                <i class="fa-solid fa-chevron-down nav-chevron" aria-hidden="true"></i>
+                            </summary>
+                            <ul>
+                                <li><a href="#capabilitiesDisclosure"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span>Capabilities</span></a></li>
+                                <li><a href="#systemStatusDisclosure"><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i><span>System status</span></a></li>
+                            </ul>
+                        </details>
+                    </li>
+
+                    <!-- Add future destinations only when their screens and actions are implemented. -->
 
                 </ul>
 
@@ -235,6 +258,16 @@
                             Work with your assistant across development,
                             learning, automation and other supported tasks.
                         </p>
+                        <div class="hero-actions">
+                            <a href="{{ url_for('main.chat_page') }}" class="btn btn-primary">
+                                <i class="fa-solid fa-message" aria-hidden="true"></i>
+                                <span>Start a conversation</span>
+                            </a>
+                            <a href="#workspaceDisclosure" class="btn btn-secondary">
+                                <i class="fa-solid fa-folder-plus" aria-hidden="true"></i>
+                                <span>Manage workspace</span>
+                            </a>
+                        </div>
 
                     </div>
 
@@ -242,6 +275,12 @@
 
 
                 <!-- PROJECTS AND MISSION TRACKING -->
+                <details class="dashboard-disclosure" id="workspaceDisclosure">
+                    <summary>
+                        <span class="disclosure-title"><i class="fa-solid fa-folder-open" aria-hidden="true"></i><span>Projects &amp; missions</span></span>
+                        <span class="disclosure-description">Create projects, record objectives, and organize your work.</span>
+                        <i class="fa-solid fa-chevron-down disclosure-chevron" aria-hidden="true"></i>
+                    </summary>
                 <section class="workspace-management" aria-labelledby="workspaceManagementTitle">
                     <div class="section-heading">
                         <div>
@@ -308,6 +347,7 @@
                     </div>
                     <p id="workspaceDashboardStatus" class="form-help" role="status"></p>
                 </section>
+                </details>
 
                 <!-- QUICK ACTIONS -->
                 {% if quick_actions %}
@@ -365,6 +405,12 @@
                 <!-- CAPABILITIES -->
                 {% if capabilities %}
 
+                <details class="dashboard-disclosure" id="capabilitiesDisclosure">
+                    <summary>
+                        <span class="disclosure-title"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span>Capabilities</span></span>
+                        <span class="disclosure-description">Browse the tools and systems currently available.</span>
+                        <i class="fa-solid fa-chevron-down disclosure-chevron" aria-hidden="true"></i>
+                    </summary>
                 <section
                     class="capabilities"
                     aria-labelledby="capabilitiesTitle"
@@ -446,6 +492,7 @@
                     </div>
 
                 </section>
+                </details>
 
                 {% endif %}
 
@@ -453,6 +500,12 @@
                 <!-- MISSIONS -->
                 {% if missions %}
 
+                <details class="dashboard-disclosure" id="activeMissionsDisclosure">
+                    <summary>
+                        <span class="disclosure-title"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Active missions</span></span>
+                        <span class="disclosure-description">Review work and available mission actions.</span>
+                        <i class="fa-solid fa-chevron-down disclosure-chevron" aria-hidden="true"></i>
+                    </summary>
                 <section
                     class="work-section"
                     aria-labelledby="missionsTitle"
@@ -567,6 +620,7 @@
                     </div>
 
                 </section>
+                </details>
 
                 {% endif %}
 
@@ -574,6 +628,12 @@
                 <!-- ARTIFACTS -->
                 {% if artifacts %}
 
+                <details class="dashboard-disclosure" id="artifactsDisclosure">
+                    <summary>
+                        <span class="disclosure-title"><i class="fa-solid fa-file-lines" aria-hidden="true"></i><span>Artifacts</span></span>
+                        <span class="disclosure-description">Open or download generated work when available.</span>
+                        <i class="fa-solid fa-chevron-down disclosure-chevron" aria-hidden="true"></i>
+                    </summary>
                 <section
                     class="artifacts-section"
                     aria-labelledby="artifactsTitle"
@@ -659,11 +719,18 @@
                     </div>
 
                 </section>
+                </details>
 
                 {% endif %}
 
 
                 <!-- SYSTEM STATUS -->
+                <details class="dashboard-disclosure" id="systemStatusDisclosure">
+                    <summary>
+                        <span class="disclosure-title"><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i><span>System status</span></span>
+                        <span class="disclosure-description">Check reported infrastructure health.</span>
+                        <i class="fa-solid fa-chevron-down disclosure-chevron" aria-hidden="true"></i>
+                    </summary>
                 <section
                     class="system-section"
                     aria-labelledby="systemStatusTitle"
@@ -717,6 +784,7 @@
                     </div>
 
                 </section>
+                </details>
 
 
                 <!-- ERROR STATE -->
@@ -791,35 +859,7 @@
                 {% endif %}
 
 
-                <!-- =========================
-                     GO TO CHAT
-                ========================== -->
-                <section
-                    class="assistant"
-                    aria-labelledby="assistantTitle"
-                    style="text-align:center;"
-                >
-
-                    <i
-                        class="fa-solid fa-comments"
-                        aria-hidden="true"
-                        style="font-size:28px; color:var(--accent); margin-bottom:12px; display:block;"
-                    ></i>
-
-                    <h2 id="assistantTitle" style="margin:0 0 6px;">
-                        Ready when you are
-                    </h2>
-
-                    <p style="color:var(--text-secondary); margin:0 0 18px;">
-                        Everything happens in one place - open the chat to get started.
-                    </p>
-
-                    <a href="{{ url_for('main.chat_page') }}" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none;">
-                        <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
-                        <span>Open Chat</span>
-                    </a>
-
-                </section>
+                <!-- The primary chat action is in the hero above. -->
 
             </div>
 
