@@ -44,3 +44,6 @@ requests>=2.32,<3.0
 
 # PostgreSQL database driver (required for local development, tests, and production)
 psycopg[binary]>=3.2,<4.0
+
+# Optional S3-compatible shared object storage (AWS S3 or compatible services)
+boto3>=1.35,<2.0
