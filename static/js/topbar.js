@@ -176,19 +176,44 @@
         const helpAction = document.createElement("button");
         helpAction.type = "button";
         helpAction.className = "sbg-panel-action";
-        helpAction.textContent = "Getting started — open the product tour";
-        helpAction.addEventListener("click", () => {
-          closeAllPanels();
-          document.getElementById("helpButton")?.click();
-        });
-        const usageAction = document.createElement("button");
-        usageAction.type = "button";
-        usageAction.className = "sbg-panel-action";
-        usageAction.textContent = "Usage overview — review current usage";
-        usageAction.addEventListener("click", () => {
-          closeAllPanels();
-          document.getElementById("usageButton")?.click();
-        });
+        const makePanelAction = (iconClass, headingText, detailText, onClick) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "sbg-panel-action";
+          const icon = document.createElement("i");
+          icon.className = iconClass;
+          icon.setAttribute("aria-hidden", "true");
+          const copy = document.createElement("span");
+          const heading = document.createElement("strong");
+          heading.textContent = headingText;
+          const detail = document.createElement("small");
+          detail.textContent = detailText;
+          copy.append(heading, detail);
+          const chevron = document.createElement("i");
+          chevron.className = "fa-solid fa-chevron-right sbg-panel-action-chevron";
+          chevron.setAttribute("aria-hidden", "true");
+          button.append(icon, copy, chevron);
+          button.addEventListener("click", onClick);
+          return button;
+        };
+        const helpAction = makePanelAction(
+          "fa-solid fa-circle-question",
+          "Getting started",
+          "Open the product tour",
+          () => {
+            closeAllPanels();
+            document.getElementById("helpButton")?.click();
+          }
+        );
+        const usageAction = makePanelAction(
+          "fa-solid fa-chart-simple",
+          "Usage overview",
+          "Review your current usage",
+          () => {
+            closeAllPanels();
+            document.getElementById("usageButton")?.click();
+          }
+        );
         section.append(helpAction, usageAction);
         body.replaceChildren(line, section);
       } catch (err) {
