@@ -9,7 +9,7 @@ Status meanings:
 
 ## 17-unit assessment
 
-1. **Design system and branding — Partial.** Shared tokens and reusable component styles exist in `static/css/main.css`; branding is consistent. Remaining: remove more inline `style.cssText` from `static/js/chat.js` and `static/js/topbar.js`, check contrast and typography at real device sizes, and consolidate duplicate rules.
+1. **Design system and branding — Partial.** Shared tokens and reusable component styles exist in `static/css/main.css`; branding is consistent. Remaining: remove inline `style.cssText` from `static/js/topbar.js`, check contrast and typography at real device sizes, and consolidate duplicate rules.
 
 2. **Layout and navigation — Partial.** Home/chat navigation, active-page semantics, and responsive sidebar logic exist. Only a small set of top-level destinations is exposed; verify mobile drawer close behavior, keyboard operation, and focus return.
 
@@ -21,7 +21,7 @@ Status meanings:
 
 6. **Conversation management — Partial.** New conversation and history reopening exist. Rename, delete with confirmation, conversation search, and clearer active-history styling are absent or unverified.
 
-7. **Providers and model selection — Partial.** Auto and catalog-driven provider/model selection are implemented. Provider-loading errors are silent and an empty catalog hides the selector; explain that Auto will be used and expose a recoverable status rather than failing silently. Never expose API keys.
+7. **Providers and model selection — Partial.** Auto and catalog-driven provider/model selection are implemented. Provider-loading failures and an empty provider catalog now expose a status message; verify the wording matches actual backend fallback behavior and offer retry if useful. Never expose API keys.
 
 8. **Forms and input — Partial.** Labels, browser validation, submit disabling, and status messages exist in several flows. Audit all forms for consistent inline errors, retained user input after failures, disabled/loading states, and keyboard/mobile usability.
 
@@ -31,7 +31,7 @@ Status meanings:
 
 11. **Notifications and feedback — Partial.** Usage/account panels and inline operation feedback exist. A standalone notifications control had no real notification feed, so it was removed rather than left as a dead control. A persistent notification centre is still missing.
 
-12. **Loading, empty, error, recovery — Partial.** Some lists show loading/empty states and network errors. Conversation history/provider-loading failures can be silent; improve actionable errors, retry controls, and distinguish “no data” from “could not load data.”
+12. **Loading, empty, error, recovery — Partial.** Some lists show loading/empty states and network errors. Conversation history/provider-loading failures now have status messages. Add retry controls and continue distinguishing “no data” from “could not load data.”
 
 13. **Responsive design — Needs runtime verification.** Responsive rules exist and the composer now adapts to narrow screens. Test at narrow Android widths, tablet, laptop, zoomed text, landscape, and with the keyboard open. Check horizontal overflow, clipped popovers, sidebar overlays, and touch target size.
 
@@ -50,6 +50,8 @@ Status meanings:
 - Changed the topbar account action's visible/accessibility meaning from Settings to Account.
 - Removed the duplicated chat-page hero heading.
 - Replaced the single-line chat input with a multiline textarea and added a keyboard hint.
+- Replaced chat history/approval inline styles with reusable classes; added active-history styling.
+- Added accessible status messages for failed history/provider loading and retained usable chat behavior.
 - Added responsive composer styling and retained the existing provider selector and send behavior.
 - Kept all work on `uiux/standardize-design-system`; `main` was not modified.
 
