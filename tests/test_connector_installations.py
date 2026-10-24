@@ -28,5 +28,9 @@ class TestConnectorInstallations(SmartBethGTestCase):
 
     def test_catalog_does_not_claim_external_adapters_are_live(self):
         catalog={item["key"]:item for item in ConnectorRegistry().catalog()}
-        self.assertFalse(catalog["github"]["adapter_available"])
+        self.assertTrue(catalog["github"]["adapter_available"])
+        self.assertTrue(catalog["google_drive"]["adapter_available"])
+        self.assertTrue(catalog["slack"]["adapter_available"])
         self.assertTrue(catalog["smartbethg"]["adapter_available"])
+        # Adapter code exists, but external OAuth is not assumed configured in tests.
+        self.assertFalse(catalog["github"]["oauth_configured"])
