@@ -74,7 +74,7 @@
       document.getElementById("username")?.focus();
       return;
     }
-    window.location.href = "{{ url_for('main.chat_page') }}";
+    window.location.href = "/chat";
   });
   skip.addEventListener("click", () => finish(true));
   close.addEventListener("click", () => finish(true));
