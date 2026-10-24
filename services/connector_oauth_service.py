@@ -116,8 +116,8 @@ class ConnectorOAuthService:
   self.secrets.put(row["installation_id"],credential,account,scopes,expires_at)
   conn=get_connection()
   try:
-   conn.execute("UPDATE connector_installations SET status='connected',credential_ref=?,granted_permissions_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
-    ("encrypted-db:"+str(row["installation_id"]),json.dumps(sorted(set(scopes))),row["installation_id"],row["user_id"]))
+   conn.execute("UPDATE connector_installations SET status='connected',credential_ref=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
+    ("encrypted-db:"+str(row["installation_id"]),row["installation_id"],row["user_id"]))
    conn.commit()
   finally: conn.close()
   return {"connector_key":provider,"installation_id":row["installation_id"],"connected":True,"account":account or None,"scopes":scopes}
