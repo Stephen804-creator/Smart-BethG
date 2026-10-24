@@ -1943,7 +1943,7 @@ textarea.form-control { min-height: 96px; resize: vertical; }
 .assistant-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .assistant-header h2 { margin: 0; }
 .assistant-context-label { padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius-pill); color: var(--text-secondary); font-size: var(--text-xs); white-space: nowrap; }
-.approval-panel { margin: 12px 0; padding: 16px; border: 1px solid rgba(245, 158, 11, .35); border-radius: var(--radius-lg); background: var(--warning-soft); }
+.approval-panel { display: none; margin: 12px 0; padding: 16px; border: 1px solid rgba(245, 158, 11, .35); border-radius: var(--radius-lg); background: var(--warning-soft); }
 .approval-panel h3 { margin: 0 0 8px; }
 .approval-description { margin: 0 0 12px; color: var(--text-secondary); font-size: var(--text-sm); }
 .approval-list { display: flex; flex-direction: column; gap: 10px; }
@@ -1991,3 +1991,17 @@ textarea.form-control { min-height: 96px; resize: vertical; }
     .auth-card { padding: 22px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+/* Mobile navigation uses an explicit open state; the sidebar is closed by default. */
+@media (max-width: 640px) {
+    .sidebar { transform: translateX(-100%); }
+    .app.mobile-nav-open .sidebar { transform: translateX(0); }
+    .app.mobile-nav-open::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: rgba(2, 6, 14, .62);
+    }
+    .app.mobile-nav-open .sidebar { z-index: 30; }
+}
