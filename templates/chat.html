@@ -187,6 +187,38 @@
                         <p id="providerStatus" class="form-help provider-status" role="status" hidden></p>
                     </details>
 
+                    <div class="chat-tools-row" aria-label="Message tools">
+                        <div class="chat-tools-menu-wrap">
+                            <button type="button" id="chatToolsButton" class="chat-tool-button" aria-expanded="false" aria-controls="chatToolsMenu">
+                                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                                <span>Add to chat</span>
+                            </button>
+                            <div id="chatToolsMenu" class="chat-tools-menu" hidden>
+                                <button type="button" class="chat-tool-option" id="chooseChatFiles">
+                                    <i class="fa-solid fa-paperclip" aria-hidden="true"></i><span><strong>Files</strong><small>Attach supported text files</small></span>
+                                </button>
+                                <button type="button" class="chat-tool-option" id="chooseChatImages">
+                                    <i class="fa-regular fa-image" aria-hidden="true"></i><span><strong>Photos</strong><small>Select images for reference</small></span>
+                                </button>
+                                <div class="chat-tools-divider"></div>
+                                <label class="chat-tool-toggle">
+                                    <span><i class="fa-solid fa-globe" aria-hidden="true"></i><span><strong>Web search</strong><small>Ask Smart BethG to research the web</small></span></span>
+                                    <input id="webSearchToggle" type="checkbox" aria-label="Enable web search for this message">
+                                </label>
+                            </div>
+                            <input id="chatFileInput" type="file" accept=".txt,.md,.csv,.json,.log,.py,.js,.html,.css,.yaml,.yml,.xml,.pdf" multiple hidden>
+                            <input id="chatImageInput" type="file" accept="image/*" multiple hidden>
+                        </div>
+                        <label class="chat-project-picker">
+                            <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
+                            <span class="sr-only">Add this conversation to a project</span>
+                            <select id="chatProjectSelect" aria-label="Project for this conversation">
+                                <option value="">No project</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="chatAttachmentList" class="chat-attachment-list" aria-live="polite"></div>
+
                     <textarea
                         id="prompt"
                         class="chat-prompt"
