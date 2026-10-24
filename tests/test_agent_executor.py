@@ -157,7 +157,8 @@ class TestAgentExecutor(SmartBethGTestCase):
         req = AgentRequest(text="research quantum computing", user=self.user)
         outcome = self.executor.run(req)
         self.assertEqual(outcome["status"], "search_failed")
-        self.assertIn("couldn't search", outcome["result"]["reply"])
+        self.assertIn("web search", outcome["result"]["reply"].lower())
+        self.assertIn("failed", outcome["result"]["reply"].lower())
 
     def test_research_with_no_results_is_honest(self):
         class EmptySearchService:

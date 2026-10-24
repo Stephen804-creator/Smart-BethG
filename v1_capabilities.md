@@ -426,3 +426,23 @@ matching review - treat it as a snapshot, not a guarantee.
 | File management | IMPLEMENTED | Real upload/list/download/delete/search against the `files` table. Text extraction for plain-text files and PDFs (via `pypdf`); AI summarization when a provider is configured. |
 | Memory (working/session/user/project/retrieval/governance) | IMPLEMENTED (non-embedding retrieval) | Three scopes: conversation (collapses working+session), user, project. Retrieval returns everything in scope (capped), not semantic search - documented as not scaling past a handful of entries per user. Governance is real: list/delete/delete-all via `/api/memory`. Actually injected into every chat request, not just stored. |
 | UI/UX direction | PARTIALLY IMPLEMENTED | Chat and home dashboard are real, responsive, and reachable. Study/Developer/Social/Automation are intentionally unlinked because their templates are empty - see Section 18 rule against exposing categories with no capability behind them. |
+
+## 26. Review update — 2026-10-24 (Units 2–4)
+
+This dated review supersedes earlier status-table notes for the storage, memory,
+and uploaded-knowledge areas above. It records the current branch state and
+does not imply that PR #12 has merged.
+
+| Area | Current status | Boundaries |
+|---|---|---|
+| Upload and artifact storage | PARTIALLY IMPLEMENTED | Both use owner-scoped local/S3-compatible adapters. A dry-run-first migration utility now migrates database-referenced uploads/artifacts, verifies copied bytes with SHA-256, checks concurrent row changes, and retains source files. |
+| Multi-instance storage | NOT COMPLETE | Other live filesystem-backed workspace/research/social/mission/workflow paths still need inventory and migration. Cross-instance tests, backup/restore, orphan cleanup, and production migration rehearsal remain required. |
+| Memory metadata and context | IMPLEMENTED FOUNDATION | Typed memory, confidence, provenance, metadata, expiry, scope isolation, and bounded context assembly are implemented in the current PR branch. |
+| Memory conflict handling | PARTIALLY IMPLEMENTED | Conservative polarity/numeric disagreement signals flag potential conflicts and preserve both entries. They do not determine which memory is correct. |
+| Semantic memory retrieval | PLANNED | Provider-backed embedding retrieval with budget controls and model-versioning is not implemented yet. |
+| Knowledge retrieval | IMPLEMENTED FOUNDATION | Chunking, atomic reindexing, optional embedding search with keyword fallback, relevance metadata, and source citations exist. |
+| Knowledge disagreement handling | PARTIALLY IMPLEMENTED | Conservative signals flag possible polarity/numeric differences between retrieved excerpts; this is not independent source verification. |
+| OCR, advanced reranking, external verification | PLANNED | These remain roadmap items and must not be described as implemented. |
+| Verification | PENDING | The current PR must pass the latest unit tests, PostgreSQL integration tests, dependency audit, and secret scan before merge. |
+
+See docs/UNITS_2_4_REMAINING_WORK.md and roadmap.md for explicit completion gates.

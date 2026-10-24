@@ -103,7 +103,7 @@ class ConversationRepository:
                 JOIN conversations c ON c.id = m.conversation_id
                 WHERE c.user_id = ? AND m.role = 'assistant'
                 GROUP BY m.provider, m.model
-                ORDER BY input_tokens + output_tokens DESC
+                ORDER BY SUM(COALESCE(m.tokens_in, 0)) + SUM(COALESCE(m.tokens_out, 0)) DESC
                 """,
                 (user_id,),
             ).fetchall()

@@ -33,7 +33,7 @@ jobs:
     env:
       SMART_BETHG_ENV: test
       SMART_BETHG_SECRET_KEY: ci-test-secret-key-not-for-production
-      SMART_BETHG_STORAGE_ROOT: ${{ runner.temp }}/smart-bethg-storage
+      SMART_BETHG_STORAGE_ROOT: /tmp/smart-bethg-storage
       DATABASE_URL: postgresql://smartbethg:ci-only-password@localhost:5432/smartbethg_unit_test
       SMART_BETHG_TEST_DATABASE_URL: postgresql://smartbethg:ci-only-password@localhost:5432/smartbethg_unit_test
     steps:
