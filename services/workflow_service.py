@@ -2,6 +2,7 @@
 import json
 
 from database import get_connection
+from services.job_queue import JobQueue
 
 
 class WorkflowService:
@@ -98,6 +99,75 @@ class WorkflowService:
         workflow["steps"] = steps
         workflow["status"] = "validated"
         return workflow
+
+    def start_run(self, user_id, workflow_id, priority=0):
+        workflow = self.get(user_id, workflow_id)
+        if not workflow:
+            return None
+        if workflow["status"] != "validated":
+            raise ValueError("Validate the workflow before executing it.")
+        steps = self.validate_steps(workflow["steps"], require_nonempty=True)
+        unsupported = [step["type"] for step in steps if step["type"] != "mission"]
+        if unsupported:
+            raise ValueError("Execution adapters are not enabled yet for: " + ", ".join(sorted(set(unsupported))))
+        conn = get_connection()
+        try:
+            cursor = conn.execute("INSERT INTO workflow_runs(workflow_id,user_id,workflow_version,status,result_json) VALUES (?,?,?,'queued','{}')",
+                                  (workflow_id, user_id, workflow["version"]))
+            run_id = cursor.lastrowid
+            JobQueue().enqueue_in_transaction(conn, user_id, "workflow.execute",
+                {"workflow_id": workflow_id, "run_id": run_id, "workflow_version": workflow["version"]},
+                idempotency_key=f"workflow-run:{run_id}", priority=priority)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return self.get_run(user_id, run_id)
+
+    def get_run(self, user_id, run_id):
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT id,workflow_id,user_id,workflow_version,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE id=? AND user_id=? LIMIT 1",
+                               (run_id, user_id)).fetchone()
+            return self._decode_run(row) if row else None
+        finally:
+            conn.close()
+
+    def list_runs(self, user_id, workflow_id, limit=30):
+        conn = get_connection()
+        try:
+            rows = conn.execute("SELECT id,workflow_id,user_id,workflow_version,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE workflow_id=? AND user_id=? ORDER BY id DESC LIMIT ?",
+                                (workflow_id, user_id, max(1, min(100, int(limit))))).fetchall()
+            return [self._decode_run(row) for row in rows]
+        finally:
+            conn.close()
+
+    def update_run(self, user_id, run_id, status, current_step=None, result=None, error=None, terminal=False):
+        if status not in {"running", "waiting", "completed", "failed", "cancelled"}:
+            raise ValueError("Invalid workflow run status.")
+        conn = get_connection()
+        try:
+            if not conn.execute("SELECT id FROM workflow_runs WHERE id=? AND user_id=?", (run_id, user_id)).fetchone():
+                return None
+            conn.execute("UPDATE workflow_runs SET status=?,current_step=COALESCE(?,current_step),result_json=COALESCE(?,result_json),error=?,started_at=CASE WHEN ?='running' THEN COALESCE(started_at,CURRENT_TIMESTAMP::text) ELSE started_at END,completed_at=CASE WHEN ? THEN CURRENT_TIMESTAMP::text ELSE completed_at END,updated_at=CURRENT_TIMESTAMP::text WHERE id=? AND user_id=?",
+                (status, current_step, json.dumps(result, ensure_ascii=False) if result is not None else None,
+                 str(error)[:4000] if error else None, status, bool(terminal), run_id, user_id))
+            conn.commit()
+        finally:
+            conn.close()
+        return self.get_run(user_id, run_id)
+
+    @staticmethod
+    def _decode_run(row):
+        item = dict(row)
+        try:
+            item["result"] = json.loads(item.pop("result_json") or "{}")
+        except (TypeError, json.JSONDecodeError):
+            item["result"] = {}
+            item.pop("result_json", None)
+        return item
 
     def archive(self, user_id, workflow_id):
         workflow = self.get(user_id, workflow_id)
