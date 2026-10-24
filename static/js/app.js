@@ -31,6 +31,11 @@
 
   app.querySelectorAll(".sidebar nav a").forEach((link) => {
     link.addEventListener("click", () => {
+      // Section links open their disclosure before the browser scrolls to it.
+      if (link.hash) {
+        const target = document.querySelector(link.hash);
+        if (target instanceof HTMLDetailsElement) target.open = true;
+      }
       if (mobileQuery.matches) {
         app.classList.remove("mobile-nav-open");
         syncNavigationState();
