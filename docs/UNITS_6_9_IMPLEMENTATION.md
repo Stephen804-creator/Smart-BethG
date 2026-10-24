@@ -13,7 +13,7 @@ A trusted code-defined registry describes connector actions, accepted argument t
 - Installations store granted permission names, not raw access tokens. The optional `credential_ref` field is intended for a trusted secret-manager reference and is never returned by the user API.
 - A trusted adapter registry is the only execution route. The built-in Smart BethG knowledge-search adapter provides a read-only internal connector.
 - GitHub, Google Drive, and Slack have OAuth authorization-code flows, single-use owner-bound state, Google PKCE, encrypted token storage, disconnect cleanup/revocation where supported, and trusted HTTP adapters.
-- Supported actions: GitHub issue listing and issue creation; Google Drive file search; Slack message sending. Write actions still require Unit 7 approval.
+- Supported actions: GitHub issue listing and issue creation; Google Drive file search; Slack message sending. Write actions still require Unit 7 approval. OAuth provider scopes are GitHub `repo read:user`, Google Drive `drive.readonly`, and Slack `chat:write channels:read`. App-level permissions must also be granted on the installation; OAuth scopes alone do not bypass the policy engine.
 - OAuth secrets are never returned by the installation API. Provider OAuth client credentials are deployment environment variables; token payloads are Fernet-encrypted in PostgreSQL using a key derived from the stable `SMART_BETHG_SECRET_KEY`.
 - Google Drive access tokens are refreshed when possible. If refresh cannot be performed, the adapter asks the user to reconnect.
 - The catalog distinguishes adapter code availability from whether the deployment has configured provider OAuth credentials. An adapter is not a connected account until the user completes OAuth.
