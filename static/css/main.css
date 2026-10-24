@@ -2018,3 +2018,37 @@ textarea.form-control { min-height: 96px; resize: vertical; }
     .topbar-actions .icon-button { border-radius: var(--radius-md); }
 }
 .status-success { color: #86efac; }
+
+
+/* Chat composer refinements */
+.assistant-input {
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.assistant-input .chat-prompt {
+    min-height: 48px;
+    max-height: 180px;
+    resize: vertical;
+    line-height: var(--line-normal);
+    overflow-y: auto;
+}
+
+.composer-help {
+    flex-basis: 100%;
+    margin: -4px 0 0 !important;
+    color: var(--text-muted) !important;
+    font-size: var(--text-xs);
+}
+
+@media (max-width: 640px) {
+    .assistant-input .chat-prompt {
+        flex-basis: 100%;
+        min-height: 72px;
+    }
+
+    .assistant-input .provider-select {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+}
