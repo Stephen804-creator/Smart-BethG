@@ -215,7 +215,77 @@
           }
         );
         section.append(helpAction, usageAction);
-        body.replaceChildren(line, section);
+        // Display preferences are local to this browser for now; they do not claim to change server-side account settings.
+        const preferences = document.createElement("section");
+        preferences.className = "sbg-preferences";
+        preferences.setAttribute("aria-label", "Display preferences");
+        const preferencesTitle = document.createElement("p");
+        preferencesTitle.className = "sbg-preferences-title";
+        preferencesTitle.textContent = "Display & accessibility";
+        preferences.appendChild(preferencesTitle);
+
+        const readPreference = (key, fallback) => {
+          try { return localStorage.getItem("sbg:preference:" + key) || fallback; }
+          catch (_) { return fallback; }
+        };
+        const savePreference = (key, value) => {
+          try { localStorage.setItem("sbg:preference:" + key, value); } catch (_) {}
+        };
+        const applyPreference = (key, value) => {
+          if (key === "theme") document.documentElement.dataset.theme = value;
+          if (key === "font-size") document.documentElement.dataset.fontSize = value;
+          if (key === "font-style") document.documentElement.dataset.fontStyle = value;
+          savePreference(key, value);
+        };
+        const field = (labelText, helpText) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "sbg-preference-field";
+          const label = document.createElement("div");
+          label.className = "sbg-preference-label";
+          label.textContent = labelText;
+          wrapper.appendChild(label);
+          if (helpText) {
+            const help = document.createElement("small");
+            help.className = "sbg-preference-help";
+            help.textContent = helpText;
+            wrapper.appendChild(help);
+          }
+          return wrapper;
+        };
+        const choiceGroup = (key, choices, columnsClass) => {
+          const group = document.createElement("div");
+          group.className = "sbg-choice-group" + (columnsClass ? " " + columnsClass : "");
+          group.setAttribute("role", "group");
+          const selected = readPreference(key, key === "theme" ? "dark" : key === "font-size" ? "default" : "standard");
+          choices.forEach(([value, label]) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "sbg-choice";
+            button.textContent = label;
+            button.setAttribute("aria-pressed", String(selected === value));
+            button.addEventListener("click", () => {
+              applyPreference(key, value);
+              group.querySelectorAll("button").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+            });
+            group.appendChild(button);
+          });
+          applyPreference(key, selected);
+          return group;
+        };
+
+        const themeField = field("Theme", "Choose the appearance used by Smart BethG.");
+        themeField.appendChild(choiceGroup("theme", [["light", "Light"], ["dark", "Dark"]]));
+        preferences.appendChild(themeField);
+
+        const sizeField = field("Font size", "Adjust text size across the workspace.");
+        sizeField.appendChild(choiceGroup("font-size", [["small", "Small"], ["default", "Default"], ["large", "Large"]], "three"));
+        preferences.appendChild(sizeField);
+
+        const styleField = field("Font style", "Choose a comfortable reading style.");
+        styleField.appendChild(choiceGroup("font-style", [["standard", "Standard"], ["serif", "Serif"]]));
+        preferences.appendChild(styleField);
+
+        body.replaceChildren(line, section, preferences);
       } catch (err) {
         showEmpty(body, "Couldn't load account info.");
       }
