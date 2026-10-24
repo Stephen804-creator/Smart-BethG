@@ -7,10 +7,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from services.job_queue import JobWorker
 from services.mission_executor import MissionExecutor
+from services.workflow_executor import WorkflowExecutor
 
 
 def main():
-    worker = JobWorker(handlers={"mission.execute": MissionExecutor().execute})
+    worker = JobWorker(handlers={"mission.execute": MissionExecutor().execute, "workflow.execute": WorkflowExecutor().execute})
     while True:
         try:
             worked = worker.run_once()
