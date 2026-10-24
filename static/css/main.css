@@ -2774,3 +2774,77 @@ html[data-theme="light"] .sbg-panel-action:hover { background: var(--surface-hov
 @media (max-width: 640px) {
     .sbg-panel { max-width: calc(100vw - 24px); }
 }
+
+
+/* Chat tools menu: compact, contextual and keyboard accessible. */
+.chat-tools-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:0 0 8px; }
+.chat-tools-menu-wrap { position:relative; }
+.chat-tool-button, .chat-project-picker {
+    display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:8px 11px;
+    border:1px solid var(--border); border-radius:11px; background:var(--surface);
+    color:var(--text-secondary); font:inherit; font-size:var(--text-sm); cursor:pointer;
+}
+.chat-tool-button:hover, .chat-tool-button[aria-expanded="true"], .chat-project-picker:focus-within {
+    background:var(--surface-hover); border-color:var(--border-light); color:var(--text-primary);
+}
+.chat-tools-menu {
+    position:absolute; left:0; bottom:calc(100% + 8px); z-index:var(--z-dropdown);
+    width:min(300px, calc(100vw - 32px)); padding:7px; border:1px solid var(--border-light);
+    border-radius:14px; background:var(--surface-elevated); box-shadow:var(--shadow-md);
+}
+.chat-tools-menu[hidden] { display:none; }
+.chat-tool-option {
+    display:flex; align-items:center; gap:12px; width:100%; min-height:54px; padding:9px 10px;
+    border:0; border-radius:9px; background:transparent; color:var(--text-primary); text-align:left; cursor:pointer;
+}
+.chat-tool-option:hover, .chat-tool-option:focus-visible { background:var(--surface-hover); outline-offset:2px; }
+.chat-tool-option > i, .chat-tool-toggle > span > i { width:20px; color:var(--accent); text-align:center; }
+.chat-tool-option > span, .chat-tool-toggle > span { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.chat-tool-option strong, .chat-tool-toggle strong { font-size:var(--text-sm); font-weight:600; }
+.chat-tool-option small, .chat-tool-toggle small { color:var(--text-muted); font-size:var(--text-xs); }
+.chat-tools-divider { height:1px; margin:5px 2px; background:var(--border); }
+.chat-tool-toggle { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px; cursor:pointer; }
+.chat-tool-toggle > span { display:grid; grid-template-columns:20px 1fr; align-items:start; column-gap:10px; }
+.chat-tool-toggle > span > i { grid-row:1 / span 2; padding-top:2px; }
+.chat-tool-toggle input { width:18px; height:18px; accent-color:var(--accent); }
+.chat-project-picker { max-width:100%; }
+.chat-project-picker select { max-width:min(220px, 55vw); border:0; outline:0; background:transparent; color:var(--text-primary); font:inherit; font-size:var(--text-sm); }
+.chat-attachment-list { display:flex; flex-wrap:wrap; gap:7px; margin:0 0 8px; }
+.chat-attachment-chip { display:inline-flex; align-items:center; gap:7px; max-width:100%; padding:5px 8px 5px 10px; border:1px solid var(--border); border-radius:999px; background:var(--accent-soft); color:var(--text-primary); font-size:var(--text-xs); }
+.chat-attachment-chip > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-attachment-chip button { width:22px; height:22px; border:0; border-radius:50%; background:transparent; color:var(--text-secondary); font-size:18px; line-height:1; cursor:pointer; }
+.chat-attachment-chip button:hover { background:var(--surface-hover); color:var(--text-primary); }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+/* Light appearance coverage for shared surfaces and common form/message states. */
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .content,
+html[data-theme="light"] .page-content,
+html[data-theme="light"] .assistant-input,
+html[data-theme="light"] .messages,
+html[data-theme="light"] .chat-tools-menu,
+html[data-theme="light"] .chat-project-picker,
+html[data-theme="light"] .chat-prompt,
+html[data-theme="light"] .form-control,
+html[data-theme="light"] .btn-secondary,
+html[data-theme="light"] .conversation-item,
+html[data-theme="light"] .chat-suggestion,
+html[data-theme="light"] .approval-panel,
+html[data-theme="light"] .mission-card,
+html[data-theme="light"] .artifact-card {
+    background-color:var(--surface); color:var(--text-primary); border-color:var(--border);
+}
+html[data-theme="light"] .sidebar a,
+html[data-theme="light"] .sidebar summary,
+html[data-theme="light"] .chat-tool-button,
+html[data-theme="light"] .chat-tool-option { color:var(--text-primary); }
+html[data-theme="light"] .chat-tool-option:hover { background:var(--surface-hover); }
+html[data-theme="light"] .chat-prompt::placeholder { color:var(--text-muted); }
+html[data-theme="light"] .chat-message.user { background:var(--surface-active); color:var(--text-primary); }
+html[data-theme="light"] .chat-message.assistant { background:var(--surface); color:var(--text-primary); }
+@media (max-width:560px) {
+    .chat-tools-row { align-items:stretch; }
+    .chat-project-picker { flex:1; min-width:0; }
+    .chat-project-picker select { flex:1; min-width:0; }
+    .chat-tools-menu { width:min(300px, calc(100vw - 28px)); }
+}
