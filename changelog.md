@@ -4,6 +4,21 @@ Records what actually changed in the software. Compare against
 `v1_capabilities.md` for current capability status; do not infer status
 from this list alone.
 
+## 2026-10-24 — UI/UX standardization (branch: uiux/standardize-design-system)
+
+### Changed
+- Removed non-functional dashboard global search and the unsupported notification control instead of leaving misleading actions visible.
+- Renamed the topbar account control to match its actual account-summary behavior.
+- Removed duplicate chat heading and upgraded the composer to multiline input with Enter/Shift+Enter guidance.
+- Added responsive composer refinements, active conversation styling, and shared CSS classes for chat history and approval cards.
+- Added accessible status messages when conversation history or provider choices fail to load.
+- Added `docs/UI_UX_AUDIT_2026-10-24.md`, covering all 17 UI/UX units and production follow-up work.
+
+### Verification / not done
+- Static source review only; browser/device and screen-reader journeys still require execution.
+- GitHub Actions test workflow is failing on the branch; job details were not returned by the available API response. Do not merge until the failure is investigated and CI passes.
+- Work remains in the UI/UX branch and has not been merged to `main`.
+
 ## 2026-09-19
 
 ### Fixed
