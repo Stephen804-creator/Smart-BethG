@@ -27,15 +27,28 @@
     const container = anchorEl.closest(".topbar-actions") || anchorEl.parentElement;
     container.appendChild(panel);
 
+    function closePanel(restoreFocus = false) {
+      panel.remove();
+      anchorEl.dataset.panelOpen = "0";
+      anchorEl.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onDocKeydown);
+      if (restoreFocus) anchorEl.focus();
+    }
+
+    function onDocClick(event) {
+      if (!panel.contains(event.target) && !anchorEl.contains(event.target)) {
+        closePanel();
+      }
+    }
+
+    function onDocKeydown(event) {
+      if (event.key === "Escape") closePanel(true);
+    }
+
     setTimeout(() => {
-      document.addEventListener("click", function onDocClick(event) {
-        if (!panel.contains(event.target) && event.target !== anchorEl && !anchorEl.contains(event.target)) {
-          panel.remove();
-          anchorEl.dataset.panelOpen = "0";
-          anchorEl.setAttribute("aria-expanded", "false");
-          document.removeEventListener("click", onDocClick);
-        }
-      });
+      document.addEventListener("click", onDocClick);
+      document.addEventListener("keydown", onDocKeydown);
     }, 0);
     return body;
   }
