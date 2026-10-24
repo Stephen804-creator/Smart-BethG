@@ -4,6 +4,7 @@ Dry-run is the default. This utility never deletes source files; keep them until
 a separate backup and recovery check has been completed.
 """
 import argparse
+import hashlib
 from pathlib import Path
 
 import config
@@ -48,10 +49,18 @@ def migrate(apply=False):
                 if not apply:
                     print(f"PLAN {table} id={row['id']} owner={row['user_id']} {namespace}/{source.name}")
                     continue
-                destination = storage.put_bytes(namespace, row["user_id"], source.name, source.read_bytes())
+                content = source.read_bytes()
+                destination = storage.put_bytes(namespace, row["user_id"], source.name, content)
                 try:
-                    conn.execute(f"UPDATE {table} SET path=? WHERE id=? AND user_id=? AND path=?",
-                                 (destination, row["id"], row["user_id"], locator))
+                    copied = storage.get_bytes(namespace, row["user_id"], destination)
+                    if hashlib.sha256(copied).digest() != hashlib.sha256(content).digest():
+                        raise RuntimeError("Shared-storage verification checksum mismatch.")
+                    cursor = conn.execute(
+                        f"UPDATE {table} SET path=? WHERE id=? AND user_id=? AND path=?",
+                        (destination, row["id"], row["user_id"], locator),
+                    )
+                    if cursor.rowcount != 1:
+                        raise RuntimeError("Database record changed during migration; source row was not updated.")
                     conn.commit()
                 except Exception:
                     conn.rollback()
