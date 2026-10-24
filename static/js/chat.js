@@ -14,6 +14,17 @@
   const STORAGE_KEY = "sbg:conversationId";
   const SELECTION_KEY = "sbg:selection";
   let conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
+  let isSending = false;
+
+  function setConversationControlsBusy(busy) {
+    isSending = busy;
+    if (newChatBtn) newChatBtn.disabled = busy;
+    if (conversationListEl) {
+      conversationListEl.querySelectorAll(".conversation-item").forEach((item) => {
+        item.disabled = busy;
+      });
+    }
+  }
 
   async function getCsrfToken() {
     const res = await fetch("/auth/csrf", { credentials: "same-origin", cache: "no-store" });
@@ -174,12 +185,15 @@
       const isActive = String(c.id) === String(conversationId);
       item.className = "conversation-item" + (isActive ? " is-active" : "");
       item.textContent = c.title || "New conversation";
+      item.disabled = isSending;
+      if (isActive) item.setAttribute("aria-current", "true");
       item.addEventListener("click", () => switchConversation(c.id));
       conversationListEl.appendChild(item);
     });
   }
 
   function switchConversation(id) {
+    if (isSending) return;
     conversationId = id;
     window.localStorage.setItem(STORAGE_KEY, conversationId);
     messagesEl.innerHTML = "";
@@ -189,6 +203,7 @@
 
   if (newChatBtn) {
     newChatBtn.addEventListener("click", () => {
+      if (isSending) return;
       conversationId = null;
       window.localStorage.removeItem(STORAGE_KEY);
       messagesEl.innerHTML = "";
@@ -312,6 +327,7 @@
     renderMessage("user", text);
     sendBtn.disabled = true;
     promptEl.disabled = true;
+    setConversationControlsBusy(true);
     renderNotice("Thinking...");
 
     try {
@@ -353,6 +369,7 @@
     } finally {
       sendBtn.disabled = false;
       promptEl.disabled = false;
+      setConversationControlsBusy(false);
       promptEl.focus();
     }
   }
