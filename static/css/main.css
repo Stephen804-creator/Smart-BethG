@@ -2138,3 +2138,14 @@ textarea.form-control { min-height: 96px; resize: vertical; }
     cursor: wait;
     opacity: 0.65;
 }
+
+
+/* Ensure HTML hidden state wins over component display rules. */
+[hidden] {
+    display: none !important;
+}
+
+.assistant-input .provider-status {
+    flex-basis: 100%;
+    margin: 0;
+}
