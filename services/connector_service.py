@@ -25,7 +25,13 @@ class _KnowledgeSearchAdapter:
 class ConnectorRegistry:
     def __init__(self, capabilities=None):
         self.capabilities = capabilities or CapabilityRegistry()
-        self._adapters = {"smartbethg":_KnowledgeSearchAdapter()}
+        from services.connector_provider_adapters import ProviderAdapter
+        self._adapters = {
+            "smartbethg": _KnowledgeSearchAdapter(),
+            "github": ProviderAdapter("github"),
+            "google_drive": ProviderAdapter("google_drive"),
+            "slack": ProviderAdapter("slack"),
+        }
     def register_adapter(self, connector_key, adapter):
         if connector_key not in CATALOG:
             raise ValueError("Connector is not in the trusted catalog.")
@@ -37,8 +43,16 @@ class ConnectorRegistry:
     def adapter(self, connector_key):
         return self._adapters.get(connector_key)
     def catalog(self):
+        import config
+        configured = {
+            "github": bool(config.GITHUB_OAUTH_CLIENT_ID and config.GITHUB_OAUTH_CLIENT_SECRET),
+            "google_drive": bool(config.GOOGLE_OAUTH_CLIENT_ID and config.GOOGLE_OAUTH_CLIENT_SECRET),
+            "slack": bool(config.SLACK_OAUTH_CLIENT_ID and config.SLACK_OAUTH_CLIENT_SECRET),
+            "smartbethg": True,
+        }
         return [{"key":key,**metadata,"actions":self.capabilities.list_for_connector(key),
-                 "adapter_available":key in self._adapters} for key,metadata in CATALOG.items()]
+                 "adapter_available":key in self._adapters,
+                 "oauth_configured":configured[key]} for key,metadata in CATALOG.items()]
 
 class ConnectorInstallationService:
     def list_for_user(self, user_id):
