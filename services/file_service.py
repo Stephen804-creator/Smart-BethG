@@ -147,6 +147,19 @@ class FileService:
                 extracted = "\n".join(pieces).strip()
                 if extracted:
                     return extracted, None
+                # A valid blank PDF should remain a successful empty extraction.
+                # Only invoke OCR when the PDF actually contains embedded images.
+                has_embedded_images = False
+                for page in reader.pages[:self.MAX_PDF_PAGES]:
+                    try:
+                        if len(page.images):
+                            has_embedded_images = True
+                            break
+                    except Exception:
+                        # Some malformed/unsupported image resources cannot be inspected.
+                        continue
+                if not has_embedded_images:
+                    return "", None
                 # Image-only/scanned PDFs need optional OCR runtime dependencies.
                 try:
                     scanned_text = extract_scanned_pdf_text(content, self.MAX_PDF_PAGES)
