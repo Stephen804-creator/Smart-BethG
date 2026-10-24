@@ -21,6 +21,7 @@
   const dots = $("onboardingDots");
   const close = $("onboardingClose");
   const storageKey = "sbg:onboarding-complete:v1";
+  const authPage = document.body.dataset.authPage === "true";
 
   function render() {
     const step = steps[index];
@@ -69,11 +70,18 @@
   next.addEventListener("click", () => {
     if (index < steps.length - 1) { index++; render(); return; }
     finish(true);
+    if (authPage) {
+      document.getElementById("username")?.focus();
+      return;
+    }
     window.location.href = "{{ url_for('main.chat_page') }}";
   });
   skip.addEventListener("click", () => finish(true));
-  close.addEventListener("click", () => finish(false));
-  dialog.addEventListener("click", (event) => { if (event.target === dialog) finish(false); });
+  close.addEventListener("click", () => finish(true));
+  dialog.addEventListener("click", (event) => { if (event.target === dialog) finish(true); });
   dialog.addEventListener("cancel", () => { /* Escape closes the guide without blocking the app. */ });
   render();
+  let completed = false;
+  try { completed = window.localStorage.getItem(storageKey) === "1"; } catch (_) { /* Continue without storage. */ }
+  if (!completed) window.setTimeout(openGuide, 180);
 })();
