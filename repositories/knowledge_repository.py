@@ -18,12 +18,36 @@ class KnowledgeRepository:
         finally:
             conn.close()
 
+    def replace_file_chunks(self, user_id, file_id, workspace, chunks, embeddings=None, embedding_model=None):
+        """Replace one file's index atomically so failed ingestion preserves the old index."""
+        embeddings = embeddings or [None] * len(chunks)
+        if len(embeddings) != len(chunks):
+            raise ValueError("Chunk and embedding counts must match.")
+        conn = get_connection()
+        try:
+            owned = conn.execute("SELECT id FROM files WHERE id=? AND user_id=? LIMIT 1", (file_id, user_id)).fetchone()
+            if not owned:
+                raise ValueError("File not found for this user.")
+            conn.execute("DELETE FROM knowledge_chunks WHERE file_id=? AND user_id=?", (file_id, user_id))
+            for index, content in enumerate(chunks):
+                embedding_json = json.dumps(embeddings[index]) if embeddings[index] is not None else None
+                conn.execute(
+                    "INSERT INTO knowledge_chunks(user_id, file_id, workspace, chunk_index, content, embedding, embedding_model) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (user_id, file_id, workspace, index, content, embedding_json, embedding_model if embeddings[index] is not None else None),
+                )
+            conn.commit()
+            return len(chunks)
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def delete_for_file(self, file_id, user_id):
         conn = get_connection()
         try:
-            cur = conn.execute(
-                "DELETE FROM knowledge_chunks WHERE file_id=? AND user_id=?", (file_id, user_id)
-            )
+            cur = conn.execute("DELETE FROM knowledge_chunks WHERE file_id=? AND user_id=?", (file_id, user_id))
             conn.commit()
             return cur.rowcount
         finally:
@@ -32,25 +56,24 @@ class KnowledgeRepository:
     def list_for_user(self, user_id, workspace=None):
         conn = get_connection()
         try:
+            sql = (
+                "SELECT kc.*, f.filename AS source_filename FROM knowledge_chunks kc "
+                "LEFT JOIN files f ON f.id=kc.file_id AND f.user_id=kc.user_id WHERE kc.user_id=?"
+            )
+            params = [user_id]
             if workspace:
-                rows = conn.execute(
-                    "SELECT * FROM knowledge_chunks WHERE user_id=? AND workspace=? ORDER BY id",
-                    (user_id, workspace),
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT * FROM knowledge_chunks WHERE user_id=? ORDER BY id", (user_id,)
-                ).fetchall()
-            return [self._deserialize(dict(r)) for r in rows]
+                sql += " AND kc.workspace=?"
+                params.append(workspace)
+            sql += " ORDER BY kc.id"
+            rows = conn.execute(sql, tuple(params)).fetchall()
+            return [self._deserialize(dict(row)) for row in rows]
         finally:
             conn.close()
 
     def count_for_user(self, user_id):
         conn = get_connection()
         try:
-            row = conn.execute(
-                "SELECT COUNT(*) AS c FROM knowledge_chunks WHERE user_id=?", (user_id,)
-            ).fetchone()
+            row = conn.execute("SELECT COUNT(*) AS c FROM knowledge_chunks WHERE user_id=?", (user_id,)).fetchone()
             return row["c"]
         finally:
             conn.close()

@@ -206,6 +206,12 @@ def _validate_runtime_config() -> None:
         for name, value in positive_money_settings.items()
         if not math.isfinite(value) or value <= 0
     )
+    storage_backend = os.getenv("SMART_BETHG_OBJECT_STORAGE", "local").strip().lower()
+    if storage_backend not in {"local", "s3", "s3-compatible"}:
+        invalid.append("SMART_BETHG_OBJECT_STORAGE must be local or s3")
+    if storage_backend in {"s3", "s3-compatible"} and not os.getenv("SMART_BETHG_S3_BUCKET", "").strip():
+        invalid.append("SMART_BETHG_S3_BUCKET is required for S3 object storage")
+
     if invalid:
         raise RuntimeError("Invalid Smart BethG configuration: " + "; ".join(invalid) + ".")
 

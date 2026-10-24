@@ -1,16 +1,17 @@
-"""Owner-scoped artifact storage with generated, contained file paths."""
+"""Owner-scoped artifact storage using the configured storage adapter."""
 import hashlib
-import os
 import re
 import uuid
-from pathlib import Path
 
-import config
 from database import get_connection
+from storage.backend import get_storage_backend
 
 
 class ArtifactService:
     MAX_CONTENT_BYTES = 1024 * 1024
+
+    def __init__(self, storage=None):
+        self.storage = storage or get_storage_backend()
 
     def create(self, user_id, name, content, artifact_type="text", mission_id=None):
         name = (name or "").strip()
@@ -27,28 +28,23 @@ class ArtifactService:
         if mission_id is not None and not self._owns_mission(user_id, mission_id):
             raise ValueError("Mission not found for this user.")
 
-        user_dir = os.path.join(config.STORAGE_DIRS["artifacts"], str(user_id))
-        os.makedirs(user_dir, exist_ok=True)
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)[:120] or "artifact"
-        path = os.path.join(user_dir, f"{uuid.uuid4().hex}_{safe_name}.txt")
-        with open(path, "wb") as handle:
-            handle.write(encoded)
+        locator = self.storage.put_bytes("artifacts", user_id, f"{uuid.uuid4().hex}_{safe_name}.txt", encoded)
         digest = hashlib.sha256(encoded).hexdigest()
-
         conn = get_connection()
         try:
             cursor = conn.execute(
                 "INSERT INTO artifacts(mission_id, user_id, name, artifact_type, path, content_type, "
                 "size_bytes, checksum_sha256, status, updated_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ready', CURRENT_TIMESTAMP)",
-                (mission_id, user_id, name, artifact_type, path, "text/plain; charset=utf-8", len(encoded), digest),
+                (mission_id, user_id, name, artifact_type, locator, "text/plain; charset=utf-8", len(encoded), digest),
             )
             artifact_id = cursor.lastrowid
             conn.commit()
         except Exception:
             try:
-                os.remove(path)
-            except OSError:
+                self.storage.delete("artifacts", user_id, locator)
+            except Exception:
                 pass
             raise
         finally:
@@ -61,8 +57,7 @@ class ArtifactService:
             rows = conn.execute(
                 "SELECT id, mission_id, user_id, name, artifact_type, content_type, size_bytes, "
                 "checksum_sha256, status, created_at, updated_at FROM artifacts "
-                "WHERE user_id=? ORDER BY created_at DESC, id DESC",
-                (user_id,),
+                "WHERE user_id=? ORDER BY created_at DESC, id DESC", (user_id,),
             ).fetchall()
             return [dict(row) for row in rows]
         finally:
@@ -74,8 +69,7 @@ class ArtifactService:
             row = conn.execute(
                 "SELECT id, mission_id, user_id, name, artifact_type, path, content_type, size_bytes, "
                 "checksum_sha256, status, created_at, updated_at FROM artifacts "
-                "WHERE id=? AND user_id=? LIMIT 1",
-                (artifact_id, user_id),
+                "WHERE id=? AND user_id=? LIMIT 1", (artifact_id, user_id),
             ).fetchone()
             return dict(row) if row else None
         finally:
@@ -85,13 +79,13 @@ class ArtifactService:
         record = self.get(user_id, artifact_id)
         if not record:
             return None, None
-        user_root = Path(os.path.join(config.STORAGE_DIRS["artifacts"], str(user_id))).resolve()
-        path = Path(record["path"]).resolve()
-        if user_root not in path.parents or not path.is_file():
+        try:
+            content = self.storage.get_bytes("artifacts", user_id, record["path"])
+        except Exception:
             return None, record
-        if path.stat().st_size > self.MAX_CONTENT_BYTES:
+        if len(content) > self.MAX_CONTENT_BYTES:
             raise ValueError("Stored artifact exceeds the configured read limit.")
-        return path.read_text(encoding="utf-8"), record
+        return content.decode("utf-8"), record
 
     def delete(self, user_id, artifact_id):
         record = self.get(user_id, artifact_id)
@@ -99,23 +93,16 @@ class ArtifactService:
             return False
         conn = get_connection()
         try:
-            cursor = conn.execute(
-                "DELETE FROM artifacts WHERE id=? AND user_id=?",
-                (artifact_id, user_id),
-            )
+            cursor = conn.execute("DELETE FROM artifacts WHERE id=? AND user_id=?", (artifact_id, user_id))
             conn.commit()
             deleted = cursor.rowcount == 1
         finally:
             conn.close()
         if deleted:
             try:
-                path = Path(record["path"]).resolve()
-                root = Path(os.path.join(config.STORAGE_DIRS["artifacts"], str(user_id))).resolve()
-                if root in path.parents:
-                    path.unlink(missing_ok=True)
-            except OSError:
-                # The DB row is gone; an orphan file is safer than exposing a
-                # row that points at a missing file. Cleanup can retry later.
+                self.storage.delete("artifacts", user_id, record["path"])
+            except Exception:
+                # The row is gone; an orphan is safer than exposing a live broken reference.
                 pass
         return deleted
 
@@ -124,8 +111,7 @@ class ArtifactService:
         conn = get_connection()
         try:
             return conn.execute(
-                "SELECT id FROM missions WHERE id=? AND user_id=? LIMIT 1",
-                (mission_id, user_id),
+                "SELECT id FROM missions WHERE id=? AND user_id=? LIMIT 1", (mission_id, user_id)
             ).fetchone() is not None
         finally:
             conn.close()
