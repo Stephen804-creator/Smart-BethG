@@ -91,8 +91,8 @@
 
             <p class="eyebrow history-heading">Recent conversations</p>
 
-            <div id="conversationList" class="conversation-list">
-            </div>
+            <p id="conversationStatus" class="form-help" role="status"></p>
+            <div id="conversationList" class="conversation-list"></div>
 
         </div>
 
@@ -183,6 +183,7 @@
                         class="form-control provider-select"
                     >
                     </select>
+                    <p id="providerStatus" class="form-help provider-status" role="status" hidden></p>
 
                     <textarea
                         id="prompt"
