@@ -15,6 +15,119 @@
   const SELECTION_KEY = "sbg:selection";
   let conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
   let isSending = false;
+  const chatToolsButton = document.getElementById("chatToolsButton");
+  const chatToolsMenu = document.getElementById("chatToolsMenu");
+  const chatFileInput = document.getElementById("chatFileInput");
+  const chatImageInput = document.getElementById("chatImageInput");
+  const chooseChatFiles = document.getElementById("chooseChatFiles");
+  const chooseChatImages = document.getElementById("chooseChatImages");
+  const webSearchToggle = document.getElementById("webSearchToggle");
+  const chatProjectSelect = document.getElementById("chatProjectSelect");
+  const chatAttachmentList = document.getElementById("chatAttachmentList");
+  let pendingTextAttachments = [];
+  const MAX_ATTACHMENT_BYTES = 200 * 1024;
+  const MAX_ATTACHMENT_TOTAL_CHARS = 30000;
+
+  if (chatToolsButton && chatToolsMenu) {
+    chatToolsButton.addEventListener("click", () => {
+      const willOpen = chatToolsMenu.hidden;
+      chatToolsMenu.hidden = !willOpen;
+      chatToolsButton.setAttribute("aria-expanded", String(willOpen));
+    });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".chat-tools-menu-wrap")) {
+        chatToolsMenu.hidden = true;
+        chatToolsButton.setAttribute("aria-expanded", "false");
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !chatToolsMenu.hidden) {
+        chatToolsMenu.hidden = true;
+        chatToolsButton.setAttribute("aria-expanded", "false");
+        chatToolsButton.focus();
+      }
+    });
+  }
+  if (chooseChatFiles && chatFileInput) chooseChatFiles.addEventListener("click", () => chatFileInput.click());
+  if (chooseChatImages && chatImageInput) chooseChatImages.addEventListener("click", () => {
+    window.alert("Image upload is not connected to the current chat API yet. Choose a text file for now.");
+  });
+
+  function renderAttachmentList() {
+    if (!chatAttachmentList) return;
+    chatAttachmentList.replaceChildren();
+    pendingTextAttachments.forEach((item, index) => {
+      const chip = document.createElement("span");
+      chip.className = "chat-attachment-chip";
+      const label = document.createElement("span");
+      label.textContent = item.name;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.setAttribute("aria-label", "Remove " + item.name);
+      remove.textContent = "×";
+      remove.addEventListener("click", () => {
+        pendingTextAttachments.splice(index, 1);
+        renderAttachmentList();
+      });
+      chip.append(label, remove);
+      chatAttachmentList.appendChild(chip);
+    });
+  }
+
+  if (chatFileInput) {
+    chatFileInput.addEventListener("change", async () => {
+      const files = Array.from(chatFileInput.files || []);
+      chatFileInput.value = "";
+      let total = pendingTextAttachments.reduce((sum, item) => sum + item.content.length, 0);
+      for (const file of files) {
+        if (file.size > MAX_ATTACHMENT_BYTES) {
+          renderNotice(file.name + " is over the 200 KB text-file limit and was skipped.");
+          continue;
+        }
+        if (total >= MAX_ATTACHMENT_TOTAL_CHARS) {
+          renderNotice("The attachment text limit has been reached.");
+          break;
+        }
+        try {
+          const content = await file.text();
+          if (content.includes("\u0000")) {
+            renderNotice(file.name + " doesn't look like a text file and was skipped.");
+            continue;
+          }
+          const remaining = MAX_ATTACHMENT_TOTAL_CHARS - total;
+          pendingTextAttachments.push({ name: file.name, content: content.slice(0, remaining) });
+          total += Math.min(content.length, remaining);
+        } catch (_) {
+          renderNotice("Couldn't read " + file.name + ".");
+        }
+      }
+      renderAttachmentList();
+    });
+  }
+
+  async function loadChatProjects() {
+    if (!chatProjectSelect) return;
+    try {
+      const response = await fetch("/api/projects", { credentials: "same-origin" });
+      if (response.status === 401) { window.location.href = "/login"; return; }
+      if (!response.ok) throw new Error("Project list unavailable");
+      const data = await response.json();
+      (data.projects || []).filter((project) => project.status !== "archived").forEach((project) => {
+        const option = document.createElement("option");
+        option.value = String(project.id);
+        option.textContent = project.name;
+        option.dataset.projectName = project.name;
+        chatProjectSelect.appendChild(option);
+      });
+    } catch (_) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "Projects unavailable";
+      option.disabled = true;
+      chatProjectSelect.appendChild(option);
+    }
+  }
+  loadChatProjects();
 
   function setConversationControlsBusy(busy) {
     isSending = busy;
@@ -374,8 +487,19 @@
   }
 
   async function sendMessage(text) {
+    const attachmentContext = pendingTextAttachments.map((item) =>
+      "\\n\\n[Attached text file: " + item.name + "]\\n" + item.content
+    ).join("");
+    const selectedProject = chatProjectSelect && chatProjectSelect.selectedOptions[0];
+    const projectContext = selectedProject && selectedProject.value
+      ? "\\n\\n[Selected project context: " + selectedProject.textContent + "]"
+      : "";
+    const searchPrefix = webSearchToggle && webSearchToggle.checked
+      ? "Search the web and use current sources to answer this request: "
+      : "";
+    const messageForApi = searchPrefix + text + projectContext + attachmentContext;
     clearWelcome();
-    renderMessage("user", text);
+    renderMessage("user", text + (pendingTextAttachments.length ? "\\n\\nAttached: " + pendingTextAttachments.map((item) => item.name).join(", ") : "") + (selectedProject && selectedProject.value ? "\\nProject: " + selectedProject.textContent : "") + (webSearchToggle && webSearchToggle.checked ? "\\nWeb search requested" : ""));
     sendBtn.disabled = true;
     promptEl.disabled = true;
     setConversationControlsBusy(true);
