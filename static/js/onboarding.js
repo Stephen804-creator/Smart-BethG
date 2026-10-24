@@ -79,7 +79,7 @@
   skip.addEventListener("click", () => finish(true));
   close.addEventListener("click", () => finish(true));
   dialog.addEventListener("click", (event) => { if (event.target === dialog) finish(true); });
-  dialog.addEventListener("cancel", () => { /* Escape closes the guide without blocking the app. */ });
+  dialog.addEventListener("cancel", (event) => { event.preventDefault(); finish(true); });
   render();
   let completed = false;
   try { completed = window.localStorage.getItem(storageKey) === "1"; } catch (_) { /* Continue without storage. */ }
