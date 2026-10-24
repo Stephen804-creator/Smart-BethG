@@ -757,3 +757,12 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Added conservative memory and knowledge disagreement signals for similar statements with polarity/numeric differences. These signals warn for review and never silently resolve a conflict.
 - Added unit tests for conflict-signal behavior and updated the foundation backlog to distinguish completed foundations from deferred semantic memory retrieval, OCR, advanced reranking, external-source verification, and approval-based memory consolidation.
 - Corrected the test workflow's unsupported runner context in job-level environment configuration so named CI jobs can start. Verification is still in progress; see PR #12 checks before merging.
+
+
+## 2026-10-24 — Roadmap Units 6–9 implementation branch
+
+- Added the typed capability registry prerequisite, connector catalog/installations, trusted adapter interface, and permission-aware action service.
+- Added a fail-closed policy engine; write/destructive/financial actions require persisted approval and are revalidated before execution. Legacy host-side actions remain disabled.
+- Added PostgreSQL-backed background jobs with idempotency, leases, priorities, bounded retries, guarded completion, owner-scoped status/cancel endpoints, and a separate worker entry point.
+- Added validated connector-action plans to missions. Mission run creation and queue insertion share one transaction; the worker persists progress and pauses/resumes around approval-required steps.
+- Live external OAuth/token lifecycle and GitHub/Drive/Slack adapters are not included yet; those catalog entries are intentionally non-executable until trusted adapters are implemented and connected.

@@ -94,3 +94,31 @@ not overstated. A roadmap entry is not evidence that a feature is implemented.
   recording source identity, URL, retrieval time, and outcome.
 - [ ] Improve source disagreement analysis and claim-to-citation coverage; never
   treat a disagreement heuristic as proof that either source is correct.
+
+
+## Numbered implementation status — Units 5–9 (2026-10-24)
+
+### Unit 5 — Typed capability registry
+- [x] Trusted code-defined capability contracts, argument validation, risk labels, and permission identifiers added as a prerequisite for connector dispatch.
+- [ ] Broader developer SDK and external schema versioning remain future work.
+
+### Unit 6 — External connector platform
+- [x] Owner-scoped connector catalog/installations, permission grants, adapter interface, and safe built-in knowledge-search adapter.
+- [ ] Real OAuth/credential lifecycle and live GitHub, Drive, and Slack adapters are not yet implemented. Catalog entries do not imply those providers can execute.
+
+### Unit 7 — Connector-aware approval and policy
+- [x] Fail-closed policy checks, read-only versus side-effecting classification, persisted approval payloads, revalidation, and single-claim execution.
+- [x] Legacy direct host-side actions remain blocked.
+- [ ] Adversarial race/recovery tests and provider-specific scope validation remain launch gates.
+
+### Unit 8 — Durable jobs and workers
+- [x] PostgreSQL queue, idempotency keys, priority, leases, guarded completion, bounded retry/backoff, owner-scoped status and cancellation APIs.
+- [x] Worker is a separate process, not an in-process web-server background task.
+- [ ] Multi-worker crash/replay tests and operational monitoring remain required before horizontal scaling.
+
+### Unit 9 — Mission execution engine
+- [x] Missions can store validated, bounded connector-action plans and enqueue runs atomically with run creation.
+- [x] Worker executes registered steps, persists progress, pauses side-effecting steps for approval, and resumes after approval.
+- [ ] Mission planning from natural language, compensation/saga recovery, and end-to-end external provider tests remain future work.
+
+Status is implementation status, not a claim that live external provider integrations or multi-instance production readiness have been verified.
