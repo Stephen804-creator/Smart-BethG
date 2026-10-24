@@ -21,12 +21,12 @@
       title.textContent = "Log in to Smart BethG";
       submitBtn.textContent = "Log in";
       modeToggle.textContent = "Need an account? Create one";
-      inviteCodeGroup.style.display = "none";
+      inviteCodeGroup.hidden = true;
     } else {
       title.textContent = "Create your Smart BethG account";
       submitBtn.textContent = "Create account";
       modeToggle.textContent = "Already have an account? Log in";
-      inviteCodeGroup.style.display = "block";
+      inviteCodeGroup.hidden = false;
     }
     errorEl.textContent = "";
   }
@@ -98,8 +98,8 @@
     .then((r) => r.json())
     .then((data) => {
       if (data.google_oauth_enabled) {
-        document.getElementById("googleAuthDivider").style.display = "flex";
-        document.getElementById("googleAuthButton").style.display = "flex";
+        document.getElementById("googleAuthDivider").hidden = false;
+        document.getElementById("googleAuthButton").hidden = false;
       }
     })
     .catch(() => {});
