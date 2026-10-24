@@ -2674,10 +2674,11 @@ textarea.form-control { min-height: 96px; resize: vertical; }
     --font-size-scale: 1;
 }
 html, body { font-family: var(--font-family-ui); }
-body { font-size: calc(1rem * var(--font-size-scale)); }
+body { font-size: 1rem; }
 html[data-font-style="serif"] { --font-family-ui: Georgia, "Times New Roman", serif; }
-html[data-font-size="small"] { --font-size-scale: .92; }
-html[data-font-size="large"] { --font-size-scale: 1.1; }
+html[data-font-size="small"] { font-size: 14px; }
+html[data-font-size="default"] { font-size: 16px; }
+html[data-font-size="large"] { font-size: 18px; }
 
 /* Light mode swaps the semantic tokens, so existing components inherit the theme. */
 html[data-theme="light"] {
