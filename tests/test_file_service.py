@@ -76,11 +76,15 @@ class TestFileService(SmartBethGTestCase):
         self.assertIsNone(error)
         self.assertEqual(text, "# Hello\nWorld")
 
-    def test_extract_text_unsupported_type_is_honest(self):
+    def test_image_extraction_reports_invalid_or_unavailable_ocr_honestly(self):
         record = self.service.save_upload(self.user["id"], "photo.png", b"\x89PNG\r\n fake binary data")
         text, error = self.service.extract_text(self.user["id"], record["id"])
         self.assertIsNone(text)
-        self.assertIn("isn't supported", error)
+        self.assertIsNotNone(error)
+        self.assertTrue(
+            "OCR" in error or "image" in error.lower() or "read this image" in error.lower(),
+            error,
+        )
 
     def test_extract_text_from_real_pdf(self):
         """
