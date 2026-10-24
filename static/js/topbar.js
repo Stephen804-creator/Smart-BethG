@@ -167,7 +167,30 @@
         const username = document.createElement("strong");
         username.textContent = String(user.username || "-");
         line.appendChild(username);
-        body.replaceChildren(line);
+        const section = document.createElement("div");
+        section.className = "sbg-panel-section";
+        const sectionTitle = document.createElement("p");
+        sectionTitle.className = "sbg-panel-section-title";
+        sectionTitle.textContent = "Quick access";
+        section.appendChild(sectionTitle);
+        const helpAction = document.createElement("button");
+        helpAction.type = "button";
+        helpAction.className = "sbg-panel-action";
+        helpAction.textContent = "Getting started — open the product tour";
+        helpAction.addEventListener("click", () => {
+          closeAllPanels();
+          document.getElementById("helpButton")?.click();
+        });
+        const usageAction = document.createElement("button");
+        usageAction.type = "button";
+        usageAction.className = "sbg-panel-action";
+        usageAction.textContent = "Usage overview — review current usage";
+        usageAction.addEventListener("click", () => {
+          closeAllPanels();
+          document.getElementById("usageButton")?.click();
+        });
+        section.append(helpAction, usageAction);
+        body.replaceChildren(line, section);
       } catch (err) {
         showEmpty(body, "Couldn't load account info.");
       }
