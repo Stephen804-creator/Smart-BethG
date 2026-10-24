@@ -1,5 +1,7 @@
 """Live, bounded, read/write provider adapters for authorized OAuth installations."""
 import httpx
+from datetime import datetime, timedelta, timezone
+import config
 from services.connector_secrets import ConnectorSecretStore
 
 class ProviderAdapter:
@@ -9,7 +11,30 @@ class ProviderAdapter:
  def execute(self, action, arguments, context):
   stored=self.secrets.get(context["installation_id"])
   if not stored: return {"success":False,"status":"unavailable","detail":"Provider credentials are missing."}
-  token=stored["credentials"].get("access_token")
+  credentials=stored["credentials"]
+  expires=stored.get("expires_at")
+  if isinstance(expires,str):
+   try: expires=datetime.fromisoformat(expires.replace("Z","+00:00"))
+   except ValueError: expires=None
+  if self.provider=="google_drive" and expires and expires <= datetime.now(timezone.utc)+timedelta(seconds=60):
+   refresh_token=credentials.get("refresh_token")
+   if not refresh_token:
+    return {"success":False,"status":"reauthorization_required","detail":"Reconnect Google Drive to renew access."}
+   try:
+    response=httpx.post("https://oauth2.googleapis.com/token",data={
+     "client_id":config.GOOGLE_OAUTH_CLIENT_ID,"client_secret":config.GOOGLE_OAUTH_CLIENT_SECRET,
+     "refresh_token":refresh_token,"grant_type":"refresh_token"},timeout=15.0)
+    response.raise_for_status()
+    renewed=response.json()
+    if not renewed.get("access_token"): raise ValueError("Missing refreshed access token.")
+    credentials["access_token"]=renewed["access_token"]
+    new_expiry=datetime.now(timezone.utc)+timedelta(seconds=int(renewed.get("expires_in",3600)))
+    self.secrets.put(context["installation_id"],credentials,stored.get("provider_account"),stored.get("scopes"),new_expiry)
+    stored=self.secrets.get(context["installation_id"])
+    credentials=stored["credentials"]
+   except (httpx.RequestError,httpx.HTTPStatusError,ValueError):
+    return {"success":False,"status":"reauthorization_required","detail":"Google Drive access could not be refreshed; reconnect the account."}
+  token=credentials.get("access_token")
   if not token: return {"success":False,"status":"unavailable","detail":"Provider credentials are missing."}
   try:
    if self.provider=="github": result=self._github(token,action,arguments,context)
