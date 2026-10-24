@@ -39,10 +39,10 @@ class TestAdvancedMemory(SmartBethGTestCase):
         self.assertTrue(self.service.forget(self.owner["id"], entry["id"]))
 
     def test_type_aware_context_prefers_preferences_and_is_bounded(self):
-        self.service.remember(self.owner["id"], "episodic detail", memory_type="episodic")
-        self.service.remember(self.owner["id"], "stable preference", memory_type="preference")
         for index in range(10):
             self.service.remember(self.owner["id"], f"large memory {index}: " + ("x" * 1000))
+        self.service.remember(self.owner["id"], "episodic detail", memory_type="episodic")
+        self.service.remember(self.owner["id"], "stable preference", memory_type="preference")
         context = self.service.recall_context(self.owner["id"])
         self.assertLessEqual(len(context), MAX_CONTEXT_CHARS + 100)
         self.assertLess(context.index("stable preference"), context.index("episodic detail"))
