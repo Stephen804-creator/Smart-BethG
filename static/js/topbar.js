@@ -1,8 +1,17 @@
 // Smart BethG - shared topbar icon panels.
 (function () {
+  let activePanelClose = null;
+
   function closeAllPanels() {
+    if (activePanelClose) {
+      activePanelClose(false);
+      return;
+    }
     document.querySelectorAll(".sbg-panel").forEach((panel) => panel.remove());
-    document.querySelectorAll("[data-panel-open]").forEach((el) => { el.dataset.panelOpen = "0"; el.setAttribute("aria-expanded", "false"); });
+    document.querySelectorAll("[data-panel-open]").forEach((el) => {
+      el.dataset.panelOpen = "0";
+      el.setAttribute("aria-expanded", "false");
+    });
   }
 
   function openPanel(anchorEl, title) {
@@ -33,8 +42,11 @@
       anchorEl.setAttribute("aria-expanded", "false");
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onDocKeydown);
+      if (activePanelClose === closePanel) activePanelClose = null;
       if (restoreFocus) anchorEl.focus();
     }
+
+    activePanelClose = closePanel;
 
     function onDocClick(event) {
       if (!panel.contains(event.target) && !anchorEl.contains(event.target)) {
