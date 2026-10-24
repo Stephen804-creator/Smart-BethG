@@ -2,7 +2,7 @@
 (function () {
   function closeAllPanels() {
     document.querySelectorAll(".sbg-panel").forEach((panel) => panel.remove());
-    document.querySelectorAll("[data-panel-open]").forEach((el) => (el.dataset.panelOpen = "0"));
+    document.querySelectorAll("[data-panel-open]").forEach((el) => { el.dataset.panelOpen = "0"; el.setAttribute("aria-expanded", "false"); });
   }
 
   function openPanel(anchorEl, title) {
@@ -10,6 +10,7 @@
     closeAllPanels();
     if (alreadyOpen) return null;
     anchorEl.dataset.panelOpen = "1";
+    anchorEl.setAttribute("aria-expanded", "true");
 
     const panel = document.createElement("div");
     panel.className = "sbg-panel";
@@ -34,6 +35,7 @@
         if (!panel.contains(event.target) && event.target !== anchorEl && !anchorEl.contains(event.target)) {
           panel.remove();
           anchorEl.dataset.panelOpen = "0";
+          anchorEl.setAttribute("aria-expanded", "false");
           document.removeEventListener("click", onDocClick);
         }
       });
