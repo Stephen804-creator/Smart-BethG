@@ -117,6 +117,24 @@ class ConnectorOAuthService:
     scopes=(token.get("scope") or "").split(",")
   except Exception as exc:
    raise RuntimeError("Provider account verification failed.") from exc
+  required_scopes={
+   "github":{"repo","read:user"},
+   "google_drive":{"https://www.googleapis.com/auth/drive.readonly"},
+   "slack":{"chat:write","channels:read"},
+  }[provider]
+  if not required_scopes.issubset(set(scopes)):
+   try:
+    if provider=="github":
+     httpx.delete("https://api.github.com/applications/"+config.GITHUB_OAUTH_CLIENT_ID+"/grant",
+       auth=(config.GITHUB_OAUTH_CLIENT_ID,config.GITHUB_OAUTH_CLIENT_SECRET),
+       json={"access_token":access},timeout=5.0)
+    elif provider=="google_drive":
+     httpx.post("https://oauth2.googleapis.com/revoke",data={"token":access},timeout=5.0)
+    else:
+     httpx.post("https://slack.com/api/auth.revoke",headers={"Authorization":"Bearer "+access},timeout=5.0)
+   except Exception:
+    pass
+   raise RuntimeError("Provider did not grant all required connector scopes.")
   credential={"access_token":access}
   if token.get("refresh_token"): credential["refresh_token"]=token["refresh_token"]
   if token.get("token_type"): credential["token_type"]=token["token_type"]
