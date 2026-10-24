@@ -65,7 +65,7 @@ def oauth_callback(provider: str, request: Request, code: str | None = None,
                    state: str | None = None, error: str | None = None):
     if error:
         return RedirectResponse(url="/?connector_oauth=denied", status_code=303)
-    callback_url = str(request.url_for("connector_oauth_callback", provider=provider))
+    callback_url = _callback_url(request, provider)
     try:
         result = ConnectorOAuthService().callback(provider, code, state, callback_url)
     except ValueError:
