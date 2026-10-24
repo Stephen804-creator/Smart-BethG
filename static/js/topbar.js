@@ -14,7 +14,7 @@
 
     const panel = document.createElement("div");
     panel.className = "sbg-panel";
-    panel.setAttribute("role", "dialog");
+    panel.setAttribute("role", "region");
     panel.setAttribute("aria-label", title);
 
     const heading = document.createElement("div");
