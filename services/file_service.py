@@ -12,6 +12,7 @@ from providers.model_catalog import model_for_tier
 from services.usage_budget_service import UsageBudgetService, BudgetExceededError
 from storage.backend import get_storage_backend, StorageError
 from logging_setup import get_logger
+from services.ocr_service import extract_image_text, extract_scanned_pdf_text, OCRUnavailable, OCRLimitExceeded
 
 logger = get_logger("task")
 
@@ -143,10 +144,35 @@ class FileService:
                         break
                     pieces.append(piece)
                     total += len(piece)
-                return "\n".join(pieces), None
+                extracted = "\n".join(pieces).strip()
+                if extracted:
+                    return extracted, None
+                # Image-only/scanned PDFs need optional OCR runtime dependencies.
+                try:
+                    scanned_text = extract_scanned_pdf_text(content, self.MAX_PDF_PAGES)
+                    if scanned_text.strip():
+                        return scanned_text, None
+                    return None, "No readable text was found. This may be a blank or unsupported scanned PDF."
+                except OCRUnavailable:
+                    return None, "This PDF appears to contain no selectable text. Install the optional OCR dependencies to read scanned PDFs."
+                except OCRLimitExceeded as exc:
+                    return None, str(exc)
+                except ValueError as exc:
+                    logger.info("Scanned PDF OCR unavailable: user=%s file_id=%s error_type=%s", user_id, file_id, type(exc).__name__)
+                    return None, str(exc)
             except Exception as exc:
                 logger.warning("PDF extraction failed: user=%s file_id=%s error_type=%s", user_id, file_id, type(exc).__name__)
                 return None, "Could not extract text from this PDF. Check that it is a valid, unencrypted PDF."
+        if os.path.splitext(record["filename"].lower())[1] in {".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".bmp"}:
+            try:
+                text = extract_image_text(content)
+                if not text.strip():
+                    return None, "No readable text was found in this image."
+                return text, None
+            except OCRUnavailable:
+                return None, "Image OCR is unavailable. Install the optional OCR dependencies to read text in images."
+            except (OCRLimitExceeded, ValueError) as exc:
+                return None, str(exc)
         return None, "This file type isn't supported for content extraction yet."
 
     def summarize(self, user_id, file_id):
