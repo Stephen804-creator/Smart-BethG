@@ -65,3 +65,22 @@ Status meanings:
 4. Replace inline JavaScript styling with shared CSS classes and verify focus/contrast.
 5. Test phone/tablet/desktop layouts and keyboard/screen-reader behavior.
 6. Only then mark the branch ready for review; do not merge while CI is failing or key journeys remain untested.
+
+
+## 2026-10-24 — Comparison-video layout pass
+
+The supplied reference recording shows features grouped into navigation menus and settings screens, while the current Smart BethG home page exposes project forms, mission forms, capability cards, mission cards, artifacts, and infrastructure status in one long scroll. The current dashboard has been adjusted to reduce that first-screen density.
+
+- Added expandable **Workspace** and **Explore** groups to the sidebar.
+- Wrapped project/mission management, capabilities, active missions, artifacts, and system status in accessible native disclosure panels, closed by default.
+- Made sidebar section links open the corresponding panel before navigation.
+- Added clear primary actions for **Start a conversation** and **Manage workspace** in the hero; removed the repeated bottom-of-page chat call-to-action.
+- Made optional navigation links conditional so empty sections do not leave links pointing to missing panels.
+- Kept the existing forms, API endpoints, and capability actions in place; this is a presentation/organization pass, not a claim that additional backend features now exist.
+
+### Remaining work from the reference comparison
+
+- Design and implement a real first-run onboarding flow that explains the workspace, provider setup, privacy/permissions, and how to begin—without implying setup steps are complete when they are not.
+- Give high-level areas dedicated views rather than continuing to grow a single dashboard template.
+- Review the feature inventory and move future features into grouped navigation only when their screens and behaviors are implemented.
+- Verify the updated Jinja output and run CI plus mobile/keyboard/browser checks before calling the redesign complete.
