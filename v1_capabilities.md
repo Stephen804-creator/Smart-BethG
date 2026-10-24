@@ -468,3 +468,13 @@ PR #13 is not merged, and the latest connector changes still require a fresh CI 
 See docs/UNITS_6_9_IMPLEMENTATION.md and roadmap.md for configuration and release
 requirements. Do not describe these foundations as a production-verified or
 fully multi-instance deployment.
+
+
+## Units 10–15 status addendum (2026-10-24)
+
+The feature branch contains initial foundations, not production-complete roadmap implementations:
+- Validated workflows can be queued and tracked. The current worker dispatches mission steps only; workflow run completion means all child missions were dispatched, not that those missions finished.
+- Specialist coordination persists role assignments but does not execute independent specialist models.
+- Decision records and deterministic evaluation scores are owner-scoped. Scores are signals, not factual verification.
+- Model routing is a preview only; it does not call a provider or reserve/reconcile usage budgets.
+- Account data export and lifecycle requests exist. Deletion is not automatically performed and account-recovery delivery is not wired.
