@@ -49,7 +49,7 @@ class TestConnectorInstallations(SmartBethGTestCase):
         with self.assertRaises(RuntimeError):
             service.start(self.owner["id"],999,"github","https://example.test/callback")
 
-    def test_catalog_does_not_claim_external_adapters_are_live(self):
+    def test_catalog_separates_adapter_code_from_oauth_configuration(self):
         catalog={item["key"]:item for item in ConnectorRegistry().catalog()}
         self.assertTrue(catalog["github"]["adapter_available"])
         self.assertTrue(catalog["google_drive"]["adapter_available"])
