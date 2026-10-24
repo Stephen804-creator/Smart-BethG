@@ -5,6 +5,12 @@ from pydantic import BaseModel, Field
 from api.dependencies import get_current_user, get_connector_installation_service, get_connector_action_service
 from services.connector_service import ConnectorRegistry, ConnectorInstallationService
 from services.connector_oauth_service import ConnectorOAuthService
+import config
+
+def _callback_url(request: Request, provider: str) -> str:
+    if config.SMART_BETHG_PUBLIC_BASE_URL:
+        return f"{config.SMART_BETHG_PUBLIC_BASE_URL}/connectors/oauth/{provider}/callback"
+    return str(request.url_for("connector_oauth_callback", provider=provider))
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
 
@@ -43,7 +49,7 @@ def start_oauth(installation_id: int, request: Request, user=Depends(get_current
     if not installation:
         raise HTTPException(status_code=404, detail="Connector installation not found.")
     provider = installation["connector_key"]
-    callback_url = str(request.url_for("connector_oauth_callback", provider=provider))
+    callback_url = _callback_url(request, provider)
     try:
         return {"authorization_url": ConnectorOAuthService().start(user["id"], installation_id, provider, callback_url),
                 "provider": provider}
