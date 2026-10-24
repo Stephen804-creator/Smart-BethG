@@ -27,7 +27,11 @@ class TestProviderAdapters(unittest.TestCase):
         response=Mock()
         response.json.return_value={"number":5,"title":"Issue","html_url":"https://github.com/a/b/issues/5"}
         response.raise_for_status.return_value=None
-        with patch("services.connector_provider_adapters.httpx.post",return_value=response) as post:
+        recent=Mock()
+        recent.json.return_value=[]
+        recent.raise_for_status.return_value=None
+        with patch("services.connector_provider_adapters.httpx.get",return_value=recent), \
+             patch("services.connector_provider_adapters.httpx.post",return_value=response) as post:
             result=ProviderAdapter("github",FakeSecrets()).execute(
                 "issues.create",{"repository":"a/b","title":"Issue","body":"Body"},
                 {"installation_id":4,"idempotency_key":"stable-key"})
