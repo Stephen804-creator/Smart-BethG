@@ -27,7 +27,7 @@
                 <div class="form-group">
                     <label class="form-label" for="password">Password</label>
                     <div class="password-field">
-                        <input class="form-control" type="password" id="password" name="password" autocomplete="current-password" minlength="8" required class="form-control password-input">
+                        <input type="password" id="password" name="password" autocomplete="current-password" minlength="8" required class="form-control password-input">
                         <button type="button" id="togglePassword" aria-label="Show password" title="Show password"
                             class="password-toggle">
                             <i class="fa-solid fa-eye" aria-hidden="true"></i>
@@ -51,7 +51,7 @@
             <div id="googleAuthDivider" class="auth-divider" hidden>
                 <div class="auth-divider-line"></div>
                 <span>or</span>
-                <div style="flex:1; height:1px; background:var(--border);"></div>
+                <div class="auth-divider-line"></div>
             </div>
 
             <a href="/auth/google/login" id="googleAuthButton" class="google-auth-button" hidden>
