@@ -1,5 +1,24 @@
 # Smart BethG — Changelog
 
+## 2026-10-24 — Units 5–9 connector and execution foundation
+
+### Added
+- Typed connector capabilities with strict argument validation and explicit app-level permissions.
+- OAuth authorization flows for GitHub, Google Drive, and Slack, including owner-bound single-use state and Google PKCE.
+- Fernet-encrypted per-installation provider credentials, Google access-token refresh, and disconnect cleanup/revocation where supported.
+- Trusted provider adapters for GitHub issue listing/creation, Google Drive file search, and Slack message sending.
+- Durable PostgreSQL jobs and bounded mission-step execution with approval pauses/resume.
+
+### Security and boundaries
+- External OAuth apps must be configured by the operator; catalog presence alone does not mean an account is connected.
+- Write actions still require persisted approval. Legacy direct host-side actions remain disabled.
+- Natural-language mission planning, compensation/saga recovery, multi-worker crash/replay verification, live provider sandbox testing, and operator-managed KMS/secret-manager integration remain open gates.
+
+### Verification
+- New adapter and encrypted-credential tests were added.
+- Previously passing CI results apply to the earlier PR head only. A fresh CI run is required for these latest connector changes before merge.
+
+
 Records what actually changed in the software. Compare against
 `v1_capabilities.md` for current capability status; do not infer status
 from this list alone.
