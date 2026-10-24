@@ -104,7 +104,9 @@ not overstated. A roadmap entry is not evidence that a feature is implemented.
 
 ### Unit 6 — External connector platform
 - [x] Owner-scoped connector catalog/installations, permission grants, adapter interface, and safe built-in knowledge-search adapter.
-- [ ] Real OAuth/credential lifecycle and live GitHub, Drive, and Slack adapters are not yet implemented. Catalog entries do not imply those providers can execute.
+- [x] OAuth authorization flows, one-time state validation, Google PKCE, encrypted per-installation credentials, and live GitHub/Drive/Slack adapter implementations added.
+- [x] Provider adapter availability is distinguished from provider OAuth app configuration; credentials are not exposed through installation APIs.
+- [ ] Provider sandbox/end-to-end tests and operator-managed KMS/secret-manager integration remain production hardening tasks.
 
 ### Unit 7 — Connector-aware approval and policy
 - [x] Fail-closed policy checks, read-only versus side-effecting classification, persisted approval payloads, revalidation, and single-claim execution.
