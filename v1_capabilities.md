@@ -446,3 +446,25 @@ does not imply that PR #12 has merged.
 | Verification | PENDING | The current PR must pass the latest unit tests, PostgreSQL integration tests, dependency audit, and secret scan before merge. |
 
 See docs/UNITS_2_4_REMAINING_WORK.md and roadmap.md for explicit completion gates.
+
+
+## 27. Review update — 2026-10-24 (Units 5–9)
+
+This review supersedes earlier status-table claims above for connector execution,
+missions, and background jobs. It describes the current feature branch only;
+PR #13 is not merged, and the latest connector changes still require a fresh CI run.
+
+| Area | Current status | Boundaries |
+|---|---|---|
+| Typed connector capabilities | IMPLEMENTED FOUNDATION | Trusted code-defined action schemas, type/required-field checks, risk labels, and app-level permission identifiers. No public third-party SDK or remote manifest versioning. |
+| External connector platform | IMPLEMENTED FOUNDATION | Owner-scoped installations, permission grants, OAuth flows for GitHub/Google Drive/Slack, Google PKCE, encrypted per-installation credentials, and trusted provider adapters exist. OAuth app credentials must be configured by the deployment operator. |
+| Live provider actions | IMPLEMENTED FOUNDATION | GitHub issue list/create, Google Drive file search, and Slack message send are implemented. Real account access has not been verified against provider sandbox accounts in this branch. |
+| Connector credential lifecycle | PARTIALLY IMPLEMENTED | Tokens are Fernet-encrypted in PostgreSQL using a stable deployment secret; Google refresh and provider revocation where supported are implemented. Operator-managed KMS/secret-manager integration and key-rotation migration remain open. |
+| Connector policy and approvals | IMPLEMENTED FOUNDATION | Owner, connection, capability, and app-permission checks fail closed. Side-effecting actions require durable approval and are revalidated before execution. Legacy host-side actions remain disabled. |
+| Durable jobs | IMPLEMENTED FOUNDATION | PostgreSQL-backed queue, idempotency keys, priorities, leases, heartbeat, bounded retry/backoff, stale-lease cleanup, owner-scoped status/cancellation, and separate worker entry point. At-least-once delivery is not exactly-once execution. |
+| Mission execution | IMPLEMENTED FOUNDATION | Bounded connector-action plans execute in order, persist progress, and pause/resume around approval. Natural-language plan generation and saga/compensation recovery are not implemented. |
+| Reliability verification | PENDING | New connector tests have been added, but fresh CI is still required. Multi-worker crash/replay, full OAuth callback, live provider sandbox, and end-to-end approval/resume tests remain release gates. |
+
+See docs/UNITS_6_9_IMPLEMENTATION.md and roadmap.md for configuration and release
+requirements. Do not describe these foundations as a production-verified or
+fully multi-instance deployment.
