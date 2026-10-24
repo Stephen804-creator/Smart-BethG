@@ -495,7 +495,7 @@
       ? "\\n\\n[Selected project context: " + selectedProject.textContent + "]"
       : "";
     const searchPrefix = webSearchToggle && webSearchToggle.checked
-      ? "Search the web and use current sources to answer this request: "
+      ?  "
       : "";
     const messageForApi = searchPrefix + text + projectContext + attachmentContext;
     clearWelcome();
