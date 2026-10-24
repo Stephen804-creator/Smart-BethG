@@ -750,3 +750,10 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Changed unit-test setup to use isolated PostgreSQL schemas and updated the CI unit-test job to provide PostgreSQL.
 - Removed the SQLite-specific rate-limiter transaction branch; all environments use PostgreSQL advisory locking.
 - **Verification pending:** tests and CI were not run as part of this code-correction pass. Do not treat the branch as validated until PostgreSQL CI and the legacy migration rehearsal pass.
+
+## 2026-10-24 — Units 2–4 foundation follow-up
+
+- Added a controlled local-to-shared storage migration utility for database-referenced uploads and artifacts. Dry-run is the default; apply verifies copied bytes and confirms the database row has not changed before switching its locator. Local source files are retained for rollback.
+- Added conservative memory and knowledge disagreement signals for similar statements with polarity/numeric differences. These signals warn for review and never silently resolve a conflict.
+- Added unit tests for conflict-signal behavior and updated the foundation backlog to distinguish completed foundations from deferred semantic memory retrieval, OCR, advanced reranking, external-source verification, and approval-based memory consolidation.
+- Corrected the test workflow's unsupported runner context in job-level environment configuration so named CI jobs can start. Verification is still in progress; see PR #12 checks before merging.
