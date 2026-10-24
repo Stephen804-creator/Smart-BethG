@@ -75,6 +75,12 @@ GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
 GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
 
+# External connector OAuth apps (configure callback URLs in each provider console).
+GITHUB_OAUTH_CLIENT_ID = os.getenv("GITHUB_OAUTH_CLIENT_ID", "").strip()
+GITHUB_OAUTH_CLIENT_SECRET = os.getenv("GITHUB_OAUTH_CLIENT_SECRET", "").strip()
+SLACK_OAUTH_CLIENT_ID = os.getenv("SLACK_OAUTH_CLIENT_ID", "").strip()
+SLACK_OAUTH_CLIENT_SECRET = os.getenv("SLACK_OAUTH_CLIENT_SECRET", "").strip()
+
 # Comma-separated exact origins. Empty means no cross-origin browser access.
 ALLOWED_ORIGINS = [
     origin.strip().rstrip("/")
