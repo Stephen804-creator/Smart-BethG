@@ -25,6 +25,7 @@ python-multipart>=0.0.20,<1.0
 pydantic>=2.10,<3.0
 
 # OAuth / authentication
+cryptography>=44,<47
 Authlib>=1.4,<2.0
 httpx>=0.27,<1.0
 
