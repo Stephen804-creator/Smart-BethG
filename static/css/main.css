@@ -1975,8 +1975,6 @@ textarea.form-control { min-height: 96px; resize: vertical; }
     :root { --page-padding: 16px; --sidebar-width: min(82vw, 300px); }
     .app { height: auto; min-height: 100vh; overflow: visible; }
     .sidebar { position: fixed; inset: 0 auto 0 0; height: 100dvh; transform: translateX(-100%); box-shadow: var(--shadow-lg); }
-    .app:not(.sidebar-collapsed) .sidebar { transform: translateX(0); }
-    .app.sidebar-collapsed .sidebar { transform: translateX(-100%); }
     .content { width: 100%; min-width: 0; }
     .topbar { min-height: 64px; height: auto; padding: 12px var(--page-padding); gap: 10px; }
     .topbar-actions { gap: 5px; }
@@ -2005,3 +2003,18 @@ textarea.form-control { min-height: 96px; resize: vertical; }
     }
     .app.mobile-nav-open .sidebar { z-index: 30; }
 }
+
+/* Final responsive overrides: keep the mobile drawer usable even if the desktop sidebar was collapsed. */
+@media (max-width: 640px) {
+    .sidebar,
+    .app.sidebar-collapsed .sidebar {
+        width: var(--sidebar-width);
+        min-width: var(--sidebar-width);
+    }
+    .app.sidebar-collapsed .logo span,
+    .app.sidebar-collapsed .sidebar nav a span { display: initial; }
+    .app.sidebar-collapsed .sidebar-header { justify-content: space-between; }
+    .app.sidebar-collapsed .sidebar nav a { justify-content: flex-start; padding: 11px 12px; }
+    .topbar-actions .icon-button { border-radius: var(--radius-md); }
+}
+.status-success { color: #86efac; }
