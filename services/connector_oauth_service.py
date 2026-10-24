@@ -139,7 +139,11 @@ class ConnectorOAuthService:
     if installation["connector_key"]=="slack" and token:
      httpx.post("https://slack.com/api/auth.revoke",headers={"Authorization":"Bearer "+token},timeout=5.0)
     elif installation["connector_key"]=="google_drive" and token:
-     httpx.post("https://oauth2.googleapis.com/revoke",params={"token":token},timeout=5.0)
+     httpx.post("https://oauth2.googleapis.com/revoke",data={"token":token},timeout=5.0)
+    elif installation["connector_key"]=="github" and token and self.configured("github"):
+     httpx.delete("https://api.github.com/applications/"+config.GITHUB_OAUTH_CLIENT_ID+"/grant",
+       auth=(config.GITHUB_OAUTH_CLIENT_ID,config.GITHUB_OAUTH_CLIENT_SECRET),
+       json={"access_token":token},timeout=5.0)
    except Exception:
     pass
   self.secrets.delete(installation_id)
