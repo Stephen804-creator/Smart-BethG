@@ -1,6 +1,7 @@
 """Live, bounded, read/write provider adapters for authorized OAuth installations."""
 import httpx
 from datetime import datetime, timedelta, timezone
+import uuid
 import config
 from services.connector_secrets import ConnectorSecretStore
 
