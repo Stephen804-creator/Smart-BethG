@@ -2,6 +2,9 @@ from tests.base import SmartBethGTestCase
 from services.auth_service import create_user
 from services.connector_service import ConnectorInstallationService, ConnectorRegistry
 from services.connector_action_service import ConnectorActionService
+from services.connector_secrets import ConnectorSecretStore
+from services.connector_oauth_service import ConnectorOAuthService
+from database import get_connection
 
 class TestConnectorInstallations(SmartBethGTestCase):
     def setUp(self):
@@ -25,6 +28,26 @@ class TestConnectorInstallations(SmartBethGTestCase):
         self.assertEqual(result["status"],"completed")
         self.assertTrue(result["result"]["success"])
         self.assertEqual(result["result"]["results"],[])
+
+    def test_connector_credentials_are_encrypted_at_rest(self):
+        installed=self.installations.install(self.owner["id"],"github",permissions=["github.issues.list"])
+        store=ConnectorSecretStore()
+        store.put(installed["id"],{"access_token":"token-that-must-not-be-plaintext"},"example",["repo"])
+        conn=get_connection()
+        try:
+            row=conn.execute("SELECT encrypted_payload FROM connector_credentials WHERE installation_id=?",(installed["id"],)).fetchone()
+        finally:
+            conn.close()
+        self.assertNotIn("token-that-must-not-be-plaintext",row["encrypted_payload"])
+        self.assertEqual(store.get(installed["id"])["credentials"]["access_token"],"token-that-must-not-be-plaintext")
+        store.delete(installed["id"])
+
+    def test_oauth_start_fails_closed_when_provider_app_is_not_configured(self):
+        service=ConnectorOAuthService()
+        if service.configured("github"):
+            self.skipTest("GitHub OAuth credentials are configured in this environment.")
+        with self.assertRaises(RuntimeError):
+            service.start(self.owner["id"],999,"github","https://example.test/callback")
 
     def test_catalog_does_not_claim_external_adapters_are_live(self):
         catalog={item["key"]:item for item in ConnectorRegistry().catalog()}
