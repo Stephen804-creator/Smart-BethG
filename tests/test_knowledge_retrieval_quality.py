@@ -48,13 +48,13 @@ class TestKnowledgeRetrievalQuality(SmartBethGTestCase):
         self.assertGreater(results[0]["relevance_score"], 0)
 
     def test_reindex_replaces_old_chunks_for_same_file(self):
-        record = self.files.save_upload(self.owner["id"], "notes.txt", b"old unique content")
+        record = self.files.save_upload(self.owner["id"], "notes.txt", b"old obsolete content")
         with patch.object(provider_manager, "embedding_provider_name", return_value=None):
             self.knowledge.ingest_file(self.owner["id"], record["id"])
-            self.files.storage.put_bytes("uploads", self.owner["id"], os.path.basename(record["path"]), b"new unique content")
+            self.files.storage.put_bytes("uploads", self.owner["id"], os.path.basename(record["path"]), b"new current content")
             self.knowledge.ingest_file(self.owner["id"], record["id"])
-            old_results = self.knowledge.search(self.owner["id"], "old unique")
-            new_results = self.knowledge.search(self.owner["id"], "new unique")
+            old_results = self.knowledge.search(self.owner["id"], "old obsolete")
+            new_results = self.knowledge.search(self.owner["id"], "new current")
         self.assertEqual(old_results, [])
         self.assertTrue(new_results)
 
