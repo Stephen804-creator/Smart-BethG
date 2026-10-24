@@ -2,6 +2,16 @@
 (function () {
   let activePanelClose = null;
 
+  // Restore the user's saved display choices before they open the settings panel.
+  try {
+    const savedTheme = localStorage.getItem("sbg:preference:theme");
+    const savedFontSize = localStorage.getItem("sbg:preference:font-size");
+    const savedFontStyle = localStorage.getItem("sbg:preference:font-style");
+    if (savedTheme === "light" || savedTheme === "dark") document.documentElement.dataset.theme = savedTheme;
+    if (["small", "default", "large"].includes(savedFontSize)) document.documentElement.dataset.fontSize = savedFontSize;
+    if (savedFontStyle === "standard" || savedFontStyle === "serif") document.documentElement.dataset.fontStyle = savedFontStyle;
+  } catch (_) { /* Preferences are optional when browser storage is unavailable. */ }
+
   function closeAllPanels() {
     if (activePanelClose) {
       activePanelClose(false);
