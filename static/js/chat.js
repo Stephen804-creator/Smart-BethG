@@ -124,9 +124,26 @@
     }
   }
 
+  function showStatus(status, message, retryLabel, retryAction) {
+    if (!status) return;
+    status.replaceChildren();
+    const messageEl = document.createElement("span");
+    messageEl.textContent = message;
+    status.appendChild(messageEl);
+    if (retryLabel && typeof retryAction === "function") {
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "status-retry-button";
+      retry.textContent = retryLabel;
+      retry.addEventListener("click", retryAction);
+      status.appendChild(retry);
+    }
+  }
+
   async function loadConversationList() {
     if (!conversationListEl) return;
     const status = document.getElementById("conversationStatus");
+    if (status) status.replaceChildren();
     try {
       const res = await fetch("/api/chat/conversations", { credentials: "same-origin" });
       if (res.status === 401) {
@@ -136,9 +153,9 @@
       if (!res.ok) throw new Error("Conversation history request failed.");
       const data = await res.json();
       renderConversationList(data.conversations || []);
-      if (status) status.textContent = "";
+      if (status) status.replaceChildren();
     } catch (err) {
-      if (status) status.textContent = "Conversation history couldn't load. You can still start a new chat.";
+      showStatus(status, "Conversation history couldn't load. You can still start a new chat.", "Retry", loadConversationList);
     }
   }
 
@@ -188,7 +205,7 @@
         window.location.href = "/login";
         return;
       }
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Provider catalog request failed.");
       const data = await res.json();
       const catalog = data.catalog || {};
       const providerNames = Object.keys(catalog);
@@ -198,7 +215,7 @@
         providerSelect.hidden = true;
         if (providerStatus) {
           providerStatus.hidden = false;
-          providerStatus.textContent = "No provider choices are available. Chat will use the server's default routing.";
+          showStatus(providerStatus, "No provider choices are available. Chat will use the server's default routing.", "Check again", loadProviders);
         }
         return;
       }
@@ -234,7 +251,7 @@
       const providerStatus = document.getElementById("providerStatus");
       if (providerStatus) {
         providerStatus.hidden = false;
-        providerStatus.textContent = "Provider choices couldn't load. You can still try chat using the server's default routing.";
+        showStatus(providerStatus, "Provider choices couldn't load. You can still try chat using the server's default routing.", "Retry", loadProviders);
       }
     }
   }
@@ -280,11 +297,14 @@
         window.location.href = "/login";
         return;
       }
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Conversation messages request failed.");
       const data = await res.json();
       (data.messages || []).forEach((m) => renderMessage(m.role, m.content));
+      const status = document.getElementById("conversationStatus");
+      if (status) status.replaceChildren();
     } catch (err) {
-      // Silent: an empty history is a fine starting state.
+      const status = document.getElementById("conversationStatus");
+      showStatus(status, "This conversation couldn't be loaded.", "Retry", loadHistory);
     }
   }
 
@@ -315,7 +335,8 @@
       messagesEl.lastChild.remove(); // remove "Thinking..." notice
 
       if (!res.ok) {
-        renderNotice("Something went wrong sending that message. Please try again.");
+        promptEl.value = text;
+        renderNotice("Something went wrong sending that message. Your text is back in the composer so you can retry.");
         return;
       }
 
@@ -327,7 +348,8 @@
       loadApprovals();
     } catch (err) {
       if (messagesEl.lastChild) messagesEl.lastChild.remove();
-      renderNotice("Could not reach Smart BethG. Check your connection and try again.");
+      promptEl.value = text;
+      renderNotice("Could not reach Smart BethG. Your text is back in the composer so you can retry.");
     } finally {
       sendBtn.disabled = false;
       promptEl.disabled = false;
