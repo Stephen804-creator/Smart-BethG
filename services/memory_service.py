@@ -120,4 +120,7 @@ class MemoryService:
             used += len(line) + 1
         if not lines:
             return ""
-        return "Things Smart BethG has been asked to remember about this user/context:\n" + "\n".join(lines)
+        header = "Things Smart BethG has been asked to remember about this user/context:"
+        if conflicts:
+            header += " Potentially conflicting memories were detected; preserve both and ask the user or consult their sources rather than silently choosing one."
+        return header + "\n" + "\n".join(lines)
