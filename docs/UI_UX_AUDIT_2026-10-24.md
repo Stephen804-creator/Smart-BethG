@@ -84,3 +84,25 @@ The supplied reference recording shows features grouped into navigation menus an
 - Give high-level areas dedicated views rather than continuing to grow a single dashboard template.
 - Review the feature inventory and move future features into grouped navigation only when their screens and behaviors are implemented.
 - Verify the updated Jinja output and run CI plus mobile/keyboard/browser checks before calling the redesign complete.
+
+
+## Onboarding content rule — user-approved direction (2026-10-24)
+
+Onboarding must explain Smart BethG from the user's point of view. Do not expose implementation details, backend/frontend terminology, provider/model names, configuration internals, or claims about which technologies power the product. Keep the visible experience centered on **Auto** and on what the product can genuinely do today.
+
+Proposed onboarding sequence:
+
+1. **Welcome to Smart BethG** — “A workspace for thinking through tasks, having conversations, and organizing work with an AI assistant.”
+2. **Tell it what you want to do** — explain that the user can describe a question, problem, idea, or task in everyday language and add relevant context.
+3. **Work through a conversation** — show how to ask follow-up questions, clarify the result, and refine the response until it is useful.
+4. **Keep work organized** — explain Projects & Missions as a way to group work and record objectives; show artifacts only as available results the user can open.
+5. **Review before acting** — where a task asks for approval, explain that the user can review the proposed action and choose whether to approve it. Never imply all actions happen automatically or that every integration is connected.
+6. **You're ready** — invite the user to start a conversation with a simple prompt such as “Help me plan my next project.”
+
+Content guardrails:
+- No “we use this model/provider/framework/API” wording.
+- No backend/frontend, server, database, infrastructure, configuration, or setup jargon in user-facing onboarding.
+- Do not expose model/provider selection; present **Auto** as the user-facing choice.
+- Describe only current, working capabilities. Label unavailable or planned capabilities as unavailable/planned in internal planning, not as something the user can already do.
+- Keep each step short, plain-language, and skippable; let users reopen the guide later from Help.
+- Do not force users through onboarding before they can start using the product.
