@@ -28,8 +28,8 @@ class TestConflictDetection(unittest.TestCase):
 
     def test_pairwise_results_preserve_source_labels(self):
         results = find_pairwise_conflicts([
-            {"content": "The limit is 10 requests", "citation": "policy-a"},
-            {"content": "The limit is 100 requests", "citation": "policy-b"},
+            {"content": "The daily request limit is 10 requests", "citation": "policy-a"},
+            {"content": "The daily request limit is 100 requests", "citation": "policy-b"},
         ])
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["left_source"], "policy-a")

@@ -123,4 +123,7 @@ class MemoryService:
         header = "Things Smart BethG has been asked to remember about this user/context:"
         if conflicts:
             header += " Potentially conflicting memories were detected; preserve both and ask the user or consult their sources rather than silently choosing one."
-        return header + "\n" + "\n".join(lines)
+        result = header + "\n" + "\n".join(lines)
+        if len(result) > MAX_CONTEXT_CHARS:
+            result = result[:MAX_CONTEXT_CHARS - 1].rstrip() + "…"
+        return result

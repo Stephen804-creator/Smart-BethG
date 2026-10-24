@@ -113,7 +113,7 @@ class AgentExecutor:
                 # answer from a tool step that didn't succeed.
                 chat_result = self._record_tool_exchange(agent_request, step.action, tool_result)
                 return {
-                    "intent": step.action,
+                    "intent": intent,
                     "status": tool_result.get("status"),
                     "result": {**chat_result, "tool_result": tool_result},
                 }
