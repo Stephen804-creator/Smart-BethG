@@ -7,7 +7,7 @@ def _now(): return datetime.now(timezone.utc)
 def _iso(value): return value.isoformat(timespec="microseconds")
 
 class JobQueue:
-    VALID_TYPES={"mission.execute"}
+    VALID_TYPES={"mission.execute","workflow.execute"}
     def enqueue(self,user_id,job_type,payload,idempotency_key,priority=0,max_attempts=5):
         conn=get_connection()
         try:
