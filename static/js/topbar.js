@@ -1,8 +1,17 @@
 // Smart BethG - shared topbar icon panels.
 (function () {
+  let activePanelClose = null;
+
   function closeAllPanels() {
+    if (activePanelClose) {
+      activePanelClose(false);
+      return;
+    }
     document.querySelectorAll(".sbg-panel").forEach((panel) => panel.remove());
-    document.querySelectorAll("[data-panel-open]").forEach((el) => (el.dataset.panelOpen = "0"));
+    document.querySelectorAll("[data-panel-open]").forEach((el) => {
+      el.dataset.panelOpen = "0";
+      el.setAttribute("aria-expanded", "false");
+    });
   }
 
   function openPanel(anchorEl, title) {
@@ -10,62 +19,68 @@
     closeAllPanels();
     if (alreadyOpen) return null;
     anchorEl.dataset.panelOpen = "1";
+    anchorEl.setAttribute("aria-expanded", "true");
 
     const panel = document.createElement("div");
     panel.className = "sbg-panel";
-    panel.style.cssText =
-      "position:absolute; top:52px; right:0; width:280px; max-width:88vw; " +
-      "background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md, 12px); " +
-      "box-shadow:0 12px 32px rgba(0,0,0,0.4); padding:16px; z-index:50; color:var(--text-primary);";
+    panel.setAttribute("role", "region");
+    panel.setAttribute("aria-label", title);
 
     const heading = document.createElement("div");
-    heading.style.cssText = "font-weight:700; margin-bottom:10px; font-size:14px;";
+    heading.className = "sbg-panel-heading";
     heading.textContent = title;
     panel.appendChild(heading);
 
     const body = document.createElement("div");
     panel.appendChild(body);
     const container = anchorEl.closest(".topbar-actions") || anchorEl.parentElement;
-    container.style.position = container.style.position || "relative";
     container.appendChild(panel);
 
+    function closePanel(restoreFocus = false) {
+      panel.remove();
+      anchorEl.dataset.panelOpen = "0";
+      anchorEl.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onDocKeydown);
+      if (activePanelClose === closePanel) activePanelClose = null;
+      if (restoreFocus) anchorEl.focus();
+    }
+
+    activePanelClose = closePanel;
+
+    function onDocClick(event) {
+      if (!panel.contains(event.target) && !anchorEl.contains(event.target)) {
+        closePanel();
+      }
+    }
+
+    function onDocKeydown(event) {
+      if (event.key === "Escape") closePanel(true);
+    }
+
     setTimeout(() => {
-      document.addEventListener("click", function onDocClick(event) {
-        if (!panel.contains(event.target) && event.target !== anchorEl && !anchorEl.contains(event.target)) {
-          panel.remove();
-          anchorEl.dataset.panelOpen = "0";
-          document.removeEventListener("click", onDocClick);
-        }
-      });
+      document.addEventListener("click", onDocClick);
+      document.addEventListener("keydown", onDocKeydown);
     }, 0);
     return body;
   }
 
   function showEmpty(body, message) {
     const p = document.createElement("p");
-    p.style.cssText = "color:var(--text-secondary); font-size:14px; margin:0;";
+    p.className = "sbg-panel-empty";
     p.textContent = message;
     body.replaceChildren(p);
   }
 
   function addUsageRow(body, label, value, emphasize) {
     const row = document.createElement("div");
-    row.style.cssText = "display:flex; justify-content:space-between; gap:10px; font-size:13px; line-height:1.7;";
+    row.className = "sbg-usage-row";
     const labelEl = document.createElement("span");
     labelEl.textContent = label;
     const valueEl = document.createElement(emphasize ? "strong" : "span");
     valueEl.textContent = String(value);
     row.append(labelEl, valueEl);
     body.appendChild(row);
-  }
-
-  const notifBtn = document.getElementById("notificationsButton");
-  if (notifBtn) {
-    notifBtn.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const body = openPanel(notifBtn, "Notifications");
-      if (body) showEmpty(body, "No notifications yet.");
-    });
   }
 
   const usageBtn = document.getElementById("usageButton");
@@ -110,9 +125,9 @@
         );
         (data.by_model || []).forEach((model) => {
           const row = document.createElement("div");
-          row.style.cssText = "display:flex; justify-content:space-between; gap:10px; font-size:12px; color:var(--text-secondary); padding:6px 0; border-top:1px solid var(--border);";
+          row.className = "sbg-usage-row sbg-usage-model";
           const name = document.createElement("span");
-          name.style.overflowWrap = "anywhere";
+          name.className = "sbg-usage-model-name";
           name.textContent = String(model.provider || "?") + " / " + String(model.model || "?");
           const count = document.createElement("span");
           count.textContent = String((Number(model.input_tokens) || 0) + (Number(model.output_tokens) || 0)) + " tok";
@@ -121,7 +136,7 @@
         });
         if (!(data.by_model || []).length) {
           const empty = document.createElement("p");
-          empty.style.cssText = "color:var(--text-secondary); font-size:14px; margin:8px 0 0;";
+          empty.className = "sbg-panel-empty sbg-panel-empty-spaced";
           empty.textContent = "No usage yet.";
           body.appendChild(empty);
         }
@@ -147,7 +162,7 @@
         if (!res.ok) throw new Error("Account request failed.");
         const user = await res.json();
         const line = document.createElement("div");
-        line.style.cssText = "font-size:13px; line-height:1.8; overflow-wrap:anywhere;";
+        line.className = "sbg-account-line";
         line.append(document.createTextNode("Signed in as "));
         const username = document.createElement("strong");
         username.textContent = String(user.username || "-");

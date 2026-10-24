@@ -14,6 +14,17 @@
   const STORAGE_KEY = "sbg:conversationId";
   const SELECTION_KEY = "sbg:selection";
   let conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
+  let isSending = false;
+
+  function setConversationControlsBusy(busy) {
+    isSending = busy;
+    if (newChatBtn) newChatBtn.disabled = busy;
+    if (conversationListEl) {
+      conversationListEl.querySelectorAll(".conversation-item").forEach((item) => {
+        item.disabled = busy;
+      });
+    }
+  }
 
   async function getCsrfToken() {
     const res = await fetch("/auth/csrf", { credentials: "same-origin", cache: "no-store" });
@@ -43,32 +54,32 @@
 
       approvals.forEach((approval) => {
         const card = document.createElement("article");
-        card.style.cssText = "padding:12px; border:1px solid var(--border); border-radius:10px;";
+        card.className = "approval-card approval-request";
         const title = document.createElement("strong");
         title.textContent = approval.action || "Restricted action";
         const resource = document.createElement("p");
-        resource.style.cssText = "margin:6px 0 10px; font-size:13px; overflow-wrap:anywhere;";
+        resource.className = "approval-resource";
         resource.textContent = "Resource: " + (approval.resource || "not specified");
         const details = document.createElement("details");
-        details.style.cssText = "margin:8px 0 10px;";
+        details.className = "approval-details";
         const detailsSummary = document.createElement("summary");
         detailsSummary.textContent = "Review exact operation arguments";
         const detailsBody = document.createElement("pre");
-        detailsBody.style.cssText = "white-space:pre-wrap; overflow-wrap:anywhere; max-height:220px; overflow:auto; font-size:12px; padding:8px; background:var(--surface-hover, transparent); border-radius:6px;";
+        detailsBody.className = "approval-payload";
         detailsBody.textContent = JSON.stringify(approval.payload || {}, null, 2);
         details.append(detailsSummary, detailsBody);
 
         const actions = document.createElement("div");
-        actions.style.cssText = "display:flex; gap:8px; flex-wrap:wrap;";
+        actions.className = "approval-actions";
         const approve = document.createElement("button");
         approve.type = "button";
-        approve.className = "btn";
+        approve.className = "btn btn-primary";
         approve.textContent = "Approve";
         const reject = document.createElement("button");
         reject.type = "button";
-        reject.className = "btn";
+        reject.className = "btn btn-secondary";
         reject.textContent = "Reject";
-        reject.style.background = "var(--surface-hover, transparent)";
+        
         reject.addEventListener("click", () => decideApproval(approval.id, false));
         approve.addEventListener("click", () => decideApproval(approval.id, true));
         actions.append(approve, reject);
@@ -124,19 +135,38 @@
     }
   }
 
+  function showStatus(status, message, retryLabel, retryAction) {
+    if (!status) return;
+    status.replaceChildren();
+    const messageEl = document.createElement("span");
+    messageEl.textContent = message;
+    status.appendChild(messageEl);
+    if (retryLabel && typeof retryAction === "function") {
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "status-retry-button";
+      retry.textContent = retryLabel;
+      retry.addEventListener("click", retryAction);
+      status.appendChild(retry);
+    }
+  }
+
   async function loadConversationList() {
     if (!conversationListEl) return;
+    const status = document.getElementById("conversationStatus");
+    if (status) status.replaceChildren();
     try {
       const res = await fetch("/api/chat/conversations", { credentials: "same-origin" });
       if (res.status === 401) {
         window.location.href = "/login";
         return;
       }
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Conversation history request failed.");
       const data = await res.json();
       renderConversationList(data.conversations || []);
+      if (status) status.replaceChildren();
     } catch (err) {
-      // Silent: history is a convenience, chat still works without it.
+      showStatus(status, "Conversation history couldn't load. You can still start a new chat.", "Retry", loadConversationList);
     }
   }
 
@@ -144,7 +174,7 @@
     conversationListEl.innerHTML = "";
     if (conversations.length === 0) {
       const empty = document.createElement("p");
-      empty.style.cssText = "color:var(--text-secondary); font-size:13px; padding:6px 8px;";
+      empty.className = "conversation-empty";
       empty.textContent = "No conversations yet.";
       conversationListEl.appendChild(empty);
       return;
@@ -153,17 +183,17 @@
       const item = document.createElement("button");
       item.type = "button";
       const isActive = String(c.id) === String(conversationId);
-      item.style.cssText =
-        "display:block; width:100%; text-align:left; padding:9px 10px; border-radius:8px; " +
-        "border:none; background:" + (isActive ? "var(--surface-hover, rgba(255,255,255,0.08))" : "transparent") +
-        "; color:var(--text-primary); font-size:13px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;";
+      item.className = "conversation-item" + (isActive ? " is-active" : "");
       item.textContent = c.title || "New conversation";
+      item.disabled = isSending;
+      if (isActive) item.setAttribute("aria-current", "true");
       item.addEventListener("click", () => switchConversation(c.id));
       conversationListEl.appendChild(item);
     });
   }
 
   function switchConversation(id) {
+    if (isSending) return;
     conversationId = id;
     window.localStorage.setItem(STORAGE_KEY, conversationId);
     messagesEl.innerHTML = "";
@@ -173,6 +203,7 @@
 
   if (newChatBtn) {
     newChatBtn.addEventListener("click", () => {
+      if (isSending) return;
       conversationId = null;
       window.localStorage.removeItem(STORAGE_KEY);
       messagesEl.innerHTML = "";
@@ -189,13 +220,18 @@
         window.location.href = "/login";
         return;
       }
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Provider catalog request failed.");
       const data = await res.json();
       const catalog = data.catalog || {};
       const providerNames = Object.keys(catalog);
 
+      const providerStatus = document.getElementById("providerStatus");
       if (providerNames.length === 0) {
-        providerSelect.style.display = "none";
+        providerSelect.hidden = true;
+        if (providerStatus) {
+          providerStatus.hidden = false;
+          showStatus(providerStatus, "No provider choices are available. Chat will use the server's default routing.", "Check again", loadProviders);
+        }
         return;
       }
 
@@ -227,7 +263,11 @@
         window.localStorage.setItem(SELECTION_KEY, providerSelect.value);
       });
     } catch (err) {
-      // Silent: chat still works with the backend's Auto selection.
+      const providerStatus = document.getElementById("providerStatus");
+      if (providerStatus) {
+        providerStatus.hidden = false;
+        showStatus(providerStatus, "Provider choices couldn't load. You can still try chat using the server's default routing.", "Retry", loadProviders);
+      }
     }
   }
 
@@ -246,7 +286,7 @@
 
     if (note) {
       const noteEl = document.createElement("div");
-      noteEl.style.cssText = "font-size:12px; color:var(--text-secondary); margin-top:4px; opacity:0.8;";
+      noteEl.className = "message-note";
       noteEl.textContent = note;
       wrapper.appendChild(noteEl);
     }
@@ -258,7 +298,7 @@
   function renderNotice(text) {
     const notice = document.createElement("div");
     notice.className = "message message-assistant";
-    notice.style.opacity = "0.7";
+    notice.classList.add("message-notice");
     notice.textContent = text;
     messagesEl.appendChild(notice);
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -272,11 +312,14 @@
         window.location.href = "/login";
         return;
       }
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Conversation messages request failed.");
       const data = await res.json();
       (data.messages || []).forEach((m) => renderMessage(m.role, m.content));
+      const status = document.getElementById("conversationStatus");
+      if (status) status.replaceChildren();
     } catch (err) {
-      // Silent: an empty history is a fine starting state.
+      const status = document.getElementById("conversationStatus");
+      showStatus(status, "This conversation couldn't be loaded.", "Retry", loadHistory);
     }
   }
 
@@ -284,6 +327,7 @@
     renderMessage("user", text);
     sendBtn.disabled = true;
     promptEl.disabled = true;
+    setConversationControlsBusy(true);
     renderNotice("Thinking...");
 
     try {
@@ -307,7 +351,8 @@
       messagesEl.lastChild.remove(); // remove "Thinking..." notice
 
       if (!res.ok) {
-        renderNotice("Something went wrong sending that message. Please try again.");
+        promptEl.value = text;
+        renderNotice("Something went wrong sending that message. Your text is back in the composer so you can retry.");
         return;
       }
 
@@ -319,10 +364,12 @@
       loadApprovals();
     } catch (err) {
       if (messagesEl.lastChild) messagesEl.lastChild.remove();
-      renderNotice("Could not reach Smart BethG. Check your connection and try again.");
+      promptEl.value = text;
+      renderNotice("Could not reach Smart BethG. Your text is back in the composer so you can retry.");
     } finally {
       sendBtn.disabled = false;
       promptEl.disabled = false;
+      setConversationControlsBusy(false);
       promptEl.focus();
     }
   }

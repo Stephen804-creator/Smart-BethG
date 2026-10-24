@@ -4,6 +4,36 @@ Records what actually changed in the software. Compare against
 `v1_capabilities.md` for current capability status; do not infer status
 from this list alone.
 
+## 2026-10-24 — UI/UX recovery and popover refinement
+
+### Changed
+- Added retry controls for failed conversation history and provider catalog requests.
+- Restored the user's prompt to the composer after failed sends, reducing lost work.
+- Prevented switching conversations or starting a new chat while a response is in progress.
+- Added active conversation semantics and visible disabled-state styling.
+- Moved account and usage popover presentation from inline JavaScript styles into shared responsive CSS.
+- Removed the obsolete notifications-panel handler because the corresponding control is not part of the UI.
+
+### Verification
+- JavaScript syntax checks passed for `chat.js`, `app.js`, `topbar.js`, `login.js`, and `workspace-dashboard.js`.
+- Shared CSS brace balance is valid; the reviewed chat/dashboard/login templates have no duplicate static IDs, aside from a repeated Jinja template ID expression used for rendered mission items.
+- Browser/device testing is still outstanding. GitHub Actions remains failing on this branch, and the available connector did not return job details.
+
+## 2026-10-24 — UI/UX standardization (branch: uiux/standardize-design-system)
+
+### Changed
+- Removed non-functional dashboard global search and the unsupported notification control instead of leaving misleading actions visible.
+- Renamed the topbar account control to match its actual account-summary behavior.
+- Removed duplicate chat heading and upgraded the composer to multiline input with Enter/Shift+Enter guidance.
+- Added responsive composer refinements, active conversation styling, and shared CSS classes for chat history and approval cards.
+- Added accessible status messages when conversation history or provider choices fail to load.
+- Added `docs/UI_UX_AUDIT_2026-10-24.md`, covering all 17 UI/UX units and production follow-up work.
+
+### Verification / not done
+- Static source review only; browser/device and screen-reader journeys still require execution.
+- GitHub Actions test workflow is failing on the branch; job details were not returned by the available API response. Do not merge until the failure is investigated and CI passes.
+- Work remains in the UI/UX branch and has not been merged to `main`.
+
 ## 2026-09-19
 
 ### Fixed
