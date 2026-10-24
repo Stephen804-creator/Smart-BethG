@@ -19,9 +19,9 @@ Status meanings:
 
 5. **Agent interaction and status — Partial.** The UI surfaces provider fallback and intent notes and includes approval review. There is no complete visible plan → execution → validation progress timeline yet. Do not display a ready/available state unless the backend confirms it.
 
-6. **Conversation management — Partial.** New conversation and history reopening exist. Rename, delete with confirmation, conversation search, and clearer active-history styling are absent or unverified.
+6. **Conversation management — Partial.** New conversation and history reopening exist. Rename, delete with confirmation, and conversation search are absent or unverified. Active history styling and busy-state protection are now implemented.
 
-7. **Providers and model selection — Partial.** Auto and catalog-driven provider/model selection are implemented. Provider-loading failures and an empty provider catalog now expose a status message; verify the wording matches actual backend fallback behavior and offer retry if useful. Never expose API keys.
+7. **Providers and model selection — Partial.** Auto and catalog-driven provider/model selection are implemented. Provider-loading failures and an empty provider catalog now expose a status message and retry action; verify the wording matches actual backend fallback behavior. Never expose API keys.
 
 8. **Forms and input — Partial.** Labels, browser validation, submit disabling, and status messages exist in several flows. Audit all forms for consistent inline errors, retained user input after failures, disabled/loading states, and keyboard/mobile usability.
 
@@ -31,7 +31,7 @@ Status meanings:
 
 11. **Notifications and feedback — Partial.** Usage/account panels and inline operation feedback exist. A standalone notifications control had no real notification feed, so it was removed rather than left as a dead control. A persistent notification centre is still missing.
 
-12. **Loading, empty, error, recovery — Partial.** Some lists show loading/empty states and network errors. Conversation history/provider-loading failures now have status messages. Add retry controls and continue distinguishing “no data” from “could not load data.”
+12. **Loading, empty, error, recovery — Partial.** Some lists show loading/empty states and network errors. Conversation history and provider failures now have visible retry controls; failed sends restore the typed prompt. Conversation switching is temporarily disabled while a reply is in progress. Continue distinguishing “no data” from “could not load data” and verify retries against backend failures.
 
 13. **Responsive design — Needs runtime verification.** Responsive rules exist and the composer now adapts to narrow screens. Test at narrow Android widths, tablet, laptop, zoomed text, landscape, and with the keyboard open. Check horizontal overflow, clipped popovers, sidebar overlays, and touch target size.
 
@@ -51,7 +51,9 @@ Status meanings:
 - Removed the duplicated chat-page hero heading.
 - Replaced the single-line chat input with a multiline textarea and added a keyboard hint.
 - Replaced chat history/approval inline styles with reusable classes; added active-history styling.
-- Added accessible status messages for failed history/provider loading and retained usable chat behavior.
+- Added accessible status messages and retry controls for failed history/provider loading; failed sends restore the user's text.
+- Prevented switching conversations or starting a new chat while a response is pending.
+- Moved account/usage popover styles from JavaScript inline styles into responsive shared CSS.
 - Added responsive composer styling and retained the existing provider selector and send behavior.
 - Kept all work on `uiux/standardize-design-system`; `main` was not modified.
 
