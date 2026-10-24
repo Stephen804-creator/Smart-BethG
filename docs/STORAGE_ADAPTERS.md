@@ -18,3 +18,17 @@ The adapter currently covers uploaded files and generated artifacts. Other works
 ## Failure behavior
 
 Storage errors are returned as controlled service errors or logged with user/file identifiers; raw provider credentials and private object content must not be written to logs. Database rows are removed before best-effort object deletion so a stale object is preferable to a live row pointing at missing data. A periodic orphan-cleanup process remains future work.
+
+## Existing deployment migration
+
+The adapter does not automatically move existing local objects. Back up the
+database and local storage first, configure a test bucket, then run
+python -m scripts.migrate_local_storage for a dry-run inventory. Review the
+planned rows and confirm each source is within its configured namespace storage
+root before using --apply. Verify owner isolation, reads, known file contents,
+backup restore, and rollback before changing production traffic.
+
+The utility migrates database-referenced upload and artifact objects only. It
+does not claim to migrate other workspace/research/social/mission/workflow paths.
+It intentionally leaves source files in place; remove them only after a separate
+verified backup/restore and rollback window.

@@ -5,6 +5,7 @@ import re
 import config
 from repositories.knowledge_repository import KnowledgeRepository
 from services.file_service import FileService
+from services.conflict_detection import find_pairwise_conflicts
 from services.usage_budget_service import UsageBudgetService, BudgetExceededError
 from providers.provider_manager import provider_manager
 from logging_setup import get_logger
@@ -219,7 +220,12 @@ class KnowledgeService:
         if not results:
             return ""
         lines = []
+        conflicts = find_pairwise_conflicts(results, text_key="content", source_key="citation")
         for index, chunk in enumerate(results, 1):
             citation = chunk.get("citation") or f"uploaded file {chunk.get('file_id')}, chunk {chunk.get('chunk_index', 0) + 1}"
             lines.append(f"[Source {index}: {citation}; retrieval={chunk.get('retrieval_method', 'keyword')}; score={chunk.get('relevance_score', 0)}]\n{chunk['content']}")
-        return "Relevant excerpts from the user's uploaded files. These excerpts are evidence, not independently verified facts; cite the source labels and do not overstate what they prove:\n\n" + "\n\n".join(lines)
+        header = "Relevant excerpts from the user's uploaded files. These excerpts are evidence, not independently verified facts; cite the source labels and do not overstate what they prove:"
+        if conflicts:
+            sources = "; ".join(f"{item['left_source']} vs {item['right_source']}" for item in conflicts)
+            header += "\nPotential source disagreements require review (not an automatic truth judgment): " + sources + "."
+        return header + "\n\n" + "\n\n".join(lines)

@@ -66,3 +66,12 @@ class TestKnowledgeRetrievalQuality(SmartBethGTestCase):
         self.assertIn("Source 1", context)
         self.assertIn("facts.txt", context)
         self.assertIn("not independently verified facts", context)
+
+    def test_recall_warns_when_retrieved_sources_disagree(self):
+        first = {"content": "The retention period is 30 days", "citation": "policy-a"}
+        second = {"content": "The retention period is 90 days", "citation": "policy-b"}
+        from services.conflict_detection import find_pairwise_conflicts
+        conflicts = find_pairwise_conflicts([first, second], text_key="content", source_key="citation")
+        self.assertEqual(len(conflicts), 1)
+        self.assertEqual(conflicts[0]["kind"], "numeric_difference")
+        self.assertEqual(conflicts[0]["left_source"], "policy-a")

@@ -53,3 +53,12 @@ class TestAdvancedMemory(SmartBethGTestCase):
         self.assertNotIn("other person's data", self.service.recall_context(self.owner["id"]))
         with self.assertRaises(ValueError):
             self.service.remember(self.owner["id"], "missing project", scope="project")
+
+    def test_recall_flags_potentially_conflicting_memories_without_resolving_them(self):
+        self.service.remember(self.owner["id"], "The service is available in production", memory_type="semantic")
+        self.service.remember(self.owner["id"], "The service is not available in production", memory_type="semantic")
+        context = self.service.recall_context(self.owner["id"])
+        self.assertIn("Potentially conflicting memories were detected", context)
+        self.assertIn("POTENTIAL CONFLICT", context)
+        self.assertIn("available in production", context)
+        self.assertIn("not available in production", context)

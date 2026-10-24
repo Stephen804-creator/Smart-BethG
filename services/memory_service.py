@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 
 from repositories.memory_repository import MemoryRepository
+from services.conflict_detection import find_pairwise_conflicts
 from logging_setup import get_logger
 
 logger = get_logger("task")
@@ -97,6 +98,8 @@ class MemoryService:
         ))
         if not entries:
             return ""
+        conflicts = find_pairwise_conflicts(entries, text_key="content", source_key="id")
+        conflict_ids = {str(value) for item in conflicts for value in (item.get("left_source"), item.get("right_source"))}
         lines = []
         used = 0
         for entry in entries[:MAX_CONTEXT_MEMORIES]:
@@ -104,7 +107,8 @@ class MemoryService:
             if not content:
                 continue
             label = entry.get("memory_type", "episodic")
-            line = f"- [{label}; confidence={float(entry.get('confidence', 1.0)):.2f}] {content}"
+            conflict_marker = " [POTENTIAL CONFLICT — review sources]" if str(entry.get("id")) in conflict_ids else ""
+            line = f"- [{label}; confidence={float(entry.get('confidence', 1.0)):.2f}]{conflict_marker} {content}"
             remaining = MAX_CONTEXT_CHARS - used
             if remaining <= 0:
                 break
