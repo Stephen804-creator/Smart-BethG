@@ -21,8 +21,6 @@
 
     <title>Smart BethG</title>
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#08111f">
-
     <!-- Font Awesome -->
     <link
         rel="stylesheet"
@@ -113,7 +111,7 @@
                 <ul>
 
                     <li>
-                        <a href="{{ url_for('main.home') }}">
+                        <a href="{{ url_for('main.home') }}" class="active" aria-current="page">
                             <i
                                 class="fa-solid fa-house"
                                 aria-hidden="true"
@@ -296,7 +294,7 @@
                         <div>
                             <p class="eyebrow">Your workspace</p>
                             <h2 id="workspaceManagementTitle">Projects and missions</h2>
-                            <p>Organize your work and track mission requests. Mission records are not autonomous jobs yet.</p>
+                            <p>Keep projects organised and record the objectives you want to move forward.</p>
                         </div>
                     </div>
 
