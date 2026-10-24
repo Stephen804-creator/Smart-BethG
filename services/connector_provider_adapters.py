@@ -1,4 +1,5 @@
 """Live, bounded provider adapters for authorized OAuth installations."""
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -70,7 +71,7 @@ class ProviderAdapter:
         headers = {"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json",
                    "X-GitHub-Api-Version": "2022-11-28"}
         repo = args.get("repository", "").strip("/")
-        if len(repo.split("/")) != 2 or any(not part or part in {".", ".."} for part in repo.split("/")):
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo) or any(part in {".", ".."} for part in repo.split("/")):
             raise ValueError("Invalid repository.")
         if action == "issues.list":
             response = httpx.get(f"https://api.github.com/repos/{repo}/issues",
