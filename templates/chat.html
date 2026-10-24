@@ -40,7 +40,7 @@
 
         <div class="sidebar-header">
 
-            <a class="logo" href="{{ url_for('main.home') }}" aria-label="Smart BethG home">
+            <a class="logo" href="{{ url_for('main.home') }}" title="Dashboard" aria-label="Dashboard" aria-label="Smart BethG home">
 
                 <span class="logo-mark">
                     <i class="fa-solid fa-brain"></i>
@@ -68,7 +68,7 @@
                 <span>Dashboard</span>
             </a>
 
-            <a href="{{ url_for('main.chat_page') }}" class="active" aria-current="page">
+            <a href="{{ url_for('main.chat_page') }}" class="active" aria-current="page" title="AI assistant" aria-label="AI assistant">
                 <i class="fa-solid fa-robot"></i>
                 <span>AI Assistant</span>
             </a>
@@ -83,7 +83,7 @@
             <button
                 type="button"
                 id="newChatButton"
-                class="btn btn-secondary btn-block new-chat-button"
+                class="btn btn-secondary btn-block new-chat-button" title="New chat" aria-label="Start a new chat"
             >
                 <i class="fa-solid fa-plus" aria-hidden="true"></i>
                 <span>New chat</span>
