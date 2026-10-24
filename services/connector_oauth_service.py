@@ -1,4 +1,5 @@
 """Single-use, owner-bound OAuth state and provider token exchange."""
+import base64
 import hashlib
 import json
 import secrets
@@ -42,6 +43,8 @@ class ConnectorOAuthService:
    raise ValueError("Unsupported OAuth connector.")
   if not self.configured(provider):
    raise RuntimeError("This provider is not configured by the deployment operator.")
+  if config.SECRET_KEY_IS_EPHEMERAL:
+   raise RuntimeError("Set a stable SMART_BETHG_SECRET_KEY before connecting external accounts.")
   installation=self.installations.get_for_user(user_id,installation_id)
   if not installation or installation["connector_key"]!=provider:
    raise LookupError("Connector installation not found for this user.")
@@ -59,7 +62,9 @@ class ConnectorOAuthService:
   if provider=="github":
    params["scope"]=" ".join(cfg["scopes"])
   elif provider=="google_drive":
-   params.update({"response_type":"code","scope":" ".join(cfg["scopes"]),"access_type":"offline","prompt":"consent"})
+   challenge=base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+   params.update({"response_type":"code","scope":" ".join(cfg["scopes"]),"access_type":"offline","prompt":"consent",
+                  "code_challenge":challenge,"code_challenge_method":"S256"})
   else:
    params["scope"]=" ".join(cfg["scopes"])
   return cfg["authorize"]+"?"+urlencode(params)
@@ -79,7 +84,9 @@ class ConnectorOAuthService:
    raise ValueError("OAuth state is invalid, expired, or already used.")
   cfg=PROVIDERS[provider]
   data={"client_id":cfg["client_id"](),"client_secret":cfg["client_secret"](),"code":code,"redirect_uri":redirect_uri}
-  if provider=="google_drive": data["grant_type"]="authorization_code"
+  if provider=="google_drive":
+   data["grant_type"]="authorization_code"
+   data["code_verifier"]=row["verifier"]
   headers={"Accept":"application/json"}
   if provider=="github": headers["Accept"]="application/json"
   try:
