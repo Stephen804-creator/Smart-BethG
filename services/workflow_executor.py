@@ -45,6 +45,7 @@ class WorkflowExecutor:
                     result={"outputs": outputs},
                     error=f"No trusted executor is enabled for step type '{step.get('type')}'.", terminal=True)
                 return {"status": "failed", "step_index": index}
+            mission_id = record.get("mission_id") if record else None
             try:
                 if record is None:
                     record = self.workflows.create_step_mission(user_id, run_id, index, step)
@@ -79,6 +80,18 @@ class WorkflowExecutor:
                 self.workflows.update_run(user_id, run_id, "waiting", current_step=index)
                 return {"status": "waiting_for_child_mission", "step_index": index, "mission_id": mission_id}
             except ValueError as exc:
+                # Two workers may observe the same durable step during a lease
+                # replay. A concurrently started child is not a workflow failure.
+                latest = self.missions.get(user_id, int(mission_id)) if mission_id else None
+                if latest and latest["status"] in {"running", "awaiting_approval"}:
+                    self.workflows.update_run(user_id, run_id, "waiting", current_step=index)
+                    return {"status": "waiting_for_child_mission", "step_index": index, "mission_id": mission_id}
+                if latest and latest["status"] == "completed":
+                    self.workflows.on_child_mission_finished(
+                        user_id, mission_id, "completed",
+                        result=(latest.get("runs") or [{}])[0].get("result") or {},
+                    )
+                    return {"status": "reconciled_child_completion", "step_index": index}
                 self.workflows.update_run(user_id, run_id, "failed", current_step=index,
                     result={"outputs": outputs}, error=f"Workflow step {index + 1}: {exc}", terminal=True)
                 return {"status": "failed", "step_index": index}
