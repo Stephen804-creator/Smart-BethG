@@ -393,6 +393,7 @@ class AccountLifecycle:
                 "schema_version": "1.0", "exported_at": datetime.now(timezone.utc).isoformat(),
                 "account": dict(user), "data": {}, "export_manifest": {
                     "included_tables": [], "omitted_tables": [], "truncated_tables": [],
+                    "excluded_tables": [{"table": "logs", "reason": "operational diagnostic text may contain sensitive data"}],
                     "row_limit_per_table": EXPORT_ROW_LIMIT,
                 },
             }
@@ -492,7 +493,7 @@ class AccountLifecycle:
                 result["export_manifest"]["omitted_tables"] or result["export_manifest"]["truncated_tables"]
             )
             result["export_manifest"]["notice"] = (
-                "Export includes only listed owner-scoped tables and excludes sensitive columns. "
+                "Export includes only listed owner-scoped tables, excludes operational logs and sensitive columns. "
                 "Check export_manifest before treating it as complete."
             )
             return result
