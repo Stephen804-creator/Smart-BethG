@@ -5,7 +5,8 @@
 - Workflow runs now track each step durably, create child missions atomically with step records, and wait for child mission completion before completing the parent workflow.
 - Added sequential research-record, artifact, and social-content-draft workflow adapters. Social-content steps create drafts only; they do not publish to external platforms.
 - Added step-index-bound queue messages and replay safeguards for side-effecting adapters.
-- Specialist plans now queue sequential role-specific AI calls through ChatService, persist each contribution, pass earlier contributions as context, and use the existing chat usage-budget reservations. Tool execution and publishing are not exposed to specialist prompts.
+- Specialist plans now queue sequential role-specific AI calls through ChatService, persist each contribution, pass earlier contributions as context, and use the existing chat usage-budget reservations.
+- Specialist prompts now define role-specific handoff, evidence discipline, critique, executor boundaries, and reviewer synthesis. Tool execution and publishing are not exposed to specialist prompts.
 - Workflow completion and specialist results are recorded in the decision ledger.
 - Added human-labelled evaluation outcomes and empirical calibration diagnostics; fewer than 10 labelled samples are explicitly marked insufficient for calibration.
 - Account export now has an explicit manifest, sensitive-column filtering, per-table and total-size limits, and omission/truncation reporting.
