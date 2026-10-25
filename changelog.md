@@ -8,6 +8,9 @@
 - Added human-labelled evaluation outcomes and empirical calibration diagnostics; fewer than 10 labelled samples are explicitly marked insufficient for calibration.
 - Account export now has an explicit manifest, sensitive-column filtering, per-table and total-size limits, and omission/truncation reporting.
 - Account deletion remains a pending request pending verified identity, explicit confirmation, retention review, and configured operational/legal processes.
+- Auto routing now ranks configured catalog candidates using price and (after five recorded calls) measured provider success rate and latency; actual route/fallback outcomes are added to the decision ledger.
+- Specialist roles have explicit tier preferences and atomic execution claims. Concurrent duplicate workers are rejected, and stale in-flight provider calls fail closed rather than being automatically billed twice.
+- Account export explicitly lists operational logs as excluded because free-form diagnostics can contain sensitive data.
 - Current verification is tracked on PR #17; do not infer CI status from earlier commits.
 
 ## 2026-10-24 — Units 10–15 initial foundations
