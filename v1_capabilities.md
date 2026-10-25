@@ -478,3 +478,19 @@ The feature branch contains initial foundations, not production-complete roadmap
 - Decision records and deterministic evaluation scores are owner-scoped. Scores are signals, not factual verification.
 - Model routing is a preview only; it does not call a provider or reserve/reconcile usage budgets.
 - Account data export and lifecycle requests exist. Deletion is not automatically performed and account-recovery delivery is not wired.
+
+
+## Units 10–15 follow-up status — 2026-10-25
+
+This section describes the PR #17 follow-up branch; it is not a production launch approval.
+
+| Area | Current status | Boundaries |
+|---|---|---|
+| Workflow execution | IMPLEMENTED FOUNDATION | Durable step ledger, sequential mission/research-record/artifact/social-draft steps, completion aggregation, and guarded step replay. Ambiguous side-effect replays fail closed. Conditional branches, compensation, and external publishing are not implemented. |
+| Specialist coordination | IMPLEMENTED FOUNDATION | Role-specific calls use configured ChatService providers and existing usage budgets; results are persisted and later roles receive earlier contributions as context. Specialists do not execute tools and are not independently routed to distinct models. |
+| Decision ledger | PARTIALLY IMPLEMENTED | Workflow completion and specialist result decisions are recorded with evidence references. Complete decision instrumentation and enforced immutable retention are not implemented. |
+| Evaluation | PARTIALLY IMPLEMENTED | Deterministic rubric, human labels, and Brier/MAE diagnostics exist. Fewer than 10 labels are reported as insufficient; there is no reviewed benchmark corpus or independent factuality guarantee. |
+| Cost-aware routing | PARTIALLY IMPLEMENTED | Route preview and decision logging exist. Existing synchronous chat reserves/reconciles budgets and records provider latency. The preview is not yet the single routing authority for real provider calls. |
+| Data export | IMPLEMENTED FOUNDATION | Owner-scoped export manifest, sensitive-column filtering, limits, and explicit omissions/truncation reporting. Export completeness depends on the manifest; omitted tables must not be assumed included. |
+| Account recovery/deletion | PARTIALLY IMPLEMENTED | Lifecycle requests are persisted. Verified recovery delivery, identity confirmation, automated deletion, retention enforcement, and legal/privacy approval are not wired. |
+| Verification | PENDING | Review the latest PR #17 workflow runs. No live provider sandbox, production recovery/deletion, or multi-worker crash/replay verification is claimed. |
