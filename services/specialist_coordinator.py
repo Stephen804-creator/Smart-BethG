@@ -4,7 +4,7 @@ import uuid
 
 from database import get_connection
 from services.chat_service import ChatService
-from services.units_11_15 import DecisionLedger
+from services.units_11_15 import DecisionLedger, CostAwareRouter
 
 
 class SpecialistBusyError(RuntimeError):
@@ -92,8 +92,9 @@ class SpecialistCoordinator:
 
     @staticmethod
     def _selection_for_role(role):
-        # Explicit tiers allow specialist jobs to use different capability
-        # levels without exposing side-effecting tools to any role.
+        # Role-specific tier preferences use the same catalog/cost/reliability
+        # router as chat. If no catalog-backed route is available, fall back to
+        # ChatService Auto rather than inventing a provider or model.
         tiers = {
             "planner": "balanced",
             "researcher": "capable",
@@ -101,7 +102,10 @@ class SpecialistCoordinator:
             "executor": "balanced",
             "reviewer": "capable",
         }
-        return "auto"  # Auto router will use prompt complexity and live catalog signals.
+        preview = CostAwareRouter().preview(task_type=f"specialist_{role}",
+                                            complexity=tiers.get(role, "balanced"))
+        selected = preview.get("selected") if preview.get("mode") == "preview" else None
+        return f"{selected['provider']}:{selected['model']}" if selected else "auto"
 
     def _claim(self, user_id, team_id):
         token = str(uuid.uuid4())
