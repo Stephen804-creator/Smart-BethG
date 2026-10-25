@@ -7,6 +7,7 @@ from services.model_evaluation_service import ModelEvaluationService
 from services.memory_service import MemoryService
 from services.knowledge_service import KnowledgeService
 from services.usage_budget_service import UsageBudgetService, BudgetExceededError
+from services.units_11_15 import CostAwareRouter
 from logging_setup import get_logger
 
 logger = get_logger("chat")
@@ -76,7 +77,14 @@ class ChatService:
             self.repo.set_title(conversation_id, message[:60])
 
         if not selection or selection == "auto":
-            provider_name, model_id = provider_manager.choose_auto(message)
+            tier = provider_manager._classify_tier(message)
+            route = CostAwareRouter().preview(task_type="chat", complexity=tier)
+            selected = route.get("selected") if route.get("mode") == "preview" else None
+            if selected and provider_manager.get(user_id, selected["provider"]):
+                provider_name, model_id = selected["provider"], selected["model"]
+                logger.info("Auto route selected provider=%s tier=%s", provider_name, tier)
+            else:
+                provider_name, model_id = provider_manager.choose_auto(message)
         else:
             provider_name, model_id = provider_manager.resolve_selection(selection)
 
