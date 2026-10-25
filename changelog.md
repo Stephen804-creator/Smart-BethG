@@ -1,5 +1,6 @@
-- Internal research, artifact, and social-draft adapters now use stable per-workflow-step idempotency keys, allowing safe replay after a worker crash between record creation and step completion. External side effects remain fail-closed.
 ## 2026-10-25 — Units 10–15 execution hardening
+
+- Internal research, artifact, and social-draft adapters now use stable per-workflow-step idempotency keys, allowing safe replay after a worker crash between record creation and step completion. External side effects remain fail-closed.
 
 - Workflow runs now track each step durably, create child missions atomically with step records, and wait for child mission completion before completing the parent workflow.
 - Added sequential research-record, artifact, and social-content-draft workflow adapters. Social-content steps create drafts only; they do not publish to external platforms.
