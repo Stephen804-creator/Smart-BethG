@@ -6,7 +6,7 @@ from database import get_connection
 
 
 class ResearchService:
-    def create(self, user_id, query, summary="", source_urls=None, mission_id=None):
+    def create(self, user_id, query, summary="", source_urls=None, mission_id=None, idempotency_key=None):
         query = (query or "").strip()
         summary = summary or ""
         if not query or len(query) > 4000:
@@ -15,15 +15,32 @@ class ResearchService:
             raise ValueError("Research summary exceeds the 50000-character limit.")
         if mission_id is not None and not self._owns_mission(user_id, mission_id):
             raise ValueError("Mission not found for this user.")
+        if idempotency_key is not None:
+            idempotency_key = str(idempotency_key).strip()
+            if not idempotency_key or len(idempotency_key) > 200:
+                raise ValueError("Idempotency key must be between 1 and 200 characters.")
         urls = self._clean_urls(source_urls or [])
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "INSERT INTO research(user_id, mission_id, topic, summary, source_info) VALUES (?, ?, ?, ?, ?)",
-                (user_id, mission_id, query, summary, json.dumps(urls, ensure_ascii=False)),
+                "INSERT INTO research(user_id, mission_id, topic, summary, source_info, idempotency_key) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id",
+                (user_id, mission_id, query, summary, json.dumps(urls, ensure_ascii=False), idempotency_key),
             )
-            record_id = cursor.lastrowid
-            conn.commit()
+            row = cursor.fetchone()
+            if row:
+                record_id = row["id"]
+                conn.commit()
+            else:
+                conn.rollback()
+                existing = conn.execute(
+                    "SELECT id FROM research WHERE user_id=? AND idempotency_key=? LIMIT 1",
+                    (user_id, idempotency_key),
+                ).fetchone()
+                if not existing:
+                    raise RuntimeError("Research idempotency conflict did not resolve to an existing record.")
+                record_id = existing["id"]
         finally:
             conn.close()
         return self.get(user_id, record_id)
