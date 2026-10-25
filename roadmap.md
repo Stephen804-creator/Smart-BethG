@@ -140,7 +140,8 @@ Status is implementation status, not a claim that live external provider integra
 - [x] Role-specific specialist calls run sequentially through ChatService, persist each contribution, pass prior contributions as context, and use role-specific capability-tier preferences when configured catalog routes are available.
 - [x] Specialist calls use the existing chat budget reservation/reconciliation path; results are stored and recorded in the decision ledger.
 - [x] Ambiguous interrupted provider calls fail closed to avoid duplicate billable calls.
-- [ ] Specialists are not independently routed to distinct providers/models; robust inter-agent message protocols, arbitration, and resumable per-role retries remain open.
+- [x] Role-specific tier preferences use the shared cost-aware router when catalog routes are available; critic and reviewer prompts provide basic challenge/synthesis behavior.
+- [ ] Explicit per-role provider overrides, a dedicated inter-agent message bus, deterministic arbitration, and safe automatic retry after ambiguous provider outcomes remain open.
 
 ### Unit 12 — Decision ledger and execution evidence
 - [x] Owner-scoped bounded decision records with optional mission/workflow references.
