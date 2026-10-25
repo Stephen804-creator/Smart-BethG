@@ -143,10 +143,17 @@ class SpecialistCoordinator:
             # A role marked running means the previous provider call may have
             # been billed. Never repeat it automatically after a stale lease.
             if any(item.get("status") == "running" for item in assignments):
+                for item in assignments:
+                    if item.get("status") == "running":
+                        item["status"] = "failed"
+                        item["error"] = (
+                            "Worker lease expired during a provider call. Outcome is ambiguous; "
+                            "automatic retry suppressed to prevent duplicate provider spend."
+                        )
                 conn.execute(
-                    "UPDATE agent_team_runs SET status='failed',execution_claim_token=NULL,"
+                    "UPDATE agent_team_runs SET status='failed',assignments_json=?,execution_claim_token=NULL,"
                     "execution_claimed_at=NULL,updated_at=CURRENT_TIMESTAMP::text WHERE id=? AND user_id=?",
-                    (team_id, user_id),
+                    (json.dumps(assignments, ensure_ascii=False, default=str), team_id, user_id),
                 )
                 conn.commit()
                 return None, None, {"status": "failed", "reason": "ambiguous_provider_call"}
