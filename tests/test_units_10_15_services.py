@@ -128,3 +128,15 @@ class TestUnits10To15(SmartBethGTestCase):
         self.assertIn("included_tables", data["export_manifest"])
         self.assertIn("omitted_tables", data["export_manifest"])
         self.assertNotIn("password_hash", data["account"])
+
+    def test_evaluation_labels_are_owner_scoped_and_calibration_is_honest(self):
+        evaluator = AgentEvaluator()
+        evaluation = evaluator.evaluate(self.owner["id"], "response", None, {"summary": "ok"})
+        labelled = evaluator.label(self.owner["id"], evaluation["id"], 1.0, "Reviewed by a human")
+        self.assertEqual(labelled["labelled_outcome"], 1.0)
+        with self.assertRaisesRegex(ValueError, "not found for this user"):
+            evaluator.label(self.other["id"], evaluation["id"], 0.0)
+        calibration = evaluator.calibration(self.owner["id"])
+        self.assertEqual(calibration["labelled_samples"], 1)
+        self.assertEqual(calibration["status"], "insufficient_labels")
+        self.assertIsNotNone(calibration["metrics"])
