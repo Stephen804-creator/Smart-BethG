@@ -31,7 +31,8 @@ EXPORT_TABLES = (
     "projects", "missions", "mission_runs", "files", "memory", "research",
     "evidence", "workflows", "workflow_runs", "decision_ledger",
     "agent_team_runs", "agent_evaluations", "artifacts", "social_content",
-    "social_content_versions", "conversations", "messages",
+    "social_content_versions", "conversations", "messages", "connector_installations",
+    "account_lifecycle_requests",
 )
 SENSITIVE_COLUMN_PARTS = (
     "password", "secret", "token", "credential", "private_key", "api_key",
@@ -393,7 +394,12 @@ class AccountLifecycle:
                 "schema_version": "1.0", "exported_at": datetime.now(timezone.utc).isoformat(),
                 "account": dict(user), "data": {}, "export_manifest": {
                     "included_tables": [], "omitted_tables": [], "truncated_tables": [],
-                    "excluded_tables": [{"table": "logs", "reason": "operational diagnostic text may contain sensitive data"}],
+                    "excluded_tables": [
+                        {"table": "logs", "reason": "operational diagnostic text may contain sensitive data"},
+                        {"table": "connector_credentials", "reason": "provider credentials are never exported"},
+                        {"table": "oauth_states", "reason": "temporary OAuth state is never exported"},
+                        {"table": "usage_budget_reservations", "reason": "internal reservation records are operational data"},
+                    ],
                     "row_limit_per_table": EXPORT_ROW_LIMIT,
                 },
             }
@@ -493,7 +499,7 @@ class AccountLifecycle:
                 result["export_manifest"]["omitted_tables"] or result["export_manifest"]["truncated_tables"]
             )
             result["export_manifest"]["notice"] = (
-                "Export includes only listed owner-scoped tables, excludes operational logs and sensitive columns. "
+                "Export includes only listed owner-scoped tables, excludes operational logs and provider credentials, and filters sensitive columns. "
                 "Check export_manifest before treating it as complete."
             )
             return result
