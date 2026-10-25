@@ -1,3 +1,15 @@
+## 2026-10-25 — Units 10–15 execution hardening
+
+- Workflow runs now track each step durably, create child missions atomically with step records, and wait for child mission completion before completing the parent workflow.
+- Added sequential research-record, artifact, and social-content-draft workflow adapters. Social-content steps create drafts only; they do not publish to external platforms.
+- Added step-index-bound queue messages and fail-closed handling for ambiguous replays of side-effecting adapters.
+- Specialist plans now queue sequential role-specific AI calls through ChatService, persist each contribution, pass earlier contributions as context, and use the existing chat usage-budget reservations. Tool execution and publishing are not exposed to specialist prompts.
+- Workflow completion and specialist results are recorded in the decision ledger.
+- Added human-labelled evaluation outcomes and empirical calibration diagnostics; fewer than 10 labelled samples are explicitly marked insufficient for calibration.
+- Account export now has an explicit manifest, sensitive-column filtering, per-table and total-size limits, and omission/truncation reporting.
+- Account deletion remains a pending request pending verified identity, explicit confirmation, retention review, and configured operational/legal processes.
+- Current verification is tracked on PR #17; do not infer CI status from earlier commits.
+
 ## 2026-10-24 — Units 10–15 initial foundations
 
 ### Added
