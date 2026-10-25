@@ -113,7 +113,7 @@ class WorkflowService:
                                   (workflow_id, user_id, workflow["version"]))
             run_id = cursor.lastrowid
             JobQueue().enqueue_in_transaction(conn, user_id, "workflow.execute",
-                {"workflow_id": workflow_id, "run_id": run_id, "workflow_version": workflow["version"]},
+                {"workflow_id": workflow_id, "run_id": run_id, "workflow_version": workflow["version"], "step_index": 0},
                 idempotency_key=f"workflow-run:{run_id}", priority=priority)
             conn.commit()
         except Exception:
@@ -414,7 +414,7 @@ class WorkflowService:
                     JobQueue().enqueue_in_transaction(
                         conn, user_id, "workflow.execute",
                         {"workflow_id": run["workflow_id"], "run_id": run_id,
-                         "workflow_version": run["workflow_version"]},
+                         "workflow_version": run["workflow_version"], "step_index": next_index},
                         idempotency_key=f"workflow-run:{run_id}:step:{next_index}",
                     )
             if own_connection:
