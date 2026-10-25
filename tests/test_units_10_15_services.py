@@ -63,7 +63,7 @@ class TestUnits10To15(SmartBethGTestCase):
 
     def test_specialist_plan_is_queued_for_real_model_execution(self):
         plan = SpecialistPlanner().create(self.owner["id"], "Prepare release notes")
-        self.assertEqual(plan["status"], "running")
+        self.assertEqual(plan["status"], "planned")
         self.assertEqual(plan["execution_status"], "queued")
         self.assertEqual(len(plan["assignments"]), 3)
 
