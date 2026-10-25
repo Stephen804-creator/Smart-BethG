@@ -364,7 +364,12 @@ class CostAwareRouter:
             if metric:
                 failure_rate = 1 - float(metric.get("success_rate") or 0)
                 latency_seconds = max(0, float(metric.get("avg_latency_ms") or 0)) / 1000
-                candidate["routing_score"] = round(estimated * (1 + 2 * failure_rate) + latency_seconds * 0.0001, 8)
+                candidate["routing_score"] = round(
+                    estimated * (1 + 2 * failure_rate)
+                    + failure_rate * 0.001
+                    + latency_seconds * 0.0001,
+                    8,
+                )
             else:
                 candidate["routing_score"] = estimated
         candidates.sort(key=lambda item: (item["routing_score"],
