@@ -226,6 +226,67 @@ class AgentEvaluator:
         }
 
 
+    def label(self, user_id, evaluation_id, outcome, note=None):
+        try:
+            outcome = float(outcome)
+        except (TypeError, ValueError):
+            raise ValueError("Label outcome must be a number between 0 and 1.")
+        if not 0 <= outcome <= 1:
+            raise ValueError("Label outcome must be between 0 and 1.")
+        note = str(note or "").strip()
+        if len(note) > 1000:
+            raise ValueError("Label note must be at most 1000 characters.")
+        conn = get_connection()
+        try:
+            cursor = conn.execute(
+                "UPDATE agent_evaluations SET labelled_outcome=?,labelled_at=CURRENT_TIMESTAMP::text,label_note=? "
+                "WHERE id=? AND user_id=?",
+                (outcome, note or None, evaluation_id, user_id),
+            )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                raise ValueError("Evaluation not found for this user.")
+            conn.commit()
+            row = conn.execute(
+                "SELECT id,score,labelled_outcome,labelled_at,label_note FROM agent_evaluations WHERE id=? AND user_id=?",
+                (evaluation_id, user_id),
+            ).fetchone()
+            return dict(row)
+        finally:
+            conn.close()
+
+    def calibration(self, user_id):
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT score,labelled_outcome FROM agent_evaluations "
+                "WHERE user_id=? AND labelled_outcome IS NOT NULL ORDER BY labelled_at DESC LIMIT 10000",
+                (user_id,),
+            ).fetchall()
+        finally:
+            conn.close()
+        pairs = [(float(row["score"]), float(row["labelled_outcome"])) for row in rows]
+        count = len(pairs)
+        if not count:
+            return {
+                "status": "insufficient_labels", "labelled_samples": 0, "minimum_samples": 10,
+                "metrics": None, "warning": "Scores are deterministic checks, not calibrated reliability probabilities.",
+            }
+        brier = sum((predicted - observed) ** 2 for predicted, observed in pairs) / count
+        mae = sum(abs(predicted - observed) for predicted, observed in pairs) / count
+        return {
+            "status": "measured" if count >= 10 else "insufficient_labels",
+            "labelled_samples": count, "minimum_samples": 10,
+            "metrics": {
+                "brier_score": round(brier, 6),
+                "mean_absolute_error": round(mae, 6),
+                "mean_predicted_score": round(sum(p for p, _ in pairs) / count, 6),
+                "observed_success_rate": round(sum(y for _, y in pairs) / count, 6),
+            },
+            "warning": "These are empirical diagnostics over user-labelled samples, not a guarantee of factuality or a calibrated probability.",
+        }
+
+
 class CostAwareRouter:
     def preview(self, task_type="general", complexity="balanced", max_cost_usd=None, prefer_provider=None):
         valid_tiers = {"fast", "balanced", "capable"}
