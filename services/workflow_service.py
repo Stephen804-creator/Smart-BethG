@@ -126,6 +126,172 @@ class WorkflowService:
             conn.close()
         return self.get_run(user_id, run_id)
 
+
+    def get_step_run(self, user_id, run_id, step_index):
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT id,workflow_run_id,user_id,step_index,step_id,step_type,status,mission_id,result_json,error,created_at,updated_at,completed_at "
+                "FROM workflow_step_runs WHERE user_id=? AND workflow_run_id=? AND step_index=? LIMIT 1",
+                (user_id, run_id, step_index),
+            ).fetchone()
+            if not row:
+                return None
+            item = dict(row)
+            try:
+                item["result"] = json.loads(item.pop("result_json") or "{}")
+            except (TypeError, json.JSONDecodeError):
+                item["result"] = {}
+                item.pop("result_json", None)
+            return item
+        finally:
+            conn.close()
+
+    def create_step_mission(self, user_id, run_id, step_index, step):
+        """Atomically create a child mission and its unique workflow-step record."""
+        from services.mission_service import MissionService
+        missions = MissionService()
+        config = step.get("config") or {}
+        objective = str(config.get("objective") or "").strip()
+        priority = config.get("priority", "normal")
+        project_id = config.get("project_id")
+        if not objective or len(objective) > 12000:
+            raise ValueError("Mission step objective must be between 1 and 12000 characters.")
+        if priority not in missions.VALID_PRIORITIES:
+            raise ValueError("Invalid mission priority in workflow step.")
+        if project_id is not None and not missions._owns_project(user_id, project_id):
+            raise ValueError("Workflow step project not found for this user.")
+        mission_steps = missions.validate_steps(config.get("steps") or [])
+        conn = get_connection()
+        try:
+            run = conn.execute(
+                "SELECT id,status FROM workflow_runs WHERE id=? AND user_id=?",
+                (run_id, user_id),
+            ).fetchone()
+            if not run or run["status"] not in {"queued", "running"}:
+                raise ValueError("Workflow run is no longer executable.")
+            existing = conn.execute(
+                "SELECT id,mission_id FROM workflow_step_runs WHERE user_id=? AND workflow_run_id=? AND step_index=?",
+                (user_id, run_id, step_index),
+            ).fetchone()
+            if existing:
+                conn.rollback()
+                return self.get_step_run(user_id, run_id, step_index)
+            cursor = conn.execute(
+                "INSERT INTO missions(user_id,project_id,objective,status,priority,plan_json,updated_at) "
+                "VALUES (?,?,?,'pending',?,?,CURRENT_TIMESTAMP)",
+                (user_id, project_id, objective, priority, json.dumps(mission_steps, ensure_ascii=False)),
+            )
+            mission_id = cursor.lastrowid
+            conn.execute(
+                "INSERT INTO workflow_step_runs(workflow_run_id,user_id,step_index,step_id,step_type,status,mission_id) "
+                "VALUES (?,?,?,?,?,'created',?)",
+                (run_id, user_id, step_index, str(step.get("id") or f"step-{step_index + 1}")[:80],
+                 step.get("type", "mission"), mission_id),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            existing = conn.execute(
+                "SELECT id FROM workflow_step_runs WHERE user_id=? AND workflow_run_id=? AND step_index=?",
+                (user_id, run_id, step_index),
+            ).fetchone()
+            if existing:
+                return self.get_step_run(user_id, run_id, step_index)
+            raise
+        finally:
+            conn.close()
+        return self.get_step_run(user_id, run_id, step_index)
+
+    def on_child_mission_finished(self, user_id, mission_id, status, result=None, error=None, conn=None):
+        """Atomically advance the parent workflow when a child mission terminates."""
+        own_connection = conn is None
+        if own_connection:
+            conn = get_connection()
+        try:
+            step = conn.execute(
+                "SELECT id,workflow_run_id,step_index FROM workflow_step_runs "
+                "WHERE user_id=? AND mission_id=? LIMIT 1",
+                (user_id, mission_id),
+            ).fetchone()
+            if not step:
+                if own_connection:
+                    conn.rollback()
+                return False
+            final_step_status = "completed" if status == "completed" else "failed"
+            conn.execute(
+                "UPDATE workflow_step_runs SET status=?,result_json=?,error=?,updated_at=CURRENT_TIMESTAMP::text,"
+                "completed_at=CURRENT_TIMESTAMP::text WHERE id=? AND status IN ('created','running','waiting')",
+                (final_step_status, json.dumps(result or {}, ensure_ascii=False, default=str),
+                 str(error)[:4000] if error else None, step["id"]),
+            )
+            run_id = step["workflow_run_id"]
+            run = conn.execute(
+                "SELECT workflow_id,result_json,workflow_version FROM workflow_runs WHERE id=? AND user_id=?",
+                (run_id, user_id),
+            ).fetchone()
+            if not run:
+                if own_connection:
+                    conn.rollback()
+                return False
+            if status != "completed":
+                conn.execute(
+                    "UPDATE workflow_runs SET status='failed',error=?,completed_at=CURRENT_TIMESTAMP::text,"
+                    "updated_at=CURRENT_TIMESTAMP::text WHERE id=? AND user_id=? AND status NOT IN ('completed','cancelled')",
+                    (str(error or "A child mission failed.")[:4000], run_id, user_id),
+                )
+            else:
+                workflow = conn.execute(
+                    "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
+                    (run["workflow_id"], user_id),
+                ).fetchone()
+                steps = json.loads(workflow["definition_json"] or "[]") if workflow else []
+                completed_steps = conn.execute(
+                    "SELECT step_index,step_id,step_type,mission_id,result_json FROM workflow_step_runs "
+                    "WHERE user_id=? AND workflow_run_id=? AND status='completed' ORDER BY step_index",
+                    (user_id, run_id),
+                ).fetchall()
+                outputs = []
+                for item in completed_steps:
+                    try:
+                        output = json.loads(item["result_json"] or "{}")
+                    except (TypeError, json.JSONDecodeError):
+                        output = {}
+                    outputs.append({"step_index": item["step_index"], "step_id": item["step_id"],
+                                    "type": item["step_type"], "mission_id": item["mission_id"], "result": output})
+                next_index = int(step["step_index"]) + 1
+                if next_index >= len(steps):
+                    conn.execute(
+                        "UPDATE workflow_runs SET status='completed',current_step=?,result_json=?,error=NULL,"
+                        "completed_at=CURRENT_TIMESTAMP::text,updated_at=CURRENT_TIMESTAMP::text "
+                        "WHERE id=? AND user_id=? AND status NOT IN ('completed','cancelled')",
+                        (len(steps), json.dumps({"outputs": outputs, "completion_semantics": "all_steps_completed"},
+                                                ensure_ascii=False, default=str), run_id, user_id),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE workflow_runs SET status='queued',current_step=?,result_json=?,error=NULL,"
+                        "updated_at=CURRENT_TIMESTAMP::text WHERE id=? AND user_id=? AND status NOT IN ('completed','cancelled','failed')",
+                        (next_index, json.dumps({"outputs": outputs}, ensure_ascii=False, default=str), run_id, user_id),
+                    )
+                    from services.job_queue import JobQueue
+                    JobQueue().enqueue_in_transaction(
+                        conn, user_id, "workflow.execute",
+                        {"workflow_id": run["workflow_id"], "run_id": run_id,
+                         "workflow_version": run["workflow_version"]},
+                        idempotency_key=f"workflow-run:{run_id}:step:{next_index}",
+                    )
+            if own_connection:
+                conn.commit()
+            return True
+        except Exception:
+            if own_connection:
+                conn.rollback()
+            raise
+        finally:
+            if own_connection:
+                conn.close()
+
     def get_run(self, user_id, run_id):
         conn = get_connection()
         try:
