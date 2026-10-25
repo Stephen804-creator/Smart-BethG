@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from database import get_connection
 from providers.model_catalog import MODEL_CATALOG
+from services.job_queue import JobQueue
 
 ROLES = {
     "planner": "Break the objective into ordered, testable tasks.",
@@ -126,7 +127,7 @@ class SpecialistPlanner:
             raise ValueError("Choose 1–5 unique supported specialist roles.")
         assignments = [
             {"role": role, "responsibility": ROLES[role], "task": objective,
-             "requires_approval_for_side_effects": role == "executor"}
+             "requires_approval_for_side_effects": role == "executor", "status": "pending"}
             for role in roles
         ]
         conn = get_connection()
@@ -136,13 +137,21 @@ class SpecialistPlanner:
                 (user_id, objective, json.dumps(assignments, ensure_ascii=False)),
             )
             item_id = cursor.lastrowid
+            JobQueue().enqueue_in_transaction(
+                conn, user_id, "agent.team.execute", {"team_run_id": item_id},
+                idempotency_key=f"agent-team:{item_id}",
+            )
+            conn.execute(
+                "UPDATE agent_team_runs SET status='running',updated_at=CURRENT_TIMESTAMP::text WHERE id=? AND user_id=?",
+                (item_id, user_id),
+            )
             conn.commit()
         finally:
             conn.close()
         return {
-            "id": item_id, "objective": objective, "status": "planned",
-            "assignments": assignments, "execution_status": "planning_only",
-            "note": "Specialist execution and inter-agent messaging are not enabled.",
+            "id": item_id, "objective": objective, "status": "running",
+            "assignments": assignments, "execution_status": "queued",
+            "note": "Specialists run sequentially through the configured AI provider and existing usage-budget controls. Side-effecting tools are not exposed to specialist prompts.",
         }
 
     def list(self, user_id):
