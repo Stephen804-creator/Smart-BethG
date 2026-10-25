@@ -486,7 +486,7 @@ This section describes the PR #17 follow-up branch; it is not a production launc
 
 | Area | Current status | Boundaries |
 |---|---|---|
-| Workflow execution | IMPLEMENTED FOUNDATION | Durable step ledger, sequential mission/research-record/artifact/social-draft steps, completion aggregation, and guarded step replay. Ambiguous side-effect replays fail closed. Conditional branches, compensation, and external publishing are not implemented. |
+| Workflow execution | IMPLEMENTED FOUNDATION | Durable step ledger, sequential mission/research-record/artifact/social-draft steps, bounded condition operators, downstream step skipping, completion aggregation, and guarded step replay. Ambiguous side-effect replays fail closed; compensation and external publishing are not implemented. |
 | Specialist coordination | IMPLEMENTED FOUNDATION | Role-specific calls use configured ChatService providers and existing usage budgets; results are persisted and later roles receive earlier contributions as context. Specialists do not execute tools and are not independently routed to distinct models. |
 | Decision ledger | PARTIALLY IMPLEMENTED | Workflow completion and specialist result decisions are recorded with evidence references. Complete decision instrumentation and enforced immutable retention are not implemented. |
 | Evaluation | PARTIALLY IMPLEMENTED | Deterministic rubric, human labels, and Brier/MAE diagnostics exist. Fewer than 10 labels are reported as insufficient; there is no reviewed benchmark corpus or independent factuality guarantee. |
