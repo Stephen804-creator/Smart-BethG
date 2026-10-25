@@ -66,7 +66,15 @@ def evaluate_output(payload: EvaluationInput, user=Depends(get_current_user)):
 
 @router.post("/model-route-preview")
 def model_route_preview(payload: RoutePreviewInput, user=Depends(get_current_user)):
-    return CostAwareRouter().preview(payload.task_type, payload.complexity, payload.max_cost_usd, payload.prefer_provider)
+    preview = CostAwareRouter().preview(
+        payload.task_type, payload.complexity, payload.max_cost_usd, payload.prefer_provider
+    )
+    DecisionLedger().record(
+        user["id"], "model_route_preview", preview,
+        evidence=[{"source": "local_model_catalog", "provider_call_made": False}],
+        outcome=preview.get("mode", "unavailable"),
+    )
+    return preview
 
 @router.get("/account/data-export")
 def export_account_data(user=Depends(get_current_user)):
