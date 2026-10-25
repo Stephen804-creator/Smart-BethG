@@ -1,6 +1,7 @@
 """Sequential workflow execution with durable child-mission recovery."""
 from services.workflow_service import WorkflowService
 from services.mission_service import MissionService
+from database import get_connection
 
 
 class WorkflowExecutor:
@@ -65,7 +66,7 @@ class WorkflowExecutor:
                     return {"status": "failed", "step_index": index}
                 if mission["status"] == "pending":
                     self.missions.start_run(user_id, int(mission_id))
-                conn = __import__("database").get_connection()
+                conn = get_connection()
                 try:
                     conn.execute(
                         "UPDATE workflow_step_runs SET status='running',updated_at=CURRENT_TIMESTAMP::text "
