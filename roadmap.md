@@ -137,7 +137,7 @@ Status is implementation status, not a claim that live external provider integra
 - [ ] Compensation/saga recovery, live publishing adapters, and automated recovery from an ambiguous side-effect outcome remain open.
 
 ### Unit 11 — Specialist coordination
-- [x] Role-specific specialist calls run sequentially through the configured ChatService provider, persist each contribution, and pass prior contributions as context.
+- [x] Role-specific specialist calls run sequentially through ChatService, persist each contribution, pass prior contributions as context, and use role-specific capability-tier preferences when configured catalog routes are available.
 - [x] Specialist calls use the existing chat budget reservation/reconciliation path; results are stored and recorded in the decision ledger.
 - [x] Ambiguous interrupted provider calls fail closed to avoid duplicate billable calls.
 - [ ] Specialists are not independently routed to distinct providers/models; robust inter-agent message protocols, arbitration, and resumable per-role retries remain open.
@@ -155,11 +155,12 @@ Status is implementation status, not a claim that live external provider integra
 ### Unit 14 — Cost-aware model routing
 - [x] Authenticated route preview estimates costs for configured catalog entries and records the preview decision.
 - [x] Existing synchronous ChatService calls already reserve budgets before provider calls, reconcile known usage, retain conservative reservations on unknown usage, and record latency/provider outcomes.
-- [x] Auto chat selection uses the cost-aware route preview to choose among configured catalog entries; provider calls still reserve/reconcile usage through ChatService.
-- [ ] Provider catalog live smoke checks and latency/reliability-informed routing remain open. Mission workflow steps currently create records/artifacts/drafts or dispatch missions; they do not perform hidden AI generation.
+- [x] Auto chat selection uses the cost-aware route preview; provider calls still reserve/reconcile usage through ChatService.
+- [x] Route ranking uses observed success rate and latency after at least five calls per model; actual route and fallback outcomes are recorded in the decision ledger.
+- [ ] Provider catalog live smoke checks remain open; no provider keys or live API smoke calls were used as part of this change. Mission workflow steps currently create records/artifacts/drafts or dispatch missions; they do not perform hidden AI generation.
 
 ### Unit 15 — Account recovery and data lifecycle
-- [x] Owner-scoped JSON export with schema version, export manifest, sensitive-column filtering, row/size limits, and explicit omission/truncation reporting.
+- [x] Owner-scoped JSON export with schema version, export manifest, nested sensitive-key filtering, row/size limits, and explicit omission/truncation reporting. Operational logs are explicitly excluded and disclosed in the manifest.
 - [x] Owner-scoped lifecycle request records for data export and account deletion.
 - [ ] Verified recovery delivery, identity verification and confirmation flow, safe deletion execution, retention schedule enforcement, and legal/privacy approval remain open. Deletion is not automatic.
 
