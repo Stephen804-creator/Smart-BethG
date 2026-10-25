@@ -330,12 +330,17 @@ class AccountLifecycle:
             # Never silently return a huge or partial export as if it were complete.
             while _json_size(result) > EXPORT_BYTE_LIMIT and result["data"]:
                 largest = max(result["data"], key=lambda key: _json_size(result["data"][key]))
-                if not result["data"][largest]:
+                if len(result["data"][largest]) <= 1:
                     result["export_manifest"]["omitted_tables"].append({"table": largest, "reason": "export_size_limit"})
                     del result["data"][largest]
-                else:
-                    result["data"][largest] = result["data"][largest][:max(1, len(result["data"][largest]) // 2)]
+                    result["export_manifest"]["included_tables"] = [
+                        entry for entry in result["export_manifest"]["included_tables"] if entry["table"] != largest
+                    ]
                     result["export_manifest"]["truncated_tables"].append(largest)
+                else:
+                    result["data"][largest] = result["data"][largest][:len(result["data"][largest]) // 2]
+                    if largest not in result["export_manifest"]["truncated_tables"]:
+                        result["export_manifest"]["truncated_tables"].append(largest)
                     for entry in result["export_manifest"]["included_tables"]:
                         if entry["table"] == largest:
                             entry["rows"] = len(result["data"][largest])
