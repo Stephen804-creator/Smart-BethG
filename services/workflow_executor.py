@@ -38,12 +38,73 @@ class WorkflowExecutor:
         for index in range(expected_step, len(steps)):
             step = steps[index]
             record = self.workflows.get_step_run(user_id, run_id, index)
-            if record and record["status"] == "completed":
+            if record and record["status"] in {"completed", "skipped"}:
                 continue
             if record and record["status"] == "failed":
                 self.workflows.update_run(user_id, run_id, "failed", current_step=index,
                     error=record.get("error") or f"Workflow step {index + 1} failed.", terminal=True)
                 return {"status": "failed", "step_index": index}
+            cfg = step.get("config") or {}
+            if "when" in cfg:
+                when = cfg["when"]
+                source_index = next((i for i, candidate in enumerate(steps)
+                                     if candidate.get("id") == when["step_id"]), None)
+                source = self.workflows.get_step_run(user_id, run_id, source_index) if source_index is not None else None
+                if not source or source["status"] != "completed":
+                    self.workflows.update_run(user_id, run_id, "failed", current_step=index,
+                        error="Conditional step references a condition that has not completed.", terminal=True)
+                    return {"status": "failed", "step_index": index, "reason": "condition_missing"}
+                matched = bool((source.get("result") or {}).get("matched"))
+                if matched is not when["equals"]:
+                    try:
+                        if record is None:
+                            self.workflows.create_nonmission_step_record(user_id, run_id, index, step)
+                        self.workflows.complete_nonmission_step(
+                            user_id, run_id, index,
+                            {"skipped": True, "reason": "when_condition_not_met", "condition_step_id": when["step_id"]},
+                            status="skipped",
+                        )
+                        return {"status": "step_skipped", "step_index": index}
+                    except Exception as exc:
+                        self.workflows.fail_workflow_step(
+                            user_id, run_id, index, f"Conditional skip failed ({type(exc).__name__})."
+                        )
+                        return {"status": "failed", "step_index": index}
+
+            if step.get("type") == "condition":
+                try:
+                    source_id = cfg["source_step_id"]
+                    source_index = next(i for i, candidate in enumerate(steps) if candidate["id"] == source_id)
+                    source = self.workflows.get_step_run(user_id, run_id, source_index)
+                    if not source or source["status"] not in {"completed", "skipped"}:
+                        raise ValueError("Condition source step has not completed.")
+                    observed = self._resolve_path(source.get("result") or {}, cfg["path"])
+                    operator = cfg.get("operator", "equals")
+                    expected = cfg.get("value")
+                    try:
+                        matched = {
+                            "equals": lambda: observed == expected,
+                            "not_equals": lambda: observed != expected,
+                            "contains": lambda: observed is not None and expected in observed,
+                            "exists": lambda: observed is not None,
+                            "gt": lambda: float(observed) > float(expected),
+                            "gte": lambda: float(observed) >= float(expected),
+                            "lt": lambda: float(observed) < float(expected),
+                            "lte": lambda: float(observed) <= float(expected),
+                        }[operator]()
+                    except (TypeError, ValueError):
+                        matched = False
+                    if record is None:
+                        self.workflows.create_nonmission_step_record(user_id, run_id, index, step)
+                    condition_result = {"matched": bool(matched), "source_step_id": source_id,
+                                        "path": cfg["path"], "operator": operator,
+                                        "observed": observed, "expected": expected}
+                    self.workflows.complete_nonmission_step(user_id, run_id, index, condition_result)
+                    return {"status": "condition_evaluated", "step_index": index, "matched": bool(matched)}
+                except (KeyError, StopIteration, ValueError) as exc:
+                    self.workflows.fail_workflow_step(user_id, run_id, index, str(exc))
+                    return {"status": "failed", "step_index": index}
+
             if step.get("type") in {"research", "artifact", "social_content"}:
                 try:
                     step_record, created = self.workflows.create_nonmission_step_record(user_id, run_id, index, step)
@@ -142,3 +203,18 @@ class WorkflowExecutor:
             result={"outputs": outputs, "completion_semantics": "all_steps_completed"}, terminal=True)
         return {"status": "completed", "steps_completed": len(steps),
                 "completion_semantics": "all_steps_completed"}
+
+    @staticmethod
+    def _resolve_path(value, path):
+        current = value
+        for part in str(path).split("."):
+            if isinstance(current, dict):
+                current = current.get(part)
+            elif isinstance(current, list):
+                try:
+                    current = current[int(part)]
+                except (ValueError, IndexError):
+                    return None
+            else:
+                return None
+        return current
