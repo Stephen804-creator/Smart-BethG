@@ -132,8 +132,9 @@ Status is implementation status, not a claim that live external provider integra
 - [x] Durable workflow-run and per-step records, atomic child-mission/step creation, sequential step dispatch, completion aggregation, and step-index-bound queue messages.
 - [x] Mission, research-record, artifact, and social-content-draft steps execute through existing trusted services. Social-content steps create drafts only and never publish externally.
 - [x] Child mission completion advances the parent workflow and queues the next step in the same database transaction.
+- [x] Bounded condition steps support earlier-step result paths, explicit comparison operators, and guarded downstream step skipping.
 - [x] Replay of already-claimed side-effecting non-mission steps fails closed rather than blindly repeating a potentially completed side effect.
-- [ ] Conditional branching, compensation/saga recovery, live publishing adapters, and automated recovery from an ambiguous side-effect outcome remain open.
+- [ ] Compensation/saga recovery, live publishing adapters, and automated recovery from an ambiguous side-effect outcome remain open.
 
 ### Unit 11 — Specialist coordination
 - [x] Role-specific specialist calls run sequentially through the configured ChatService provider, persist each contribution, and pass prior contributions as context.
