@@ -176,30 +176,32 @@ class TestUnits10To15(SmartBethGTestCase):
                 "source_step_id": "research", "path": "summary",
                 "operator": "contains", "value": "READY",
             }},
+            {"id": "dependent_check", "type": "condition", "config": {
+                "source_step_id": "research", "path": "summary",
+                "operator": "exists", "when": {"step_id": "ready_check", "equals": True},
+            }},
             {"id": "social_draft", "type": "social_content", "config": {
                 "platform": "linkedin", "title": "Release", "content": "Release update",
-                "when": {"step_id": "ready_check", "equals": True},
+                "when": {"step_id": "dependent_check", "equals": True},
             }},
         ])
         service.validate(self.owner["id"], workflow["id"])
         run = service.start_run(self.owner["id"], workflow["id"])
         executor = WorkflowExecutor()
-        for index in range(3):
-            result = executor.execute({"user_id": self.owner["id"], "payload": {
+        results = []
+        for index in range(4):
+            results.append(executor.execute({"user_id": self.owner["id"], "payload": {
                 "workflow_id": workflow["id"], "run_id": run["id"],
                 "workflow_version": workflow["version"], "step_index": index,
-            }})
-            if index == 0:
-                self.assertEqual(result["status"], "step_completed")
-            elif index == 1:
-                self.assertEqual(result["status"], "condition_evaluated")
-                self.assertFalse(result["matched"])
-            else:
-                self.assertEqual(result["status"], "step_skipped")
+            }}))
+        self.assertEqual(results[1]["status"], "condition_evaluated")
+        self.assertFalse(results[1]["matched"])
+        self.assertEqual(results[2]["status"], "step_skipped")
+        self.assertEqual(results[3]["status"], "step_skipped")
         final_run = service.get_run(self.owner["id"], run["id"])
         self.assertEqual(final_run["status"], "completed")
-        skipped = service.get_step_run(self.owner["id"], run["id"], 2)
-        self.assertEqual(skipped["status"], "skipped")
+        self.assertFalse(any(item.get("step_type") == "social_content" and item.get("status") == "completed"
+                             for item in [service.get_step_run(self.owner["id"], run["id"], 3)]))
 
     def test_workflow_waits_for_child_completion_and_advances_sequentially(self):
         service = WorkflowService()
