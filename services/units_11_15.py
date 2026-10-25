@@ -397,7 +397,7 @@ class AccountLifecycle:
                     "excluded_tables": [
                         {"table": "logs", "reason": "operational diagnostic text may contain sensitive data"},
                         {"table": "connector_credentials", "reason": "provider credentials are never exported"},
-                        {"table": "oauth_states", "reason": "temporary OAuth state is never exported"},
+                        {"table": "connector_oauth_states", "reason": "temporary OAuth state is never exported"},
                         {"table": "usage_budget_reservations", "reason": "internal reservation records are operational data"},
                     ],
                     "row_limit_per_table": EXPORT_ROW_LIMIT,
