@@ -108,23 +108,25 @@ class WorkflowExecutor:
             if step.get("type") in {"research", "artifact", "social_content"}:
                 try:
                     step_record, created = self.workflows.create_nonmission_step_record(user_id, run_id, index, step)
-                    if not created:
-                        error = "A prior worker attempt may have performed this side effect; replay is suppressed for safety."
+                    if not created and (not step_record or step_record["status"] not in {"running", "created"}):
+                        error = "Workflow step is not in a replay-safe state."
                         self.workflows.fail_workflow_step(user_id, run_id, index, error)
-                        return {"status": "failed", "step_index": index, "reason": "ambiguous_side_effect_replay"}
+                        return {"status": "failed", "step_index": index, "reason": "unsafe_step_replay"}
                     cfg = step.get("config") or {}
+                    idempotency_key = f"workflow-step:{run_id}:{index}"
                     if step["type"] == "research":
                         from services.research_service import ResearchService
                         result = ResearchService().create(
                             user_id, cfg.get("query") or cfg.get("topic") or "",
                             cfg.get("summary") or "", cfg.get("source_urls") or [],
-                            cfg.get("mission_id"),
+                            cfg.get("mission_id"), idempotency_key=idempotency_key,
                         )
                     elif step["type"] == "artifact":
                         from services.artifact_service import ArtifactService
                         result = ArtifactService().create(
                             user_id, cfg.get("name") or "", cfg.get("content") or "",
                             cfg.get("artifact_type", "text"), cfg.get("mission_id"),
+                            idempotency_key=idempotency_key,
                         )
                         result.pop("path", None)
                     else:
@@ -132,6 +134,7 @@ class WorkflowExecutor:
                         result = SocialContentService().create(
                             user_id, cfg.get("platform") or "", cfg.get("title") or "",
                             cfg.get("content") or "", cfg.get("hashtags") or [],
+                            idempotency_key=idempotency_key,
                         )
                     self.workflows.complete_nonmission_step(user_id, run_id, index, result)
                     return {"status": "step_completed", "step_index": index, "step_type": step["type"]}
