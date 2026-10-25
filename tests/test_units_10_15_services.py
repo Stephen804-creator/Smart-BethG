@@ -10,6 +10,9 @@ from services.units_11_15 import DecisionLedger, SpecialistPlanner, AgentEvaluat
 from services.mission_service import MissionService
 from services.workflow_executor import WorkflowExecutor
 from services.specialist_coordinator import SpecialistCoordinator, SpecialistBusyError
+from services.research_service import ResearchService
+from services.artifact_service import ArtifactService
+from services.social_content_service import SocialContentService
 
 
 class TestUnits10To15(SmartBethGTestCase):
@@ -59,6 +62,52 @@ class TestUnits10To15(SmartBethGTestCase):
         self.assertEqual(final_run["status"], "completed")
         self.assertEqual(final_run["result"]["completion_semantics"], "all_steps_completed")
 
+    def test_workflow_record_adapters_recover_after_side_effect_before_step_completion(self):
+        service = WorkflowService()
+        workflow = service.create(self.owner["id"], "Replay-safe adapters", steps=[
+            {"id": "research", "type": "research", "config": {
+                "query": "Replay safety", "summary": "Evidence summary",
+                "source_urls": ["https://example.com/evidence"],
+            }},
+            {"id": "artifact", "type": "artifact", "config": {
+                "name": "replay-report", "content": "Report body",
+            }},
+            {"id": "social", "type": "social_content", "config": {
+                "platform": "linkedin", "title": "Replay report", "content": "Draft body",
+            }},
+        ])
+        service.validate(self.owner["id"], workflow["id"])
+        run = service.start_run(self.owner["id"], workflow["id"])
+        executor = WorkflowExecutor()
+        adapters = [
+            ("research", lambda key: ResearchService().create(self.owner["id"], "Replay safety",
+                "Evidence summary", ["https://example.com/evidence"], idempotency_key=key)),
+            ("artifact", lambda key: ArtifactService().create(self.owner["id"], "replay-report",
+                "Report body", idempotency_key=key)),
+            ("social_content", lambda key: SocialContentService().create(self.owner["id"], "linkedin",
+                "Replay report", "Draft body", idempotency_key=key)),
+        ]
+        for index, (step_type, create_side_effect) in enumerate(adapters):
+            step = workflow["steps"][index]
+            key = f"workflow-step:{run['id']}:{index}"
+            service.create_nonmission_step_record(self.owner["id"], run["id"], index, step)
+            created = create_side_effect(key)
+            self.assertIsNotNone(created)
+            result = executor.execute({"user_id": self.owner["id"], "payload": {
+                "workflow_id": workflow["id"], "run_id": run["id"],
+                "workflow_version": workflow["version"], "step_index": index,
+            }})
+            self.assertEqual(result["status"], "step_completed")
+        final_run = service.get_run(self.owner["id"], run["id"])
+        self.assertEqual(final_run["status"], "completed")
+        conn = __import__("database").get_connection()
+        try:
+            for table in ("research", "artifacts", "social_content"):
+                count = conn.execute(f"SELECT COUNT(*) AS count FROM {table} WHERE user_id=? AND idempotency_key LIKE ?",
+                                     (self.owner["id"], f"workflow-step:{run['id']}:%")).fetchone()["count"]
+                self.assertEqual(count, 1, f"expected one idempotent {table} row per workflow step")
+        finally:
+            conn.close()
     def test_decision_ledger_is_owner_scoped(self):
         ledger = DecisionLedger()
         item = ledger.record(self.owner["id"], "route_selection", {"selected": "balanced"}, [{"source": "catalog"}])
