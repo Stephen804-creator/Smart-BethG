@@ -50,11 +50,11 @@ class WorkflowExecutor:
                 source_index = next((i for i, candidate in enumerate(steps)
                                      if candidate.get("id") == when["step_id"]), None)
                 source = self.workflows.get_step_run(user_id, run_id, source_index) if source_index is not None else None
-                if not source or source["status"] != "completed":
+                if not source or source["status"] not in {"completed", "skipped"}:
                     self.workflows.update_run(user_id, run_id, "failed", current_step=index,
                         error="Conditional step references a condition that has not completed.", terminal=True)
                     return {"status": "failed", "step_index": index, "reason": "condition_missing"}
-                matched = bool((source.get("result") or {}).get("matched"))
+                matched = source["status"] == "completed" and bool((source.get("result") or {}).get("matched"))
                 if matched is not when["equals"]:
                     try:
                         if record is None:
