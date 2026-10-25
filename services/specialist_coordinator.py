@@ -14,6 +14,13 @@ class SpecialistBusyError(RuntimeError):
 class SpecialistCoordinator:
     MAX_OUTPUT_CHARS = 8000
     CLAIM_TTL_MINUTES = 10
+    ROLE_PROTOCOL = {
+        "planner": "Produce an ordered plan with clear acceptance checks and dependencies.",
+        "researcher": "Separate supplied evidence from assumptions. Do not claim live research or invent sources.",
+        "critic": "Challenge prior contributions, identify contradictions, risks, and unsupported claims, and explain what evidence is missing.",
+        "executor": "Translate the accepted plan into proposed steps only. Do not execute tools, publish, or claim side effects occurred.",
+        "reviewer": "Reconcile prior contributions, resolve disagreements by evidence quality, and provide a concise final synthesis with open uncertainties.",
+    }
 
     def __init__(self, chat_service=None):
         self.chat = chat_service or ChatService()
@@ -42,6 +49,7 @@ class SpecialistCoordinator:
             prompt = (
                 f"You are the {role} specialist in Smart BethG.\n"
                 f"Responsibility: {assignment['responsibility']}\n"
+                f"Role protocol: {self.ROLE_PROTOCOL.get(role, 'Provide a concise contribution and distinguish facts from assumptions.')}\n"
                 f"Objective: {team['objective']}\n"
                 "Provide a concise, actionable contribution. Distinguish facts from assumptions. "
                 "Do not claim that tools, searches, or external actions were performed unless evidence is supplied. "
