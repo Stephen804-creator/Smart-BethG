@@ -1,11 +1,13 @@
 """Regression coverage for Units 10–15 initial foundations."""
+import threading
+
 from tests.base import SmartBethGTestCase
 from services.auth_service import create_user
 from services.workflow_service import WorkflowService
 from services.units_11_15 import DecisionLedger, SpecialistPlanner, AgentEvaluator, AccountLifecycle
 from services.mission_service import MissionService
 from services.workflow_executor import WorkflowExecutor
-from services.specialist_coordinator import SpecialistCoordinator
+from services.specialist_coordinator import SpecialistCoordinator, SpecialistBusyError
 
 
 class TestUnits10To15(SmartBethGTestCase):
@@ -91,6 +93,48 @@ class TestUnits10To15(SmartBethGTestCase):
         self.assertEqual(saved["status"], "completed")
         self.assertTrue(all(item["status"] == "completed" for item in saved["assignments"]))
 
+    def test_specialist_execution_claim_prevents_concurrent_duplicate_calls(self):
+        started = threading.Event()
+        release = threading.Event()
+        class SlowFakeChatService:
+            def __init__(self):
+                self.calls = 0
+                self.lock = threading.Lock()
+            def send(self, user_id, message, **kwargs):
+                with self.lock:
+                    self.calls += 1
+                    call_number = self.calls
+                if call_number == 1:
+                    started.set()
+                    if not release.wait(8):
+                        raise RuntimeError("test provider timed out")
+                return {"provider_configured": True, "reply": f"Contribution {call_number}",
+                        "provider": "test-provider", "model": "test-model",
+                        "conversation_id": call_number}
+
+        plan = SpecialistPlanner().create(self.owner["id"], "Prepare release notes")
+        fake = SlowFakeChatService()
+        coordinator = SpecialistCoordinator(chat_service=fake)
+        job = {"user_id": self.owner["id"], "payload": {"team_run_id": plan["id"]}}
+        results, errors = [], []
+        def first_worker():
+            try:
+                results.append(coordinator.execute(job))
+            except Exception as exc:
+                errors.append(exc)
+        thread = threading.Thread(target=first_worker)
+        thread.start()
+        self.assertTrue(started.wait(5), "first specialist call did not start")
+        try:
+            with self.assertRaises(SpecialistBusyError):
+                coordinator.execute(job)
+        finally:
+            release.set()
+            thread.join(10)
+        self.assertFalse(thread.is_alive(), "first specialist worker did not finish")
+        self.assertEqual(errors, [])
+        self.assertEqual(results[0]["status"], "completed")
+        self.assertEqual(fake.calls, 3)
     def test_deterministic_evaluation_persists_score_and_rubric(self):
         result = AgentEvaluator().evaluate(self.owner["id"], "response", "demo", {"summary": "ok"})
         self.assertGreaterEqual(result["score"], 0)
@@ -101,6 +145,8 @@ class TestUnits10To15(SmartBethGTestCase):
         data = AccountLifecycle().export(self.owner["id"])
         self.assertNotIn("password_hash", data["account"])
         self.assertNotIn("connector_credentials", data["data"])
+        self.assertNotIn("logs", data["data"])
+        self.assertIn("logs", [item["table"] for item in data["export_manifest"]["excluded_tables"]])
 
     def test_workflow_conditions_can_skip_downstream_side_effects(self):
         service = WorkflowService()
