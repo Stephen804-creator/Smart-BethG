@@ -219,13 +219,22 @@ class WorkflowService:
                     conn.rollback()
                 return False
             final_step_status = "completed" if status == "completed" else "failed"
-            conn.execute(
+            step_update = conn.execute(
                 "UPDATE workflow_step_runs SET status=?,result_json=?,error=?,updated_at=CURRENT_TIMESTAMP::text,"
                 "completed_at=CURRENT_TIMESTAMP::text WHERE id=? AND status IN ('created','running','waiting')",
                 (final_step_status, json.dumps(result or {}, ensure_ascii=False, default=str),
                  str(error)[:4000] if error else None, step["id"]),
             )
             run_id = step["workflow_run_id"]
+            if step_update.rowcount == 1:
+                conn.execute(
+                    "INSERT INTO decision_ledger(user_id,mission_id,workflow_run_id,decision_type,decision_json,evidence_json,outcome) "
+                    "VALUES (?,?,?,'workflow_step_completion',?,?,?)",
+                    (user_id, mission_id, run_id,
+                     json.dumps({"step_index": step["step_index"], "status": final_step_status}),
+                     json.dumps([{"source": "mission_run", "mission_id": mission_id}]),
+                     str(error)[:2000] if error else "Child mission completed."),
+                )
             run = conn.execute(
                 "SELECT workflow_id,result_json,workflow_version FROM workflow_runs WHERE id=? AND user_id=?",
                 (run_id, user_id),
