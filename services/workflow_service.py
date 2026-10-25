@@ -6,7 +6,7 @@ from services.job_queue import JobQueue
 
 
 class WorkflowService:
-    STEP_TYPES = {"mission", "research", "artifact", "social_content"}
+    STEP_TYPES = {"mission", "research", "artifact", "social_content", "condition"}
 
     def create(self, user_id, name, description=None, steps=None):
         name = (name or "").strip()
@@ -155,7 +155,9 @@ class WorkflowService:
             conn.close()
         return self.get_step_run(user_id, run_id, step_index), True
 
-    def complete_nonmission_step(self, user_id, run_id, step_index, result):
+    def complete_nonmission_step(self, user_id, run_id, step_index, result, status="completed"):
+        if status not in {"completed", "skipped"}:
+            raise ValueError("Non-mission workflow step status must be completed or skipped.")
         conn = get_connection()
         try:
             step = conn.execute(
@@ -166,10 +168,10 @@ class WorkflowService:
             if not step:
                 raise ValueError("Workflow step record is missing.")
             cursor = conn.execute(
-                "UPDATE workflow_step_runs SET status='completed',result_json=?,error=NULL,"
+                "UPDATE workflow_step_runs SET status=?,result_json=?,error=NULL,"
                 "updated_at=CURRENT_TIMESTAMP::text,completed_at=CURRENT_TIMESTAMP::text "
                 "WHERE id=? AND status='running'",
-                (json.dumps(result, ensure_ascii=False, default=str), step["id"]),
+                (status, json.dumps(result, ensure_ascii=False, default=str), step["id"]),
             )
             if cursor.rowcount != 1:
                 conn.rollback()
@@ -185,7 +187,7 @@ class WorkflowService:
                 "VALUES (?,?,'workflow_step_completion',?,?,?)",
                 (user_id, run_id, json.dumps({"step_index": step_index, "step_type": step["step_type"]}),
                  json.dumps([{"source": "workflow_step_record", "step_id": step["step_id"]}]),
-                 "Workflow step completed."),
+                 ("Workflow step skipped by condition." if status == "skipped" else "Workflow step completed.")),
             )
             workflow = conn.execute(
                 "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
@@ -194,7 +196,7 @@ class WorkflowService:
             steps = json.loads(workflow["definition_json"] or "[]") if workflow else []
             rows = conn.execute(
                 "SELECT step_index,step_id,step_type,mission_id,result_json FROM workflow_step_runs "
-                "WHERE user_id=? AND workflow_run_id=? AND status='completed' ORDER BY step_index",
+                "WHERE user_id=? AND workflow_run_id=? AND status IN ('completed','skipped') ORDER BY step_index",
                 (user_id, run_id),
             ).fetchall()
             outputs = []
@@ -507,6 +509,30 @@ class WorkflowService:
                 "type": step_type,
                 "config": config,
             })
+        ids = [step["id"] for step in cleaned]
+        if len(set(ids)) != len(ids):
+            raise ValueError("Workflow step IDs must be unique.")
+        operators = {"equals", "not_equals", "contains", "exists", "gt", "gte", "lt", "lte"}
+        for index, step in enumerate(cleaned):
+            config = step["config"]
+            if step["type"] == "condition":
+                source_id = config.get("source_step_id")
+                path = config.get("path")
+                operator = config.get("operator", "equals")
+                if source_id not in ids[:index]:
+                    raise ValueError(f"Condition step {index + 1} must reference an earlier step ID.")
+                if not isinstance(path, str) or not path.strip() or len(path) > 200:
+                    raise ValueError(f"Condition step {index + 1} requires a bounded result path.")
+                if operator not in operators:
+                    raise ValueError(f"Condition step {index + 1} has an unsupported operator.")
+            if "when" in config:
+                when = config["when"]
+                if (not isinstance(when, dict) or when.get("step_id") not in ids[:index]
+                        or not isinstance(when.get("equals"), bool)):
+                    raise ValueError(f"Workflow step {index + 1} has an invalid when condition.")
+                referenced = cleaned[ids.index(when["step_id"])]
+                if referenced["type"] != "condition":
+                    raise ValueError(f"Workflow step {index + 1} when condition must reference a condition step.")
         return cleaned
 
     @staticmethod
