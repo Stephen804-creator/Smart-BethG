@@ -107,9 +107,6 @@ class WorkflowService:
         if workflow["status"] != "validated":
             raise ValueError("Validate the workflow before executing it.")
         steps = self.validate_steps(workflow["steps"], require_nonempty=True)
-        unsupported = [step["type"] for step in steps if step["type"] != "mission"]
-        if unsupported:
-            raise ValueError("Execution adapters are not enabled yet for: " + ", ".join(sorted(set(unsupported))))
         conn = get_connection()
         try:
             cursor = conn.execute("INSERT INTO workflow_runs(workflow_id,user_id,workflow_version,status,result_json) VALUES (?,?,?,'queued','{}')",
@@ -126,6 +123,136 @@ class WorkflowService:
             conn.close()
         return self.get_run(user_id, run_id)
 
+
+    def create_nonmission_step_record(self, user_id, run_id, step_index, step):
+        """Persist an execution claim before non-mission side effects."""
+        conn = get_connection()
+        try:
+            existing = conn.execute(
+                "SELECT id FROM workflow_step_runs WHERE user_id=? AND workflow_run_id=? AND step_index=?",
+                (user_id, run_id, step_index),
+            ).fetchone()
+            if existing:
+                conn.rollback()
+                return self.get_step_run(user_id, run_id, step_index), False
+            cursor = conn.execute(
+                "INSERT INTO workflow_step_runs(workflow_run_id,user_id,step_index,step_id,step_type,status) "
+                "VALUES (?,?,?,?,?,'running')",
+                (run_id, user_id, step_index, str(step.get("id") or f"step-{step_index + 1}")[:80],
+                 step.get("type")),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            existing = conn.execute(
+                "SELECT id FROM workflow_step_runs WHERE user_id=? AND workflow_run_id=? AND step_index=?",
+                (user_id, run_id, step_index),
+            ).fetchone()
+            if existing:
+                return self.get_step_run(user_id, run_id, step_index), False
+            raise
+        finally:
+            conn.close()
+        return self.get_step_run(user_id, run_id, step_index), True
+
+    def complete_nonmission_step(self, user_id, run_id, step_index, result):
+        conn = get_connection()
+        try:
+            step = conn.execute(
+                "SELECT id,step_id,step_type FROM workflow_step_runs "
+                "WHERE user_id=? AND workflow_run_id=? AND step_index=?",
+                (user_id, run_id, step_index),
+            ).fetchone()
+            if not step:
+                raise ValueError("Workflow step record is missing.")
+            cursor = conn.execute(
+                "UPDATE workflow_step_runs SET status='completed',result_json=?,error=NULL,"
+                "updated_at=CURRENT_TIMESTAMP::text,completed_at=CURRENT_TIMESTAMP::text "
+                "WHERE id=? AND status='running'",
+                (json.dumps(result, ensure_ascii=False, default=str), step["id"]),
+            )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                return self.get_run(user_id, run_id)
+            run = conn.execute(
+                "SELECT workflow_id,workflow_version FROM workflow_runs WHERE id=? AND user_id=?",
+                (run_id, user_id),
+            ).fetchone()
+            if not run:
+                raise ValueError("Workflow run not found.")
+            conn.execute(
+                "INSERT INTO decision_ledger(user_id,workflow_run_id,decision_type,decision_json,evidence_json,outcome) "
+                "VALUES (?,?,'workflow_step_completion',?,?,?)",
+                (user_id, run_id, json.dumps({"step_index": step_index, "step_type": step["step_type"]}),
+                 json.dumps([{"source": "workflow_step_record", "step_id": step["step_id"]}]),
+                 "Workflow step completed."),
+            )
+            workflow = conn.execute(
+                "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
+                (run["workflow_id"], user_id),
+            ).fetchone()
+            steps = json.loads(workflow["definition_json"] or "[]") if workflow else []
+            rows = conn.execute(
+                "SELECT step_index,step_id,step_type,mission_id,result_json FROM workflow_step_runs "
+                "WHERE user_id=? AND workflow_run_id=? AND status='completed' ORDER BY step_index",
+                (user_id, run_id),
+            ).fetchall()
+            outputs = []
+            for item in rows:
+                try:
+                    output = json.loads(item["result_json"] or "{}")
+                except (TypeError, json.JSONDecodeError):
+                    output = {}
+                outputs.append({"step_index": item["step_index"], "step_id": item["step_id"],
+                                "type": item["step_type"], "mission_id": item["mission_id"], "result": output})
+            next_index = step_index + 1
+            if next_index >= len(steps):
+                conn.execute(
+                    "UPDATE workflow_runs SET status='completed',current_step=?,result_json=?,error=NULL,"
+                    "completed_at=CURRENT_TIMESTAMP::text,updated_at=CURRENT_TIMESTAMP::text "
+                    "WHERE id=? AND user_id=? AND status NOT IN ('completed','cancelled')",
+                    (len(steps), json.dumps({"outputs": outputs, "completion_semantics": "all_steps_completed"},
+                                            ensure_ascii=False, default=str), run_id, user_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE workflow_runs SET status='queued',current_step=?,result_json=?,error=NULL,"
+                    "updated_at=CURRENT_TIMESTAMP::text WHERE id=? AND user_id=? AND status NOT IN ('completed','cancelled','failed')",
+                    (next_index, json.dumps({"outputs": outputs}, ensure_ascii=False, default=str), run_id, user_id),
+                )
+                from services.job_queue import JobQueue
+                JobQueue().enqueue_in_transaction(
+                    conn, user_id, "workflow.execute",
+                    {"workflow_id": run["workflow_id"], "run_id": run_id,
+                     "workflow_version": run["workflow_version"]},
+                    idempotency_key=f"workflow-run:{run_id}:step:{next_index}",
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return self.get_run(user_id, run_id)
+
+    def fail_workflow_step(self, user_id, run_id, step_index, error):
+        conn = get_connection()
+        try:
+            conn.execute(
+                "UPDATE workflow_step_runs SET status='failed',error=?,updated_at=CURRENT_TIMESTAMP::text,"
+                "completed_at=CURRENT_TIMESTAMP::text WHERE user_id=? AND workflow_run_id=? AND step_index=? "
+                "AND status IN ('created','running','waiting')",
+                (str(error)[:4000], user_id, run_id, step_index),
+            )
+            conn.execute(
+                "UPDATE workflow_runs SET status='failed',current_step=?,error=?,completed_at=CURRENT_TIMESTAMP::text,"
+                "updated_at=CURRENT_TIMESTAMP::text WHERE id=? AND user_id=? AND status NOT IN ('completed','cancelled')",
+                (step_index, str(error)[:4000], run_id, user_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return self.get_run(user_id, run_id)
 
     def get_step_run(self, user_id, run_id, step_index):
         conn = get_connection()
