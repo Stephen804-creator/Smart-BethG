@@ -7,7 +7,7 @@ from services.model_evaluation_service import ModelEvaluationService
 from services.memory_service import MemoryService
 from services.knowledge_service import KnowledgeService
 from services.usage_budget_service import UsageBudgetService, BudgetExceededError
-from services.units_11_15 import CostAwareRouter
+from services.units_11_15 import CostAwareRouter, DecisionLedger
 from logging_setup import get_logger
 
 logger = get_logger("chat")
@@ -76,9 +76,11 @@ class ChatService:
         if is_new:
             self.repo.set_title(conversation_id, message[:60])
 
+        route_preview = None
         if not selection or selection == "auto":
             tier = provider_manager._classify_tier(message)
             route = CostAwareRouter().preview(task_type="chat", complexity=tier)
+            route_preview = route
             selected = route.get("selected") if route.get("mode") == "preview" else None
             if selected and provider_manager.get(user_id, selected["provider"]):
                 provider_name, model_id = selected["provider"], selected["model"]
@@ -96,6 +98,10 @@ class ChatService:
                 "before chat can produce real responses."
             )
             logger.warning("Chat request from user %s but no provider is configured", user_id)
+            self._record_route_decision(user_id, {
+                "requested_selection": selection or "auto", "selected_provider": None,
+                "selected_model": None, "route_preview": self._route_summary(route_preview),
+            }, "unavailable")
             self.repo.add_message(conversation_id, "assistant", reply)
             self.repo.touch(conversation_id)
             return {
@@ -142,6 +148,11 @@ class ChatService:
                 f"(attempted: {', '.join(attempted)}). Please try again later "
                 "or contact the operator if the problem continues."
                 )
+            self._record_route_decision(user_id, {
+                "requested_selection": selection or "auto", "selected_provider": provider_name,
+                "selected_model": model_id, "attempted_providers": attempted,
+                "route_preview": self._route_summary(route_preview),
+            }, "provider_failure_or_budget_block")
             self.repo.add_message(conversation_id, "assistant", reply)
             self.repo.touch(conversation_id)
             return {
@@ -153,6 +164,12 @@ class ChatService:
 
         reply = result["text"]
         fallback_used = used_provider != provider_name
+        self._record_route_decision(user_id, {
+            "requested_selection": selection or "auto", "selected_provider": provider_name,
+            "selected_model": model_id, "actual_provider": used_provider,
+            "actual_model": used_model, "fallback_used": fallback_used,
+            "route_preview": self._route_summary(route_preview),
+        }, "success")
         if fallback_used:
             logger.warning(
                 "Chat used fallback provider (user=%s, requested=%s, used=%s)",
@@ -180,6 +197,30 @@ class ChatService:
             "model": used_model,
             "fallback_used": fallback_used,
         }
+
+    @staticmethod
+    def _route_summary(route):
+        if not isinstance(route, dict):
+            return None
+        selected = route.get("selected") or {}
+        return {
+            "mode": route.get("mode"), "tier": route.get("tier"),
+            "provider": selected.get("provider"), "model": selected.get("model"),
+            "routing_score": selected.get("routing_score"),
+            "estimated_cost_usd": selected.get("estimated_usd_per_1k_input_plus_1k_output_tokens"),
+            "observed_attempts": selected.get("observed_attempts", 0),
+            "observed_success_rate": selected.get("observed_success_rate"),
+            "observed_avg_latency_ms": selected.get("observed_avg_latency_ms"),
+        }
+
+    @staticmethod
+    def _record_route_decision(user_id, decision, outcome):
+        try:
+            DecisionLedger().record(user_id, "model_route_execution", decision,
+                evidence=[{"source": "chat_provider_attempts", "provider_call_metadata_only": True}],
+                outcome=outcome)
+        except Exception:
+            logger.exception("Could not persist model-routing decision")
 
     def _generate_with_fallback(self, provider, provider_name, model_id, provider_messages, user_id):
         """
