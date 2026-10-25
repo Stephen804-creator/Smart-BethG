@@ -226,7 +226,7 @@ class WorkflowService:
                 JobQueue().enqueue_in_transaction(
                     conn, user_id, "workflow.execute",
                     {"workflow_id": run["workflow_id"], "run_id": run_id,
-                     "workflow_version": run["workflow_version"]},
+                     "workflow_version": run["workflow_version"], "step_index": next_index},
                     idempotency_key=f"workflow-run:{run_id}:step:{next_index}",
                 )
             conn.commit()
@@ -386,7 +386,7 @@ class WorkflowService:
                 steps = json.loads(workflow["definition_json"] or "[]") if workflow else []
                 completed_steps = conn.execute(
                     "SELECT step_index,step_id,step_type,mission_id,result_json FROM workflow_step_runs "
-                    "WHERE user_id=? AND workflow_run_id=? AND status='completed' ORDER BY step_index",
+                    "WHERE user_id=? AND workflow_run_id=? AND status IN ('completed','skipped') ORDER BY step_index",
                     (user_id, run_id),
                 ).fetchall()
                 outputs = []
