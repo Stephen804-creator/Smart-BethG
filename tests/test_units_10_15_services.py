@@ -102,6 +102,41 @@ class TestUnits10To15(SmartBethGTestCase):
         self.assertNotIn("password_hash", data["account"])
         self.assertNotIn("connector_credentials", data["data"])
 
+    def test_workflow_conditions_can_skip_downstream_side_effects(self):
+        service = WorkflowService()
+        workflow = service.create(self.owner["id"], "Conditional workflow", steps=[
+            {"id": "research", "type": "research", "config": {
+                "query": "Release readiness", "summary": "Not ready for publishing.",
+            }},
+            {"id": "ready_check", "type": "condition", "config": {
+                "source_step_id": "research", "path": "summary",
+                "operator": "contains", "value": "READY",
+            }},
+            {"id": "social_draft", "type": "social_content", "config": {
+                "platform": "linkedin", "title": "Release", "content": "Release update",
+                "when": {"step_id": "ready_check", "equals": True},
+            }},
+        ])
+        service.validate(self.owner["id"], workflow["id"])
+        run = service.start_run(self.owner["id"], workflow["id"])
+        executor = WorkflowExecutor()
+        for index in range(3):
+            result = executor.execute({"user_id": self.owner["id"], "payload": {
+                "workflow_id": workflow["id"], "run_id": run["id"],
+                "workflow_version": workflow["version"], "step_index": index,
+            }})
+            if index == 0:
+                self.assertEqual(result["status"], "step_completed")
+            elif index == 1:
+                self.assertEqual(result["status"], "condition_evaluated")
+                self.assertFalse(result["matched"])
+            else:
+                self.assertEqual(result["status"], "step_skipped")
+        final_run = service.get_run(self.owner["id"], run["id"])
+        self.assertEqual(final_run["status"], "completed")
+        skipped = service.get_step_run(self.owner["id"], run["id"], 2)
+        self.assertEqual(skipped["status"], "skipped")
+
     def test_workflow_waits_for_child_completion_and_advances_sequentially(self):
         service = WorkflowService()
         workflow = service.create(self.owner["id"], "Two-stage workflow", steps=[
