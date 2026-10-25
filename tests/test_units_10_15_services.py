@@ -5,6 +5,7 @@ from services.workflow_service import WorkflowService
 from services.units_11_15 import DecisionLedger, SpecialistPlanner, AgentEvaluator, AccountLifecycle
 from services.mission_service import MissionService
 from services.workflow_executor import WorkflowExecutor
+from services.specialist_coordinator import SpecialistCoordinator
 
 
 class TestUnits10To15(SmartBethGTestCase):
@@ -40,10 +41,35 @@ class TestUnits10To15(SmartBethGTestCase):
         self.assertIsNotNone(ledger.get(self.owner["id"], item["id"]))
         self.assertIsNone(ledger.get(self.other["id"], item["id"]))
 
-    def test_specialist_planner_does_not_claim_model_execution(self):
+    def test_specialist_plan_is_queued_for_real_model_execution(self):
         plan = SpecialistPlanner().create(self.owner["id"], "Prepare release notes")
-        self.assertEqual(plan["status"], "planned")
-        self.assertEqual(plan["execution_status"], "planning_only")
+        self.assertEqual(plan["status"], "running")
+        self.assertEqual(plan["execution_status"], "queued")
+        self.assertEqual(len(plan["assignments"]), 3)
+
+    def test_specialist_coordinator_persists_each_role_result(self):
+        class FakeChatService:
+            def __init__(self):
+                self.calls = 0
+
+            def send(self, user_id, message, **kwargs):
+                self.calls += 1
+                return {
+                    "provider_configured": True, "reply": f"Contribution {self.calls}",
+                    "provider": "test-provider", "model": "test-model",
+                    "conversation_id": self.calls,
+                }
+
+        plan = SpecialistPlanner().create(self.owner["id"], "Prepare release notes")
+        fake = FakeChatService()
+        result = SpecialistCoordinator(chat_service=fake).execute({
+            "user_id": self.owner["id"], "payload": {"team_run_id": plan["id"]},
+        })
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(fake.calls, 3)
+        saved = SpecialistPlanner().list(self.owner["id"])[0]
+        self.assertEqual(saved["status"], "completed")
+        self.assertTrue(all(item["status"] == "completed" for item in saved["assignments"]))
 
     def test_deterministic_evaluation_persists_score_and_rubric(self):
         result = AgentEvaluator().evaluate(self.owner["id"], "response", "demo", {"summary": "ok"})
