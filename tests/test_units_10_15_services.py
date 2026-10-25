@@ -26,14 +26,34 @@ class TestUnits10To15(SmartBethGTestCase):
         self.assertEqual(run["status"], "queued")
         self.assertEqual(run["workflow_version"], workflow["version"])
 
-    def test_workflow_rejects_step_without_executor(self):
+    def test_workflow_executes_research_artifact_and_social_draft_adapters(self):
         service = WorkflowService()
-        workflow = service.create(self.owner["id"], "Research", steps=[
-            {"type": "research", "config": {"query": "not executed"}}
+        workflow = service.create(self.owner["id"], "Content workflow", steps=[
+            {"id": "research", "type": "research", "config": {
+                "query": "Quarterly product update", "summary": "Reviewed product milestones.",
+                "source_urls": ["https://example.com/release-notes"],
+            }},
+            {"id": "artifact", "type": "artifact", "config": {
+                "name": "release-summary", "content": "Release summary content",
+            }},
+            {"id": "social", "type": "social_content", "config": {
+                "platform": "linkedin", "title": "Product update",
+                "content": "We shipped the latest product improvements.",
+                "hashtags": ["ProductUpdate"],
+            }},
         ])
         service.validate(self.owner["id"], workflow["id"])
-        with self.assertRaisesRegex(ValueError, "adapters are not enabled"):
-            service.start_run(self.owner["id"], workflow["id"])
+        run = service.start_run(self.owner["id"], workflow["id"])
+        executor = WorkflowExecutor()
+        for index in range(3):
+            result = executor.execute({"user_id": self.owner["id"], "payload": {
+                "workflow_id": workflow["id"], "run_id": run["id"],
+                "workflow_version": workflow["version"], "step_index": index,
+            }})
+            self.assertEqual(result["status"], "step_completed")
+        final_run = service.get_run(self.owner["id"], run["id"])
+        self.assertEqual(final_run["status"], "completed")
+        self.assertEqual(final_run["result"]["completion_semantics"], "all_steps_completed")
 
     def test_decision_ledger_is_owner_scoped(self):
         ledger = DecisionLedger()
@@ -105,6 +125,7 @@ class TestUnits10To15(SmartBethGTestCase):
         self.assertEqual(after_first["status"], "queued")
         self.assertEqual(after_first["current_step"], 1)
 
+        payload["step_index"] = 1
         second_result = executor.execute({"user_id": self.owner["id"], "payload": payload})
         self.assertEqual(second_result["status"], "waiting_for_child_mission")
         second_step = service.get_step_run(self.owner["id"], run["id"], 1)
