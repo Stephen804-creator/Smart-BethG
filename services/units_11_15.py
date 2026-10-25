@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from database import get_connection
 from providers.model_catalog import MODEL_CATALOG
 from services.job_queue import JobQueue
+from services.model_evaluation_service import ModelEvaluationService
 
 ROLES = {
     "planner": "Break the objective into ordered, testable tasks.",
@@ -343,7 +344,30 @@ class CostAwareRouter:
                     "provider": provider, "model": model["id"], "label": model.get("label"),
                     "tier": complexity, "estimated_usd_per_1k_input_plus_1k_output_tokens": round(estimate, 8),
                 })
-        candidates.sort(key=lambda item: (item["estimated_usd_per_1k_input_plus_1k_output_tokens"],
+        # Reliability/latency evidence is applied only after at least five
+        # observed calls for a model; sparse data must not dominate routing.
+        try:
+            observed = {
+                (row["provider"], row["model"]): row
+                for row in ModelEvaluationService().stats()
+                if int(row.get("attempts") or 0) >= 5
+            }
+        except Exception:
+            observed = {}
+        for candidate in candidates:
+            metric = observed.get((candidate["provider"], candidate["model"]))
+            candidate["observed_attempts"] = int(metric["attempts"]) if metric else 0
+            candidate["observed_success_rate"] = metric.get("success_rate") if metric else None
+            candidate["observed_avg_latency_ms"] = metric.get("avg_latency_ms") if metric else None
+            estimated = candidate["estimated_usd_per_1k_input_plus_1k_output_tokens"]
+            if metric:
+                failure_rate = 1 - float(metric.get("success_rate") or 0)
+                latency_seconds = max(0, float(metric.get("avg_latency_ms") or 0)) / 1000
+                candidate["routing_score"] = round(estimated * (1 + 2 * failure_rate) + latency_seconds * 0.0001, 8)
+            else:
+                candidate["routing_score"] = estimated
+        candidates.sort(key=lambda item: (item["routing_score"],
+                                         item["estimated_usd_per_1k_input_plus_1k_output_tokens"],
                                          item["provider"], item["model"]))
         if not candidates:
             return {"mode": "unavailable", "tier": complexity, "selected": None,
