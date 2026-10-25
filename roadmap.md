@@ -134,7 +134,7 @@ Status is implementation status, not a claim that live external provider integra
 - [x] Child mission completion advances the parent workflow and queues the next step in the same database transaction.
 - [x] Bounded condition steps support earlier-step result paths, explicit comparison operators, and guarded downstream step skipping.
 - [x] Internal research, artifact, and social-draft adapters use stable per-step idempotency keys, allowing safe recovery after a crash between record creation and workflow-step completion; unsupported or external side effects fail closed.
-- [ ] Compensation/saga recovery, live publishing adapters, and automated recovery from an ambiguous side-effect outcome remain open.
+- [ ] Compensation/saga rollback, live publishing adapters, and automatic recovery from ambiguous external side-effect outcomes remain open.
 
 ### Unit 11 — Specialist coordination
 - [x] Role-specific specialist calls run sequentially through ChatService, persist each contribution, pass prior contributions as context, and use role-specific capability-tier preferences when configured catalog routes are available.
