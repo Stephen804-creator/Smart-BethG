@@ -31,7 +31,7 @@ EXPORT_TABLES = (
     "projects", "missions", "mission_runs", "files", "memory", "research",
     "evidence", "workflows", "workflow_runs", "decision_ledger",
     "agent_team_runs", "agent_evaluations", "artifacts", "social_content",
-    "social_content_versions", "logs", "conversations", "messages",
+    "social_content_versions", "conversations", "messages",
 )
 SENSITIVE_COLUMN_PARTS = (
     "password", "secret", "token", "credential", "private_key", "api_key",
@@ -376,7 +376,7 @@ class CostAwareRouter:
         return {
             "mode": "preview", "tier": complexity, "selected": candidates[0],
             "alternatives": candidates[1:5], "provider_call_made": False, "budget_reserved": False,
-            "warning": "Catalog estimates only. Live catalog verification, latency feedback, and budget reservation are not part of preview.",
+            "warning": "Cost estimates are approximate. Observed reliability/latency affects ranking only after five recorded calls; live catalog verification and provider calls are not part of preview.",
         }
 
 
