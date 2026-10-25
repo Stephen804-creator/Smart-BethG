@@ -141,15 +141,11 @@ class SpecialistPlanner:
                 conn, user_id, "agent.team.execute", {"team_run_id": item_id},
                 idempotency_key=f"agent-team:{item_id}",
             )
-            conn.execute(
-                "UPDATE agent_team_runs SET status='running',updated_at=CURRENT_TIMESTAMP::text WHERE id=? AND user_id=?",
-                (item_id, user_id),
-            )
             conn.commit()
         finally:
             conn.close()
         return {
-            "id": item_id, "objective": objective, "status": "running",
+            "id": item_id, "objective": objective, "status": "planned",
             "assignments": assignments, "execution_status": "queued",
             "note": "Specialists run sequentially through the configured AI provider and existing usage-budget controls. Side-effecting tools are not exposed to specialist prompts.",
         }
