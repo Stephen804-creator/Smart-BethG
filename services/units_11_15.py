@@ -189,9 +189,13 @@ class AgentEvaluator:
         try:
             if subject_id is not None and subject_type in {"mission", "workflow", "artifact"}:
                 table = {"mission": "missions", "workflow": "workflows", "artifact": "artifacts"}[subject_type]
-                if not conn.execute(
+                try:
+                    object_id = int(subject_id)
+                except (TypeError, ValueError):
+                    raise ValueError(f"{subject_type.title()} ID must be a positive integer.")
+                if object_id < 1 or not conn.execute(
                     f"SELECT id FROM {table} WHERE id=? AND user_id=?",
-                    (subject_id, user_id),
+                    (object_id, user_id),
                 ).fetchone():
                     raise ValueError(f"{subject_type.title()} not found for this user.")
             findings = []
