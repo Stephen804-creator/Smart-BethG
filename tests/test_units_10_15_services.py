@@ -148,10 +148,7 @@ class TestUnits10To15(SmartBethGTestCase):
             {"provider": "provider_a", "model": "model-a", "attempts": 20, "success_rate": 0.5, "avg_latency_ms": 2000},
             {"provider": "provider_b", "model": "model-b", "attempts": 20, "success_rate": 0.99, "avg_latency_ms": 100},
         ]
-        with patch("services.units_11_15.MODEL_CATALOG", catalog), \\
-             patch("services.units_11_15.PROVIDER_ENV", {"provider_a": ("PROVIDER_A_KEY",), "provider_b": ("PROVIDER_B_KEY",)}), \\
-             patch("services.units_11_15.ModelEvaluationService.stats", return_value=stats), \\
-             patch.dict(os.environ, {"PROVIDER_A_KEY": "configured", "PROVIDER_B_KEY": "configured"}):
+        with patch("services.units_11_15.MODEL_CATALOG", catalog), patch("services.units_11_15.PROVIDER_ENV", {"provider_a": ("PROVIDER_A_KEY",), "provider_b": ("PROVIDER_B_KEY",)}), patch("services.units_11_15.ModelEvaluationService.stats", return_value=stats), patch.dict(os.environ, {"PROVIDER_A_KEY": "configured", "PROVIDER_B_KEY": "configured"}):
             result = CostAwareRouter().preview(complexity="balanced")
         self.assertEqual(result["selected"]["provider"], "provider_b")
         self.assertEqual(result["selected"]["observed_attempts"], 20)
