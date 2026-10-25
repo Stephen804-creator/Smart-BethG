@@ -49,7 +49,7 @@ class TestUnits10To15(SmartBethGTestCase):
         result = AgentEvaluator().evaluate(self.owner["id"], "response", "demo", {"summary": "ok"})
         self.assertGreaterEqual(result["score"], 0)
         self.assertLessEqual(result["score"], 1)
-        self.assertEqual(result["rubric_version"], "deterministic-v1")
+        self.assertEqual(result["rubric_version"], "deterministic-v2")
 
     def test_export_excludes_password_hash_and_provider_credentials(self):
         data = AccountLifecycle().export(self.owner["id"])
