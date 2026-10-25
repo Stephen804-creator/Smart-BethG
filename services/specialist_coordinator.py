@@ -58,9 +58,12 @@ class SpecialistCoordinator:
                 # The provider may have accepted/billed the request before the
                 # transport failed. Keep this role marked running so a later
                 # lease-recovery attempt will fail closed rather than rebill it.
-                self._save(user_id, team_id, assignments, "failed",
-                           claim_token=claim_token,
-                           error=f"Ambiguous provider failure for role {role}: {type(exc).__name__}")
+                assignment["status"] = "failed"
+                assignment["error"] = (
+                    f"Ambiguous provider failure ({type(exc).__name__}); automatic retry suppressed "
+                    "because the provider may have accepted the request."
+                )
+                self._save(user_id, team_id, assignments, "failed", claim_token=claim_token)
                 return {"status": "failed", "role": role, "reason": "ambiguous_provider_failure"}
             if not result.get("provider_configured") or result.get("error"):
                 assignment["status"] = "failed"
@@ -173,7 +176,7 @@ class SpecialistCoordinator:
             cursor = conn.execute(
                 "UPDATE agent_team_runs SET assignments_json=?,status=?,updated_at=CURRENT_TIMESTAMP::text,"
                 "execution_claim_token=CASE WHEN ? THEN NULL ELSE execution_claim_token END,"
-                "execution_claimed_at=CASE WHEN ? THEN NULL ELSE execution_claimed_at END "
+                "execution_claimed_at=CASE WHEN ? THEN NULL ELSE CURRENT_TIMESTAMP END "
                 "WHERE id=? AND user_id=? AND execution_claim_token=? "
                 "AND status NOT IN ('completed','cancelled')",
                 (json.dumps(assignments, ensure_ascii=False, default=str), status, terminal, terminal,
