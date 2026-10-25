@@ -38,6 +38,24 @@ SENSITIVE_COLUMN_PARTS = (
 )
 EXPORT_ROW_LIMIT = 10000
 EXPORT_BYTE_LIMIT = 5_000_000
+# Child records inherit ownership only through these explicitly reviewed parents.
+EXPORT_PARENT_SCOPES = {
+    "mission_runs": ("mission_id", "missions"),
+    "messages": ("conversation_id", "conversations"),
+}
+
+
+def _sanitize_export_value(value):
+    """Recursively remove credential-like keys from JSON-valued export fields."""
+    if isinstance(value, dict):
+        return {
+            key: _sanitize_export_value(item)
+            for key, item in value.items()
+            if not any(part in str(key).lower() for part in SENSITIVE_COLUMN_PARTS)
+        }
+    if isinstance(value, list):
+        return [_sanitize_export_value(item) for item in value]
+    return value
 
 
 def _json_size(value):
@@ -369,9 +387,23 @@ class AccountLifecycle:
                 ).fetchall()
                 names = [row["column_name"] for row in columns]
                 owner_column = "user_id" if "user_id" in names else ("owner_id" if "owner_id" in names else None)
-                if owner_column is None:
+                parent_scope = EXPORT_PARENT_SCOPES.get(table) if owner_column is None else None
+                if owner_column is None and parent_scope:
+                    parent_column, parent_table = parent_scope
+                    parent_exists = conn.execute(
+                        "SELECT 1 FROM information_schema.tables WHERE table_schema=current_schema() AND table_name=?",
+                        (parent_table,),
+                    ).fetchone()
+                    parent_columns = conn.execute(
+                        "SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=?",
+                        (parent_table,),
+                    ).fetchall() if parent_exists else []
+                    parent_names = [row["column_name"] for row in parent_columns]
+                    if "id" not in parent_names or "user_id" not in parent_names or parent_column not in names:
+                        parent_scope = None
+                if owner_column is None and parent_scope is None:
                     result["export_manifest"]["omitted_tables"].append({
-                        "table": table, "reason": "no_direct_owner_column; not exported to prevent cross-account leakage",
+                        "table": table, "reason": "no reviewed owner scope; omitted to prevent cross-account leakage",
                     })
                     continue
                 safe_columns = [
@@ -383,12 +415,31 @@ class AccountLifecycle:
                     continue
                 order_column = "id" if "id" in safe_columns else safe_columns[0]
                 query_columns = ", ".join('"' + name.replace('"', '""') + '"' for name in safe_columns)
-                query_owner = '"' + owner_column.replace('"', '""') + '"'
+                if owner_column:
+                    query_owner = '"' + owner_column.replace('"', '""') + '"'
+                    where_clause = f'WHERE {query_owner}=?'
+                else:
+                    parent_column, parent_table = parent_scope
+                    where_clause = (
+                        f'WHERE "{parent_column}" IN (SELECT "id" FROM "{parent_table}" WHERE "user_id"=?)'
+                    )
                 rows = conn.execute(
-                    f'SELECT {query_columns} FROM "{table}" WHERE {query_owner}=? ORDER BY "{order_column}" LIMIT ?',
+                    f'SELECT {query_columns} FROM "{table}" {where_clause} ORDER BY "{order_column}" LIMIT ?',
                     (user_id, EXPORT_ROW_LIMIT + 1),
                 ).fetchall()
-                row_list = [dict(row) for row in rows[:EXPORT_ROW_LIMIT]]
+                row_list = []
+                for row in rows[:EXPORT_ROW_LIMIT]:
+                    item = dict(row)
+                    for column in list(item):
+                        if column.endswith("_json") or column in {"source_info", "hashtags"}:
+                            if isinstance(item[column], str):
+                                try:
+                                    item[column] = _sanitize_export_value(json.loads(item[column]))
+                                except (TypeError, json.JSONDecodeError):
+                                    pass
+                            else:
+                                item[column] = _sanitize_export_value(item[column])
+                    row_list.append(item)
                 if len(rows) > EXPORT_ROW_LIMIT:
                     result["export_manifest"]["truncated_tables"].append(table)
                 result["data"][table] = row_list
