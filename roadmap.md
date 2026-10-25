@@ -133,7 +133,7 @@ Status is implementation status, not a claim that live external provider integra
 - [x] Mission, research-record, artifact, and social-content-draft steps execute through existing trusted services. Social-content steps create drafts only and never publish externally.
 - [x] Child mission completion advances the parent workflow and queues the next step in the same database transaction.
 - [x] Bounded condition steps support earlier-step result paths, explicit comparison operators, and guarded downstream step skipping.
-- [x] Replay of already-claimed side-effecting non-mission steps fails closed rather than blindly repeating a potentially completed side effect.
+- [x] Internal research, artifact, and social-draft adapters use stable per-step idempotency keys, allowing safe recovery after a crash between record creation and workflow-step completion; unsupported or external side effects fail closed.
 - [ ] Compensation/saga recovery, live publishing adapters, and automated recovery from an ambiguous side-effect outcome remain open.
 
 ### Unit 11 — Specialist coordination
