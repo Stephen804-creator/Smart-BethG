@@ -154,7 +154,8 @@ Status is implementation status, not a claim that live external provider integra
 ### Unit 14 — Cost-aware model routing
 - [x] Authenticated route preview estimates costs for configured catalog entries and records the preview decision.
 - [x] Existing synchronous ChatService calls already reserve budgets before provider calls, reconcile known usage, retain conservative reservations on unknown usage, and record latency/provider outcomes.
-- [ ] The route-preview service is not yet the single routing authority used by ChatService; provider catalog live smoke checks and latency/reliability-informed routing remain open. Mission workflow steps currently create records/artifacts/drafts or dispatch missions; they do not perform hidden AI generation.
+- [x] Auto chat selection uses the cost-aware route preview to choose among configured catalog entries; provider calls still reserve/reconcile usage through ChatService.
+- [ ] Provider catalog live smoke checks and latency/reliability-informed routing remain open. Mission workflow steps currently create records/artifacts/drafts or dispatch missions; they do not perform hidden AI generation.
 
 ### Unit 15 — Account recovery and data lifecycle
 - [x] Owner-scoped JSON export with schema version, export manifest, sensitive-column filtering, row/size limits, and explicit omission/truncation reporting.
