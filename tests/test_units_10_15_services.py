@@ -1,10 +1,12 @@
 """Regression coverage for Units 10–15 initial foundations."""
+import os
 import threading
+from unittest.mock import patch
 
 from tests.base import SmartBethGTestCase
 from services.auth_service import create_user
 from services.workflow_service import WorkflowService
-from services.units_11_15 import DecisionLedger, SpecialistPlanner, AgentEvaluator, AccountLifecycle
+from services.units_11_15 import DecisionLedger, SpecialistPlanner, AgentEvaluator, AccountLifecycle, CostAwareRouter
 from services.mission_service import MissionService
 from services.workflow_executor import WorkflowExecutor
 from services.specialist_coordinator import SpecialistCoordinator, SpecialistBusyError
@@ -135,6 +137,25 @@ class TestUnits10To15(SmartBethGTestCase):
         self.assertEqual(errors, [])
         self.assertEqual(results[0]["status"], "completed")
         self.assertEqual(fake.calls, 3)
+    def test_cost_aware_router_uses_measured_reliability_and_latency(self):
+        catalog = {
+            "provider_a": {"label": "A", "models": [{"id": "model-a", "tier": "balanced",
+                "pricing_usd_per_million": {"input": 1, "output": 1}}]},
+            "provider_b": {"label": "B", "models": [{"id": "model-b", "tier": "balanced",
+                "pricing_usd_per_million": {"input": 1, "output": 1}}]},
+        }
+        stats = [
+            {"provider": "provider_a", "model": "model-a", "attempts": 20, "success_rate": 0.5, "avg_latency_ms": 2000},
+            {"provider": "provider_b", "model": "model-b", "attempts": 20, "success_rate": 0.99, "avg_latency_ms": 100},
+        ]
+        with patch("services.units_11_15.MODEL_CATALOG", catalog), \\
+             patch("services.units_11_15.PROVIDER_ENV", {"provider_a": ("PROVIDER_A_KEY",), "provider_b": ("PROVIDER_B_KEY",)}), \\
+             patch("services.units_11_15.ModelEvaluationService.stats", return_value=stats), \\
+             patch.dict(os.environ, {"PROVIDER_A_KEY": "configured", "PROVIDER_B_KEY": "configured"}):
+            result = CostAwareRouter().preview(complexity="balanced")
+        self.assertEqual(result["selected"]["provider"], "provider_b")
+        self.assertEqual(result["selected"]["observed_attempts"], 20)
+        self.assertGreater(result["selected"]["routing_score"], 0)
     def test_deterministic_evaluation_persists_score_and_rubric(self):
         result = AgentEvaluator().evaluate(self.owner["id"], "response", "demo", {"summary": "ok"})
         self.assertGreaterEqual(result["score"], 0)
