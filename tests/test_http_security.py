@@ -38,6 +38,7 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
         response = client.get("/health")
         self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
         self.assertEqual(response.headers.get("x-frame-options"), "DENY")
+        self.assertTrue(response.headers.get("x-request-id"))
         self.assertEqual(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin")
         csp = response.headers.get("content-security-policy-report-only", "")
         self.assertIn("default-src 'self'", csp)
