@@ -2,6 +2,8 @@
 import json
 import logging
 import os
+import shutil
+from pathlib import Path
 from datetime import datetime, timezone
 
 import config
@@ -101,9 +103,16 @@ class OperationsService:
             version = conn.execute(
                 "SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1"
             ).fetchone()
+            migration_dir = Path(__file__).resolve().parents[1] / "migrations" / "postgresql"
+            expected_paths = sorted(migration_dir.glob("[0-9][0-9][0-9][0-9]_*.sql"))
+            expected_version = expected_paths[-1].name if expected_paths else None
+            applied_version = version["version"] if version else None
             checks["database"] = {"status": "ready"}
-            checks["migrations"] = {"status": "ready" if version else "not_ready",
-                                    "latest": version["version"] if version else None}
+            checks["migrations"] = {
+                "status": "ready" if applied_version and applied_version == expected_version else "not_ready",
+                "latest_applied": applied_version,
+                "latest_expected": expected_version,
+            }
             workers = conn.execute(
                 "SELECT COUNT(*) AS count FROM worker_heartbeats "
                 "WHERE status='healthy' AND last_seen >= CURRENT_TIMESTAMP - INTERVAL '90 seconds'"
@@ -137,11 +146,15 @@ class OperationsService:
         }
         sandbox_enabled = os.getenv("SMART_BETHG_SANDBOX_ENABLED", "false").strip().lower() == "true"
         sandbox_image = os.getenv("SMART_BETHG_SANDBOX_PYTHON_IMAGE", "").strip()
+        sandbox_configured = (
+            sandbox_image in config.DOCKER_ALLOWED_IMAGES
+            and "@sha256:" in sandbox_image
+            and shutil.which("docker") is not None
+        )
         checks["sandbox"] = {
-            "status": "ready" if (not sandbox_enabled or
-                (sandbox_image in config.DOCKER_ALLOWED_IMAGES and "@sha256:" in sandbox_image))
-                else "not_ready",
+            "status": "ready" if (not sandbox_enabled or sandbox_configured) else "not_ready",
             "enabled": sandbox_enabled,
+            "configured": sandbox_configured if sandbox_enabled else False,
         }
         blocking = ["database", "migrations", "background_worker", "session_secret",
                     "secure_session_cookie", "backup_restore_drill", "sandbox"]
