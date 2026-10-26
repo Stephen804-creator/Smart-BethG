@@ -88,11 +88,20 @@ class WorkspaceService:
             ).fetchone()
             if not target:
                 raise LookupError("Active user not found.")
-            conn.execute(
+            existing = conn.execute(
+                "SELECT role FROM organization_members WHERE organization_id=? AND user_id=?",
+                (organization_id, target["id"]),
+            ).fetchone()
+            if existing and existing["role"] == "owner":
+                raise PermissionError("The organization owner cannot be demoted through member management.")
+            cursor = conn.execute(
                 "INSERT INTO organization_members(organization_id,user_id,role,invited_by) VALUES (?,?,?,?) "
-                "ON CONFLICT(organization_id,user_id) DO UPDATE SET role=EXCLUDED.role",
+                "ON CONFLICT(organization_id,user_id) DO UPDATE SET role=EXCLUDED.role "
+                "WHERE organization_members.role <> 'owner'",
                 (organization_id, target["id"], role, actor_id),
             )
+            if cursor.rowcount != 1:
+                raise PermissionError("Organization membership could not be changed.")
             conn.commit()
             return {"organization_id": organization_id, "user_id": target["id"], "role": role}
         except Exception:
@@ -149,18 +158,24 @@ class WorkspaceService:
         try:
             if organization_id is None:
                 rows = conn.execute(
-                    "SELECT w.id,w.organization_id,w.name,w.slug,w.status,w.created_at,wm.role "
-                    "FROM workspaces w JOIN workspace_members wm ON wm.workspace_id=w.id "
-                    "WHERE wm.user_id=? AND w.status='active' ORDER BY w.created_at DESC,w.id DESC",
-                    (user_id,),
+                    "SELECT w.id,w.organization_id,w.name,w.slug,w.status,w.created_at,"
+                    "CASE WHEN om.role IN ('owner','admin') THEN 'admin' ELSE wm.role END AS role "
+                    "FROM workspaces w LEFT JOIN workspace_members wm ON wm.workspace_id=w.id AND wm.user_id=? "
+                    "LEFT JOIN organization_members om ON om.organization_id=w.organization_id AND om.user_id=? "
+                    "WHERE (wm.user_id IS NOT NULL OR om.role IN ('owner','admin')) AND w.status='active' "
+                    "ORDER BY w.created_at DESC,w.id DESC",
+                    (user_id, user_id),
                 ).fetchall()
             else:
                 self._require_org_member(conn, user_id, organization_id)
                 rows = conn.execute(
-                    "SELECT w.id,w.organization_id,w.name,w.slug,w.status,w.created_at,wm.role "
-                    "FROM workspaces w JOIN workspace_members wm ON wm.workspace_id=w.id "
-                    "WHERE wm.user_id=? AND w.organization_id=? AND w.status='active' ORDER BY w.created_at DESC,w.id DESC",
-                    (user_id, organization_id),
+                    "SELECT w.id,w.organization_id,w.name,w.slug,w.status,w.created_at,"
+                    "CASE WHEN om.role IN ('owner','admin') THEN 'admin' ELSE wm.role END AS role "
+                    "FROM workspaces w LEFT JOIN workspace_members wm ON wm.workspace_id=w.id AND wm.user_id=? "
+                    "LEFT JOIN organization_members om ON om.organization_id=w.organization_id AND om.user_id=? "
+                    "WHERE (wm.user_id IS NOT NULL OR om.role IN ('owner','admin')) "
+                    "AND w.organization_id=? AND w.status='active' ORDER BY w.created_at DESC,w.id DESC",
+                    (user_id, user_id, organization_id),
                 ).fetchall()
             return [dict(row) for row in rows]
         finally:
@@ -200,11 +215,20 @@ class WorkspaceService:
             ).fetchone()
             if not org_target:
                 raise ValueError("Add the user to the organization before granting workspace access.")
-            conn.execute(
+            existing = conn.execute(
+                "SELECT role FROM workspace_members WHERE workspace_id=? AND user_id=?",
+                (workspace_id, target["id"]),
+            ).fetchone()
+            if existing and existing["role"] == "owner":
+                raise PermissionError("The workspace owner cannot be demoted through member management.")
+            cursor = conn.execute(
                 "INSERT INTO workspace_members(workspace_id,user_id,role,granted_by) VALUES (?,?,?,?) "
-                "ON CONFLICT(workspace_id,user_id) DO UPDATE SET role=EXCLUDED.role",
+                "ON CONFLICT(workspace_id,user_id) DO UPDATE SET role=EXCLUDED.role "
+                "WHERE workspace_members.role <> 'owner'",
                 (workspace_id, target["id"], role, actor_id),
             )
+            if cursor.rowcount != 1:
+                raise PermissionError("Workspace membership could not be changed.")
             conn.commit()
             return {"workspace_id": workspace_id, "user_id": target["id"], "role": role}
         except Exception:
@@ -219,13 +243,18 @@ class WorkspaceService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT wm.role,w.status FROM workspace_members wm JOIN workspaces w ON w.id=wm.workspace_id "
-                "WHERE wm.workspace_id=? AND wm.user_id=?",
-                (workspace_id, user_id),
+                "SELECT w.status,wm.role AS workspace_role,om.role AS organization_role "
+                "FROM workspaces w LEFT JOIN workspace_members wm ON wm.workspace_id=w.id AND wm.user_id=? "
+                "LEFT JOIN organization_members om ON om.organization_id=w.organization_id AND om.user_id=? "
+                "WHERE w.id=?",
+                (user_id, user_id, workspace_id),
             ).fetchone()
-            if not row or row["status"] != "active" or row["role"] not in _PERMISSIONS[permission]:
+            if not row or row["status"] != "active":
                 raise PermissionError("Workspace permission denied.")
-            return {"workspace_id": workspace_id, "role": row["role"], "permission": permission}
+            role = "admin" if row["organization_role"] in {"owner", "admin"} else row["workspace_role"]
+            if role not in _PERMISSIONS[permission]:
+                raise PermissionError("Workspace permission denied.")
+            return {"workspace_id": workspace_id, "role": role, "permission": permission}
         finally:
             conn.close()
 
