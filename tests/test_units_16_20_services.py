@@ -41,7 +41,7 @@ class TestUnits16To20(SmartBethGTestCase):
 
     def test_organization_admin_inherits_workspace_admin_access(self):
         result = self.service.create_organization(
-            self.owner["id"], "Inherited Access", "inherit-" + os.path.basename(self._tmp_dir)[-8:],
+            self.owner["id"], "Inherited Access", "inherit-access",
         )
         org_id = result["organization"]["id"]
         workspace_id = result["default_workspace"]["id"]
