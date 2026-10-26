@@ -166,3 +166,35 @@ Status is implementation status, not a claim that live external provider integra
 - [ ] Verified recovery delivery, identity verification and confirmation flow, safe deletion execution, retention schedule enforcement, and legal/privacy approval remain open. Deletion is not automatic.
 
 These are implementation states for the PR #17 follow-up branch, not a production launch approval. Provider sandbox testing, multi-worker crash/replay testing, deployment-specific recovery configuration, and full legal/privacy review remain required.
+
+
+## Numbered implementation status — Units 16–20 (2026-10-26)
+
+### Unit 16 — Organizations and workspace permissions
+- [x] PostgreSQL organizations, organization memberships, workspaces, and workspace memberships with role validation.
+- [x] Owner/admin member management, inherited organization-admin workspace access, and fail-closed access checks.
+- [x] Owner roles cannot be demoted through ordinary member-grant endpoints.
+- [ ] Bind legacy projects, missions, workflows, artifacts, files, research, evidence, and social content to workspaces and audit every resource read/write path. Until then, existing resources remain user-owner-scoped and are not automatically shared with workspace members.
+
+### Unit 17 — Sandboxed execution environment
+- [x] Added an opt-in Python runner through Docker with fixed interpreter, no network, read-only source mount/root filesystem, dropped capabilities, non-root user, process/memory/CPU limits, bounded output, timeout, and run records.
+- [x] Execution fails closed unless the exact image is digest-pinned and present in the operator allowlist.
+- [ ] Build/review the production image and test adversarial workloads against the real Docker daemon; rootless/dedicated runner isolation and operational testing remain launch gates.
+
+### Unit 18 — Social content creation and publishing
+- [x] Approved drafts can be scheduled with timezone validation, idempotency keys, listing, cancellation, and due-job processing.
+- [x] Unconfigured or ambiguous external publication is marked blocked; it is never reported as published and is not blindly retried.
+- [ ] No Facebook, Instagram, LinkedIn, YouTube, X, or blog publisher is registered by this unit. Implement and validate platform-specific OAuth, scopes, rate limits, token lifecycle, and real sandbox/account posting before claiming external publishing is available.
+
+### Unit 19 — Monitoring, tracing, and operational observability
+- [x] Request IDs are returned and logged; bounded low-cardinality request metrics are persisted without bodies, cookies, query strings, or raw resource IDs.
+- [x] Worker process publishes database-backed heartbeats; health checks report actual heartbeat status.
+- [x] Admin-only metrics endpoint reports request totals, errors, latency aggregates, route summaries, and active worker heartbeats.
+- [ ] External log/trace export, alerting, load testing, queue-lag dashboards, and retention operations need deployment-level validation.
+
+### Unit 20 — Production security, recovery, and launch gates
+- [x] Admin-only readiness checks cover database/migrations, worker liveness, persistent session secret, secure cookies, backup/restore attestation, and sandbox image configuration.
+- [x] Added a production launch checklist for backups, schema rehearsal, shared storage, sandboxing, social publishers, monitoring, and security/privacy review.
+- [ ] A successful restore drill, security review, live deployment configuration, CSP enforcement decision, and legal/privacy approval are not performed by this code change. `SMART_BETHG_BACKUP_RESTORE_VERIFIED=true` is an operator attestation, not automated proof.
+
+See `docs/UNITS_16_20_IMPLEMENTATION.md` and `docs/PRODUCTION_LAUNCH_CHECKLIST_2026-10-26.md`. These are implementation foundations, not production launch approval.
