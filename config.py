@@ -111,6 +111,10 @@ DOCKER_ALLOWED_IMAGES = {
     if image.strip()
 }
 
+# Sandboxed code execution is opt-in and never falls back to host execution.
+SANDBOX_ENABLED = os.getenv("SMART_BETHG_SANDBOX_ENABLED", "false").strip().lower() == "true"
+SANDBOX_PYTHON_IMAGE = os.getenv("SMART_BETHG_SANDBOX_PYTHON_IMAGE", "").strip()
+
 # Host Python execution is for local development only. Production requires a real isolated job runner.
 ALLOW_DEV_PYTHON_EXECUTION = (
     not IS_PRODUCTION
