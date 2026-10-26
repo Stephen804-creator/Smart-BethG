@@ -49,6 +49,14 @@ class TestUnits16To20(SmartBethGTestCase):
         self.service.add_organization_member(self.owner["id"], org_id, self.editor["username"], "admin")
         access = self.service.require_workspace_access(self.editor["id"], workspace_id, "admin")
         self.assertEqual(access["role"], "admin")
+        with self.assertRaises(ValueError):
+            self.service.add_workspace_member(
+                self.owner["id"], workspace_id, self.editor["username"], "viewer"
+            )
+        with self.assertRaises(PermissionError):
+            self.service.remove_workspace_member(
+                self.owner["id"], workspace_id, self.editor["username"]
+            )
 
     def test_membership_revocation_removes_workspace_access_and_protects_owners(self):
         result = self.service.create_organization(self.owner["id"], "Revocation Team", "revocation-team")
