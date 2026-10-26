@@ -53,37 +53,53 @@ class SocialPublishingService:
         key = (str(idempotency_key).strip() if idempotency_key else uuid.uuid4().hex)
         if not key or len(key) > 200:
             raise ValueError("Idempotency key must be between 1 and 200 characters.")
-        conn = get_connection()
-        try:
-            existing = conn.execute(
-                "SELECT id,platform,status,approval_id,external_post_id,result_json,error_code,created_at,updated_at "
-                "FROM social_publication_attempts WHERE user_id=? AND idempotency_key=?",
-                (user_id, key),
-            ).fetchone()
-            if existing:
-                return self._decode(existing)
-        finally:
-            conn.close()
 
-        approval = self.approvals.create(
-            user_id, "social.publish", f"social-content:{content_id}",
-            payload={"operation": "social.publish", "content_id": content_id,
-                     "platform": item["platform"], "idempotency_key": key},
-        )
+        # Reserve the idempotency key before creating an approval. This prevents
+        # concurrent retries from creating multiple approval records.
         conn = get_connection()
         try:
             row = conn.execute(
-                "INSERT INTO social_publication_attempts(social_content_id,user_id,platform,status,idempotency_key,approval_id) "
-                "VALUES (?,?,?,'approval_required',?,?) RETURNING id",
-                (content_id, user_id, item["platform"], key, approval["id"]),
+                "INSERT INTO social_publication_attempts(social_content_id,user_id,platform,status,idempotency_key) "
+                "VALUES (?,?,?,'approval_required',?) ON CONFLICT(user_id,idempotency_key) DO NOTHING RETURNING id",
+                (content_id, user_id, item["platform"], key),
             ).fetchone()
+            if not row:
+                existing = conn.execute(
+                    "SELECT id FROM social_publication_attempts WHERE user_id=? AND idempotency_key=?",
+                    (user_id, key),
+                ).fetchone()
+                conn.commit()
+                return self.get_attempt(user_id, existing["id"]) if existing else None
+            attempt_id = row["id"]
             conn.commit()
         except Exception:
             conn.rollback()
             raise
         finally:
             conn.close()
-        return self.get_attempt(user_id, row["id"])
+
+        try:
+            approval = self.approvals.create(
+                user_id, "social.publish", f"social-content:{content_id}",
+                payload={"operation": "social.publish", "content_id": content_id,
+                         "publication_attempt_id": attempt_id, "platform": item["platform"],
+                         "idempotency_key": key},
+            )
+            conn = get_connection()
+            try:
+                conn.execute(
+                    "UPDATE social_publication_attempts SET approval_id=?,updated_at=CURRENT_TIMESTAMP "
+                    "WHERE id=? AND user_id=? AND approval_id IS NULL",
+                    (approval["id"], attempt_id, user_id),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception:
+            self._update_attempt(user_id, attempt_id, "failed", error_code="approval_creation_failed",
+                                 result={"message": "Approval could not be created; no publication was attempted."})
+            raise
+        return self.get_attempt(user_id, attempt_id)
 
     def execute_approved(self, user_id, attempt_id):
         attempt = self.get_attempt(user_id, attempt_id)
