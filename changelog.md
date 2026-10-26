@@ -1,3 +1,13 @@
+## 2026-10-26 — Units 16–20 implementation foundations
+
+- Added PostgreSQL organization/workspace membership tables, owner/admin/member/viewer roles, workspace grants, inherited organization-admin access, and owner-protection checks.
+- Added an opt-in Docker Python sandbox with an operator-allowlisted digest-pinned image, no network, read-only root/source mount, non-root execution, dropped capabilities, CPU/memory/PID limits, bounded output capture, timeout handling, and run records.
+- Added approved-draft scheduling, idempotency, cancellation, due-schedule processing, and fail-closed publishing behavior. No real social platform publishing adapter is registered; due posts remain blocked until a real adapter is configured.
+- Added request correlation IDs, persisted low-cardinality request telemetry, worker heartbeat records, actual worker health checks, admin-only operational metrics, and launch-readiness checks.
+- Fixed ephemeral session-secret detection and added implementation/launch documentation.
+- Important boundaries: legacy resources are not yet workspace-shared; sandbox execution and real social publishing require deployment-specific setup and verification; readiness attestation is not proof of a completed restore drill.
+- CI verification for this branch is pending; no live Docker adversarial test, external social publish, production restore drill, or legal/security review is claimed.
+
 ## 2026-10-25 — Units 10–15 execution hardening
 
 - Internal research, artifact, and social-draft adapters now use stable per-workflow-step idempotency keys, allowing safe replay after a worker crash between record creation and step completion. External side effects remain fail-closed.
