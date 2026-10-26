@@ -23,7 +23,7 @@ class TestUnits16To20(SmartBethGTestCase):
 
     def test_organization_and_workspace_membership_enforce_roles(self):
         result = self.service.create_organization(
-            self.owner["id"], "Team Space", "team-space-" + os.path.basename(self._tmp_dir)[-8:],
+            self.owner["id"], "Team Space", "team-space",
         )
         org_id = result["organization"]["id"]
         workspace_id = result["default_workspace"]["id"]
