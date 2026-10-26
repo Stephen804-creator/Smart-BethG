@@ -68,7 +68,7 @@ Important:
 ## New API summary
 
 - `POST/GET /api/v1/workspaces/organizations`
-- `GET/POST /api/v1/workspaces/organizations/{organization_id}/members`
+- `GET/POST/DELETE /api/v1/workspaces/organizations/{organization_id}/members` (DELETE uses the username path parameter)
 - `GET/POST /api/v1/workspaces`
 - `POST /api/v1/workspaces/{workspace_id}/members`
 - `POST /api/v1/workspaces/{workspace_id}/access-check`
