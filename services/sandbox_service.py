@@ -1,6 +1,7 @@
 """Restricted Docker sandbox. Arbitrary host shell execution is never exposed."""
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -35,7 +36,8 @@ class SandboxService:
         image = os.getenv("SMART_BETHG_SANDBOX_PYTHON_IMAGE", "").strip()
         enabled = os.getenv("SMART_BETHG_SANDBOX_ENABLED", "false").strip().lower() == "true"
         docker = shutil.which("docker")
-        if not enabled or not image or "@sha256:" not in image or image not in config.DOCKER_ALLOWED_IMAGES or not docker:
+        if (not enabled or not self._is_digest_pinned_image(image)
+                or image not in config.DOCKER_ALLOWED_IMAGES or not docker):
             self._record(run_id, user_id, workspace_id, "rejected", image or None,
                          "python_script", None, {}, "sandbox_unavailable")
             raise SandboxUnavailableError(
@@ -91,12 +93,7 @@ class SandboxService:
                     return_code = process.wait(timeout=self.TIMEOUT_SECONDS)
                 except subprocess.TimeoutExpired:
                     # Killing the Docker CLI alone can leave the daemon container alive.
-                    try:
-                        subprocess.run([docker, "kill", container_name], shell=False,
-                                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                       stderr=subprocess.DEVNULL, timeout=3, check=False)
-                    except (subprocess.TimeoutExpired, OSError):
-                        pass
+                    self._cleanup_container(docker, container_name)
                     try:
                         process.wait(timeout=3)
                     except subprocess.TimeoutExpired:
@@ -124,9 +121,31 @@ class SandboxService:
                          return_code, payload, None if return_code == 0 else "nonzero_exit")
             return {"id": run_id, "status": status, "exit_code": return_code, **payload}
         except Exception:
+            if "container_name" in locals() and "docker" in locals() and container_name:
+                self._cleanup_container(docker, container_name)
             self._record(run_id, user_id, workspace_id, "failed", image, "python_script",
                          None, {}, "sandbox_runtime_error")
             raise
+
+    @staticmethod
+    def _is_digest_pinned_image(image):
+        return bool(re.fullmatch(r"[^@\\s]+@sha256:[0-9a-f]{64}", image or ""))
+
+    @staticmethod
+    def _cleanup_container(docker, container_name):
+        # Try both kill and forced removal. A timed-out Docker CLI can leave the
+        # daemon-side container alive, so cleanup must not stop after one failure.
+        for action in ("kill", "rm"):
+            command = [docker, action]
+            if action == "rm":
+                command.append("--force")
+            command.append(container_name)
+            try:
+                subprocess.run(command, shell=False, stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               timeout=3, check=False)
+            except (subprocess.TimeoutExpired, OSError):
+                continue
 
     @staticmethod
     def _record(run_id, user_id, workspace_id, status, image, command_name, exit_code, result, error_code):
