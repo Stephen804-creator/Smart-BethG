@@ -52,8 +52,9 @@ class SandboxService:
                 script.chmod(0o444)
                 # Every security-sensitive option is fixed here. No caller-provided
                 # image, arguments, mounts, environment, network, or shell is accepted.
+                container_name = "sbx-" + run_id.replace("-", "")[:24]
                 command = [
-                    docker, "run", "--rm",
+                    docker, "run", "--rm", "--name", container_name,
                     "--network=none", "--read-only",
                     "--cap-drop=ALL", "--security-opt=no-new-privileges",
                     "--pids-limit=64", "--memory", self.MEMORY_LIMIT,
@@ -62,29 +63,63 @@ class SandboxService:
                     "--mount", f"type=bind,src={root},dst=/workspace,readonly",
                     image, "python", "-I", "-B", "/workspace/main.py",
                 ]
-                result = subprocess.run(
+                process = subprocess.Popen(
                     command, shell=False, stdin=subprocess.DEVNULL,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    text=True, encoding="utf-8", errors="replace",
-                    timeout=self.TIMEOUT_SECONDS,
                     env={"PATH": os.path.dirname(docker), "LANG": "C.UTF-8"},
-                    check=False,
                 )
+                output = {"stdout": bytearray(), "stderr": bytearray(),
+                          "stdout_total": 0, "stderr_total": 0}
+                def drain(stream, key):
+                    total_key = key + "_total"
+                    while True:
+                        chunk = stream.read(4096)
+                        if not chunk:
+                            break
+                        output[total_key] += len(chunk)
+                        remaining = self.MAX_OUTPUT_BYTES - len(output[key])
+                        if remaining > 0:
+                            output[key].extend(chunk[:remaining])
+                import threading
+                readers = [
+                    threading.Thread(target=drain, args=(process.stdout, "stdout"), daemon=True),
+                    threading.Thread(target=drain, args=(process.stderr, "stderr"), daemon=True),
+                ]
+                for reader in readers:
+                    reader.start()
+                try:
+                    return_code = process.wait(timeout=self.TIMEOUT_SECONDS)
+                except subprocess.TimeoutExpired:
+                    # Killing the Docker CLI alone can leave the daemon container alive.
+                    subprocess.run([docker, "kill", container_name], shell=False,
+                                   stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL, timeout=3, check=False)
+                    try:
+                        process.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=2)
+                    for reader in readers:
+                        reader.join(timeout=2)
+                    self._record(run_id, user_id, workspace_id, "timed_out", image, "python_script",
+                                 None, {"duration_ms": int((time.monotonic() - started) * 1000),
+                                        "output_truncated": True}, "timeout")
+                    return {"id": run_id, "status": "timed_out", "exit_code": None,
+                            "stdout": output["stdout"].decode("utf-8", "replace"),
+                            "stderr": "Execution exceeded the 15 second time limit."}
+                for reader in readers:
+                    reader.join(timeout=2)
             elapsed_ms = int((time.monotonic() - started) * 1000)
-            stdout = (result.stdout or "")[:self.MAX_OUTPUT_BYTES]
-            stderr = (result.stderr or "")[:self.MAX_OUTPUT_BYTES]
-            status = "succeeded" if result.returncode == 0 else "failed"
+            stdout = output["stdout"].decode("utf-8", "replace")
+            stderr = output["stderr"].decode("utf-8", "replace")
+            truncated = (output["stdout_total"] > self.MAX_OUTPUT_BYTES or
+                         output["stderr_total"] > self.MAX_OUTPUT_BYTES)
+            status = "succeeded" if return_code == 0 else "failed"
             payload = {"stdout": stdout, "stderr": stderr, "duration_ms": elapsed_ms,
-                       "output_truncated": len(result.stdout or "") > self.MAX_OUTPUT_BYTES or
-                                           len(result.stderr or "") > self.MAX_OUTPUT_BYTES}
+                       "output_truncated": truncated}
             self._record(run_id, user_id, workspace_id, status, image, "python_script",
-                         result.returncode, payload, None if result.returncode == 0 else "nonzero_exit")
-            return {"id": run_id, "status": status, "exit_code": result.returncode, **payload}
-        except subprocess.TimeoutExpired:
-            self._record(run_id, user_id, workspace_id, "timed_out", image, "python_script",
-                         None, {"duration_ms": int((time.monotonic() - started) * 1000)}, "timeout")
-            return {"id": run_id, "status": "timed_out", "exit_code": None,
-                    "stdout": "", "stderr": "Execution exceeded the 15 second time limit."}
+                         return_code, payload, None if return_code == 0 else "nonzero_exit")
+            return {"id": run_id, "status": status, "exit_code": return_code, **payload}
         except Exception:
             self._record(run_id, user_id, workspace_id, "failed", image, "python_script",
                          None, {}, "sandbox_runtime_error")
