@@ -27,6 +27,8 @@ class WorkspaceService:
             raise ValueError("Organization name must be 1–120 characters.")
         slug = _slug(slug)
         workspace_name = (workspace_name or "General").strip()
+        if not workspace_name or len(workspace_name) > 120:
+            raise ValueError("Default workspace name must be 1–120 characters.")
         workspace_slug = _slug(workspace_slug or "general")
         conn = get_connection()
         try:
@@ -183,6 +185,9 @@ class WorkspaceService:
 
     def add_workspace_member(self, actor_id, workspace_id, username, role):
         role = (role or "").strip().lower()
+        username = (username or "").strip()
+        if not username or len(username) > 254:
+            raise ValueError("A valid username is required.")
         if role not in {"admin", "editor", "viewer"}:
             raise ValueError("New workspace members may be assigned admin, editor, or viewer.")
         conn = get_connection()
@@ -205,7 +210,7 @@ class WorkspaceService:
                     (org_actor and org_actor["role"] in {"owner", "admin"})):
                 raise PermissionError("Workspace or organization admin permission is required.")
             target = conn.execute(
-                "SELECT id FROM users WHERE username=? AND status='active'", (username.strip(),)
+                "SELECT id FROM users WHERE username=? AND status='active'", (username,)
             ).fetchone()
             if not target:
                 raise LookupError("Active user not found.")
