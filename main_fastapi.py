@@ -5,6 +5,7 @@ FastAPI Application Entry Point
 import hmac
 import os
 import time
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -20,8 +21,11 @@ from error_handlers import register_error_handlers
 
 from routes import (
     health, auth, auth_google, tasks, agents, approvals, audit, tools,
-    providers, chat, files, memory, knowledge, projects, artifacts, missions, workflows, social_content, research, evidence, connectors, jobs, training_export, pages, agent_intelligence,
+    providers, chat, files, memory, knowledge, projects, artifacts, missions, workflows,
+    social_content, social_publishing, research, evidence, connectors, jobs,
+    training_export, pages, agent_intelligence, workspaces, sandbox, operations,
 )
+from services.operations_service import OperationsService
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -116,14 +120,32 @@ def create_app() -> FastAPI:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
+    operations_service = OperationsService()
+
     @app.middleware("http")
     async def log_requests(request: Request, call_next):
         start = time.monotonic()
-        response = await call_next(request)
-        duration_ms = (time.monotonic() - start) * 1000
+        request_id = uuid.uuid4().hex
+        request.state.request_id = request_id
+        try:
+            response = await call_next(request)
+        except Exception:
+            duration_ms = int((time.monotonic() - start) * 1000)
+            app_logger.exception("Unhandled request error request_id=%s method=%s", request_id, request.method)
+            operations_service.record_request(request_id, request.method, "/unmatched", 500, duration_ms)
+            raise
+        duration_ms = int((time.monotonic() - start) * 1000)
+        route_obj = request.scope.get("route")
+        route_template = getattr(route_obj, "path", "/unmatched")
+        if not isinstance(route_template, str) or not route_template.startswith("/"):
+            route_template = "/unmatched"
+        operations_service.record_request(
+            request_id, request.method, route_template, response.status_code, duration_ms
+        )
+        response.headers["X-Request-ID"] = request_id
         app_logger.info(
-            "%s %s -> %s (%.1fms)",
-            request.method, request.url.path, response.status_code, duration_ms,
+            "request_id=%s %s %s -> %s (%sms)",
+            request_id, request.method, route_template, response.status_code, duration_ms,
         )
         return response
 
@@ -164,7 +186,10 @@ def create_app() -> FastAPI:
     api_routers = [
         health.router, auth.router, tasks.router, agents.router, approvals.router,
         audit.router, tools.router, providers.router, chat.router, files.router,
-        memory.router, knowledge.router, projects.router, artifacts.router, missions.router, workflows.router, social_content.router, research.router, evidence.router, connectors.router, jobs.router, agent_intelligence.router,
+        memory.router, knowledge.router, projects.router, artifacts.router, missions.router,
+        workflows.router, social_content.router, social_publishing.router, research.router,
+        evidence.router, connectors.router, jobs.router, agent_intelligence.router,
+        workspaces.router, sandbox.router, operations.router,
     ]
     for router in api_routers:
         if router in (chat.router, files.router, memory.router, knowledge.router):
