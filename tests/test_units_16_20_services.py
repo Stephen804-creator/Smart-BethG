@@ -1,5 +1,6 @@
 """Regression coverage for Units 16–20: workspace RBAC, sandbox boundaries, publishing and operations."""
 import os
+import subprocess
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
@@ -57,6 +58,29 @@ class TestUnits16To20(SmartBethGTestCase):
         self.assertEqual(len(runs), 1)
         self.assertEqual(runs[0]["status"], "rejected")
         self.assertEqual(runs[0]["error_code"], "sandbox_unavailable")
+
+    def test_sandbox_requires_a_complete_sha256_image_digest(self):
+        valid = "registry.example/python@sha256:" + ("a" * 64)
+        self.assertTrue(SandboxService._is_digest_pinned_image(valid))
+        self.assertFalse(SandboxService._is_digest_pinned_image("registry.example/python:latest"))
+        self.assertFalse(SandboxService._is_digest_pinned_image("registry.example/python@sha256:abc"))
+        self.assertFalse(SandboxService._is_digest_pinned_image("registry.example/python@sha256:" + ("A" * 64)))
+
+    def test_sandbox_cleanup_attempts_force_remove_even_if_kill_times_out(self):
+        with patch("services.sandbox_service.subprocess.run",
+                   side_effect=[subprocess.TimeoutExpired(["docker", "kill"], 3), OSError("docker unavailable")]) as run:
+            SandboxService._cleanup_container("/usr/bin/docker", "sbx-test")
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[1].args[0],
+                         ["/usr/bin/docker", "rm", "--force", "sbx-test"])
+
+    def test_cross_organization_workspace_access_is_denied(self):
+        first = self.service.create_organization(self.owner["id"], "First Org", "first-org")
+        second = self.service.create_organization(self.editor["id"], "Second Org", "second-org")
+        workspace_id = first["default_workspace"]["id"]
+        with self.assertRaises(PermissionError):
+            self.service.require_workspace_access(self.editor["id"], workspace_id, "view")
+        self.assertEqual(second["organization"]["slug"], "second-org")
 
     def test_only_approved_content_can_be_scheduled_and_schedule_is_idempotent(self):
         content_service = SocialContentService()
