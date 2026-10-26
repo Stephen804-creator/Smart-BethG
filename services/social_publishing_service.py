@@ -50,6 +50,13 @@ class SocialPublishingService:
             conn.commit()
             if not existing:
                 raise RuntimeError("Could not resolve schedule idempotency conflict.")
+            if int(existing["content_id"]) != int(content_id) or existing["platform"] != item["platform"]:
+                raise ValueError("Idempotency key is already used for a different social-content schedule.")
+            existing_time = existing["scheduled_at"]
+            if isinstance(existing_time, datetime):
+                existing_time = existing_time.astimezone(timezone.utc)
+            if existing_time != when:
+                raise ValueError("Idempotency key is already used with a different scheduled time.")
             return dict(existing)
         except Exception:
             conn.rollback()
@@ -90,6 +97,13 @@ class SocialPublishingService:
         conn = get_connection()
         try:
             conn.execute("BEGIN")
+            # A worker crash after claiming a post is ambiguous: block it rather
+            # than automatically retrying a possibly successful remote publish.
+            conn.execute(
+                "UPDATE social_publish_jobs SET status='blocked',last_error_code='ambiguous_publish_result',"
+                "updated_at=CURRENT_TIMESTAMP WHERE status='publishing' "
+                "AND updated_at < CURRENT_TIMESTAMP - INTERVAL '2 minutes'"
+            )
             rows = conn.execute(
                 "SELECT id,user_id,content_id,platform,idempotency_key FROM social_publish_jobs "
                 "WHERE status='scheduled' AND scheduled_at<=CURRENT_TIMESTAMP "
@@ -152,7 +166,7 @@ class SocialPublishingService:
             if row and status == "published":
                 conn.execute(
                     "UPDATE social_content SET external_post_id=?,published_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP "
-                    "WHERE id=? AND user_id=? AND status='approved'",
+                    "WHERE id=? AND user_id=?",
                     (external_post_id, row["content_id"], row["user_id"]),
                 )
             conn.commit()
