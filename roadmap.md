@@ -173,7 +173,7 @@ These are implementation states for the PR #17 follow-up branch, not a productio
 ### Unit 16 — Organizations and workspace permissions
 - [x] PostgreSQL organizations, organization memberships, workspaces, and workspace memberships with role validation.
 - [x] Owner/admin member management, inherited organization-admin workspace access, and fail-closed access checks.
-- [x] Owner roles cannot be demoted through ordinary member-grant endpoints.
+- [x] Owner roles cannot be demoted or removed through ordinary member-management endpoints; organization membership revocation also removes workspace grants atomically.
 - [ ] Bind legacy projects, missions, workflows, artifacts, files, research, evidence, and social content to workspaces and audit every resource read/write path. Until then, existing resources remain user-owner-scoped and are not automatically shared with workspace members.
 
 ### Unit 17 — Sandboxed execution environment
