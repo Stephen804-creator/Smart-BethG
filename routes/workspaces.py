@@ -73,6 +73,14 @@ def add_organization_member(organization_id: int, payload: MemberGrant, user=Dep
         _raise(exc)
 
 
+@router.delete("/organizations/{organization_id}/members/{username}")
+def remove_organization_member(organization_id: int, username: str, user=Depends(get_current_user)):
+    try:
+        return service.remove_organization_member(user["id"], organization_id, username)
+    except Exception as exc:
+        _raise(exc)
+
+
 @router.get("")
 def list_workspaces(organization_id: int | None = Query(default=None, ge=1), user=Depends(get_current_user)):
     try:
@@ -93,6 +101,14 @@ def create_workspace(payload: WorkspaceCreate, user=Depends(get_current_user)):
 def add_workspace_member(workspace_id: int, payload: MemberGrant, user=Depends(get_current_user)):
     try:
         return service.add_workspace_member(user["id"], workspace_id, payload.username, payload.role)
+    except Exception as exc:
+        _raise(exc)
+
+
+@router.delete("/{workspace_id}/members/{username}")
+def remove_workspace_member(workspace_id: int, username: str, user=Depends(get_current_user)):
+    try:
+        return service.remove_workspace_member(user["id"], workspace_id, username)
     except Exception as exc:
         _raise(exc)
 
