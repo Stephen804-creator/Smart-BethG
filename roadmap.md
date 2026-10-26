@@ -178,7 +178,7 @@ These are implementation states for the PR #17 follow-up branch, not a productio
 
 ### Unit 17 — Sandboxed execution environment
 - [x] Added an opt-in Python runner through Docker with fixed interpreter, no network, read-only source mount/root filesystem, dropped capabilities, non-root user, process/memory/CPU limits, bounded output, timeout, and run records.
-- [x] Execution fails closed unless the exact image is digest-pinned and present in the operator allowlist.
+- [x] Execution fails closed unless the exact image reference contains a complete 64-hex SHA-256 digest and is present in the operator allowlist; timeout cleanup attempts both kill and forced removal.
 - [ ] Build/review the production image and test adversarial workloads against the real Docker daemon; rootless/dedicated runner isolation and operational testing remain launch gates.
 
 ### Unit 18 — Social content creation and publishing
