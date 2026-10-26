@@ -35,7 +35,7 @@ class SandboxService:
         image = os.getenv("SMART_BETHG_SANDBOX_PYTHON_IMAGE", "").strip()
         enabled = os.getenv("SMART_BETHG_SANDBOX_ENABLED", "false").strip().lower() == "true"
         docker = shutil.which("docker")
-        if not enabled or not image or "@sha256:" not in image or not docker:
+        if not enabled or not image or "@sha256:" not in image or image not in config.DOCKER_ALLOWED_IMAGES or not docker:
             self._record(run_id, user_id, workspace_id, "rejected", image or None,
                          "python_script", None, {}, "sandbox_unavailable")
             raise SandboxUnavailableError(
@@ -46,6 +46,7 @@ class SandboxService:
         try:
             with tempfile.TemporaryDirectory(prefix="smartbethg-sandbox-") as directory:
                 root = Path(directory)
+                root.chmod(0o755)
                 script = root / "main.py"
                 script.write_text(source, encoding="utf-8")
                 script.chmod(0o444)
