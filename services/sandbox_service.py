@@ -129,7 +129,7 @@ class SandboxService:
 
     @staticmethod
     def _is_digest_pinned_image(image):
-        return bool(re.fullmatch(r"[^@\\s]+@sha256:[0-9a-f]{64}", image or ""))
+        return bool(re.fullmatch(r"[^@\s]+@sha256:[0-9a-f]{64}", image or ""))
 
     @staticmethod
     def _cleanup_container(docker, container_name):
