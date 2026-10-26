@@ -162,8 +162,8 @@ class WorkspaceService:
                 rows = conn.execute(
                     "SELECT w.id,w.organization_id,w.name,w.slug,w.status,w.created_at,"
                     "CASE WHEN om.role IN ('owner','admin') THEN 'admin' ELSE wm.role END AS role "
-                    "FROM workspaces w LEFT JOIN workspace_members wm ON wm.workspace_id=w.id AND wm.user_id=? "
-                    "LEFT JOIN organization_members om ON om.organization_id=w.organization_id AND om.user_id=? "
+                    "FROM workspaces w JOIN organization_members om ON om.organization_id=w.organization_id AND om.user_id=? "
+                    "LEFT JOIN workspace_members wm ON wm.workspace_id=w.id AND wm.user_id=? "
                     "WHERE (wm.user_id IS NOT NULL OR om.role IN ('owner','admin')) AND w.status='active' "
                     "ORDER BY w.created_at DESC,w.id DESC",
                     (user_id, user_id),
@@ -173,8 +173,8 @@ class WorkspaceService:
                 rows = conn.execute(
                     "SELECT w.id,w.organization_id,w.name,w.slug,w.status,w.created_at,"
                     "CASE WHEN om.role IN ('owner','admin') THEN 'admin' ELSE wm.role END AS role "
-                    "FROM workspaces w LEFT JOIN workspace_members wm ON wm.workspace_id=w.id AND wm.user_id=? "
-                    "LEFT JOIN organization_members om ON om.organization_id=w.organization_id AND om.user_id=? "
+                    "FROM workspaces w JOIN organization_members om ON om.organization_id=w.organization_id AND om.user_id=? "
+                    "LEFT JOIN workspace_members wm ON wm.workspace_id=w.id AND wm.user_id=? "
                     "WHERE (wm.user_id IS NOT NULL OR om.role IN ('owner','admin')) "
                     "AND w.organization_id=? AND w.status='active' ORDER BY w.created_at DESC,w.id DESC",
                     (user_id, user_id, organization_id),
@@ -249,8 +249,8 @@ class WorkspaceService:
         try:
             row = conn.execute(
                 "SELECT w.status,wm.role AS workspace_role,om.role AS organization_role "
-                "FROM workspaces w LEFT JOIN workspace_members wm ON wm.workspace_id=w.id AND wm.user_id=? "
-                "LEFT JOIN organization_members om ON om.organization_id=w.organization_id AND om.user_id=? "
+                "FROM workspaces w JOIN organization_members om ON om.organization_id=w.organization_id AND om.user_id=? "
+                "LEFT JOIN workspace_members wm ON wm.workspace_id=w.id AND wm.user_id=? "
                 "WHERE w.id=?",
                 (user_id, user_id, workspace_id),
             ).fetchone()
