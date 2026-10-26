@@ -242,6 +242,103 @@ class WorkspaceService:
         finally:
             conn.close()
 
+    def remove_organization_member(self, actor_id, organization_id, username):
+        username = (username or "").strip()
+        if not username or len(username) > 254:
+            raise ValueError("A valid username is required.")
+        conn = get_connection()
+        try:
+            actor = conn.execute(
+                "SELECT role FROM organization_members WHERE organization_id=? AND user_id=?",
+                (organization_id, actor_id),
+            ).fetchone()
+            if not actor or actor["role"] not in {"owner", "admin"}:
+                raise PermissionError("Only organization owners or admins can manage members.")
+            target = conn.execute(
+                "SELECT id FROM users WHERE username=? AND status='active'", (username,)
+            ).fetchone()
+            if not target:
+                raise LookupError("Active user not found.")
+            member = conn.execute(
+                "SELECT role FROM organization_members WHERE organization_id=? AND user_id=?",
+                (organization_id, target["id"]),
+            ).fetchone()
+            if not member:
+                raise LookupError("Organization member not found.")
+            if member["role"] == "owner":
+                raise PermissionError("The organization owner cannot be removed through member management.")
+            owned_workspace = conn.execute(
+                "SELECT 1 FROM workspace_members wm JOIN workspaces w ON w.id=wm.workspace_id "
+                "WHERE w.organization_id=? AND wm.user_id=? AND wm.role='owner' LIMIT 1",
+                (organization_id, target["id"]),
+            ).fetchone()
+            if owned_workspace:
+                raise PermissionError("Transfer workspace ownership before removing this organization member.")
+            conn.execute(
+                "DELETE FROM workspace_members WHERE user_id=? AND workspace_id IN "
+                "(SELECT id FROM workspaces WHERE organization_id=?)",
+                (target["id"], organization_id),
+            )
+            conn.execute(
+                "DELETE FROM organization_members WHERE organization_id=? AND user_id=?",
+                (organization_id, target["id"]),
+            )
+            conn.commit()
+            return {"organization_id": organization_id, "user_id": target["id"], "removed": True}
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    def remove_workspace_member(self, actor_id, workspace_id, username):
+        username = (username or "").strip()
+        if not username or len(username) > 254:
+            raise ValueError("A valid username is required.")
+        conn = get_connection()
+        try:
+            workspace = conn.execute(
+                "SELECT id,organization_id FROM workspaces WHERE id=? AND status='active'",
+                (workspace_id,),
+            ).fetchone()
+            if not workspace:
+                raise LookupError("Workspace not found.")
+            actor = conn.execute(
+                "SELECT role FROM workspace_members WHERE workspace_id=? AND user_id=?",
+                (workspace_id, actor_id),
+            ).fetchone()
+            org_actor = conn.execute(
+                "SELECT role FROM organization_members WHERE organization_id=? AND user_id=?",
+                (workspace["organization_id"], actor_id),
+            ).fetchone()
+            if not ((actor and actor["role"] in {"owner", "admin"}) or
+                    (org_actor and org_actor["role"] in {"owner", "admin"})):
+                raise PermissionError("Workspace or organization admin permission is required.")
+            target = conn.execute(
+                "SELECT id FROM users WHERE username=? AND status='active'", (username,)
+            ).fetchone()
+            if not target:
+                raise LookupError("Active user not found.")
+            member = conn.execute(
+                "SELECT role FROM workspace_members WHERE workspace_id=? AND user_id=?",
+                (workspace_id, target["id"]),
+            ).fetchone()
+            if not member:
+                raise LookupError("Workspace member not found.")
+            if member["role"] == "owner":
+                raise PermissionError("The workspace owner cannot be removed through member management.")
+            conn.execute(
+                "DELETE FROM workspace_members WHERE workspace_id=? AND user_id=?",
+                (workspace_id, target["id"]),
+            )
+            conn.commit()
+            return {"workspace_id": workspace_id, "user_id": target["id"], "removed": True}
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def require_workspace_access(self, user_id, workspace_id, permission="view"):
         if permission not in _PERMISSIONS:
             raise ValueError("Unknown workspace permission.")
