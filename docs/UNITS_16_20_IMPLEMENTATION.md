@@ -9,7 +9,7 @@ Implemented:
 - Organization membership management and workspace membership grants.
 - Organization owner/admin inheritance for workspace administration.
 - Fail-closed workspace access checks for view, edit, member-management, and admin permissions.
-- Owner-protection checks prevent ordinary member-management endpoints from demoting organization/workspace owners.
+- Owner-protection checks prevent ordinary member-management endpoints from demoting or removing organization/workspace owners; removing an organization member also removes that user's explicit workspace grants in the same transaction.
 - Authenticated APIs are mounted under `/api/v1/workspaces`.
 
 Important boundary:
