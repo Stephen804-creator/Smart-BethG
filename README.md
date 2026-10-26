@@ -150,7 +150,13 @@ First take a backup and test against a fresh PostgreSQL database. The script ref
 
 The Terms of Service and Privacy Policy under `docs/` are **drafts, not final or approved legal documents**. Read [the dated legal/privacy launch checklist](docs/LEGAL_AND_PRIVACY_LAUNCH_CHECKLIST_2026-10-10.md) before preparing a public launch. The product owner can prepare initial drafts, but qualified Nigerian legal review is recommended before publication. Assess any NDPC registration, audit, or notification duties against the actual data-processing activities and current rules; do not assume the draft itself establishes compliance.
 
-## Operations and launch readiness\n\nThe authenticated admin-only endpoints `/api/v1/ops/metrics` and `/api/v1/ops/readiness` expose low-cardinality request metrics and launch-gate checks. Requests return an `X-Request-ID` that can be correlated with application logs. The readiness endpoint intentionally remains not-ready until required configuration, worker liveness, and the backup/restore attestation are satisfied. It cannot prove that an operator actually performed a restore drill.\n\nSee [Units 16–20 implementation notes](docs/UNITS_16_20_IMPLEMENTATION.md) and the [production launch checklist](docs/PRODUCTION_LAUNCH_CHECKLIST_2026-10-26.md). Organization/workspace permissions currently govern organization/workspace membership APIs; legacy projects, missions, workflows, artifacts, files, research, evidence, and social content are not yet automatically shared by workspace membership.\n\n## Tests and CI
+## Operations and launch readiness
+
+The authenticated admin-only endpoints `/api/v1/ops/metrics` and `/api/v1/ops/readiness` expose low-cardinality request metrics and launch-gate checks. Requests return an `X-Request-ID` that can be correlated with application logs. The readiness endpoint intentionally remains not-ready until required configuration, worker liveness, and the backup/restore attestation are satisfied. It cannot prove that an operator actually performed a restore drill.
+
+See [Units 16–20 implementation notes](docs/UNITS_16_20_IMPLEMENTATION.md) and the [production launch checklist](docs/PRODUCTION_LAUNCH_CHECKLIST_2026-10-26.md). Organization/workspace permissions currently govern organization/workspace membership APIs; legacy projects, missions, workflows, artifacts, files, research, evidence, and social content are not yet automatically shared by workspace membership.
+
+## Tests and CI
 
 GitHub Actions runs:
 - Python compilation and the unit test suite against isolated schemas in a disposable PostgreSQL service.
