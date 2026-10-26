@@ -31,11 +31,21 @@ def check_providers():
 
 
 def check_background_worker():
-    """Report the current synchronous request model honestly."""
-    return {
-        "status": "not_implemented",
-        "detail": (
-            "The current /tasks endpoint executes synchronously within the request. "
-            "A durable worker for missions and workflows is not implemented yet."
-        ),
-    }
+    """Check persisted worker heartbeats; never infer liveness from configuration alone."""
+    try:
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) AS count FROM worker_heartbeats "
+                "WHERE status='healthy' AND last_seen >= CURRENT_TIMESTAMP - INTERVAL '90 seconds'"
+            ).fetchone()
+            count = int(row["count"])
+        finally:
+            conn.close()
+        return {
+            "status": "ok" if count else "not_running",
+            "healthy_workers": count,
+        }
+    except Exception:
+        logger.exception("Background worker health check failed")
+        return {"status": "unknown", "healthy_workers": 0}
