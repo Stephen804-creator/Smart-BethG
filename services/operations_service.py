@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import re
 import shutil
 from pathlib import Path
 from datetime import datetime, timezone
@@ -148,7 +149,7 @@ class OperationsService:
         sandbox_image = os.getenv("SMART_BETHG_SANDBOX_PYTHON_IMAGE", "").strip()
         sandbox_configured = (
             sandbox_image in config.DOCKER_ALLOWED_IMAGES
-            and "@sha256:" in sandbox_image
+            and bool(re.fullmatch(r"[^@\s]+@sha256:[0-9a-f]{64}", sandbox_image))
             and shutil.which("docker") is not None
         )
         checks["sandbox"] = {
