@@ -22,17 +22,26 @@ class OperationsService:
                     "INSERT INTO request_traces(request_id,method,route,status_code,duration_ms) VALUES (?,?,?,?,?)",
                     (request_id, method, route, int(status_code), max(0, int(duration_ms))),
                 )
-                # Bounded retention; deleting older rows does not touch audit records.
-                conn.execute(
-                    "DELETE FROM request_traces WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '30 days' "
-                    "AND MOD(id,100)=0"
-                )
                 conn.commit()
             finally:
                 conn.close()
         except Exception:
             # Telemetry must never turn a successful request into a failed one.
             logger.warning("Request telemetry write failed", exc_info=True)
+
+    def prune_request_traces(self):
+        conn = get_connection()
+        try:
+            cursor = conn.execute(
+                "DELETE FROM request_traces WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '30 days'"
+            )
+            conn.commit()
+            return cursor.rowcount
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     def heartbeat_worker(self, worker_id, status="healthy", details=None):
         if status not in {"starting", "healthy", "degraded", "stopping"}:
