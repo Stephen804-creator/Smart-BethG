@@ -21,7 +21,7 @@ Implemented:
 - Authenticated `POST /api/v1/sandbox/python` and owner-scoped run history.
 - Execution is disabled by default and fails closed if Docker is unavailable, the feature is disabled, or the image is not both digest-pinned and operator-allowlisted.
 - Fixed Python interpreter invocation; no caller-selected image, command, shell, host path, environment, or network access.
-- Docker container uses no network, read-only root filesystem, dropped capabilities, no-new-privileges, a non-root UID, PID/memory/CPU limits, a bounded temporary filesystem, a read-only source mount, a 15-second timeout, and bounded output capture.
+- Docker container uses no network, read-only root filesystem, dropped capabilities, no-new-privileges, a non-root UID, PID/memory/CPU limits, a bounded temporary filesystem, a read-only source mount, a 15-second timeout, bounded output capture, full 64-hex SHA-256 digest validation, and best-effort kill plus forced removal on timeout.
 - Timed-out containers are explicitly killed. Run metadata and bounded output are recorded.
 
 Required before enabling:
