@@ -45,6 +45,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 
 _SECRET_KEY = os.getenv("SMART_BETHG_SECRET_KEY", "")
+_SECRET_KEY_WAS_CONFIGURED = bool(_SECRET_KEY)
 if not _SECRET_KEY:
     if IS_PRODUCTION:
         raise RuntimeError(
@@ -57,7 +58,7 @@ if not _SECRET_KEY:
         RuntimeWarning,
     )
     _SECRET_KEY = secrets.token_hex(32)
-SECRET_KEY_IS_EPHEMERAL = not bool(_SECRET_KEY)
+SECRET_KEY_IS_EPHEMERAL = not _SECRET_KEY_WAS_CONFIGURED
 SECRET_KEY = _SECRET_KEY
 
 SESSION_COOKIE_NAME = os.getenv("SMART_BETHG_SESSION_COOKIE", "smart_bethg_session")
