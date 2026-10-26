@@ -215,11 +215,13 @@ class WorkspaceService:
             if not target:
                 raise LookupError("Active user not found.")
             org_target = conn.execute(
-                "SELECT 1 FROM organization_members WHERE organization_id=? AND user_id=?",
+                "SELECT role FROM organization_members WHERE organization_id=? AND user_id=?",
                 (workspace["organization_id"], target["id"]),
             ).fetchone()
             if not org_target:
                 raise ValueError("Add the user to the organization before granting workspace access.")
+            if org_target["role"] in {"owner", "admin"}:
+                raise ValueError("Organization owners/admins inherit workspace administration; change their organization role to restrict access.")
             existing = conn.execute(
                 "SELECT role FROM workspace_members WHERE workspace_id=? AND user_id=?",
                 (workspace_id, target["id"]),
