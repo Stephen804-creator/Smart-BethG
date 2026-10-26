@@ -144,11 +144,17 @@ class SocialPublishingService:
     def _finish(schedule_id, status, external_post_id, error_code):
         conn = get_connection()
         try:
-            conn.execute(
+            row = conn.execute(
                 "UPDATE social_publish_jobs SET status=?,external_post_id=?,last_error_code=?,updated_at=CURRENT_TIMESTAMP "
-                "WHERE id=? AND status='publishing'",
+                "WHERE id=? AND status='publishing' RETURNING user_id,content_id",
                 (status, external_post_id, error_code, schedule_id),
-            )
+            ).fetchone()
+            if row and status == "published":
+                conn.execute(
+                    "UPDATE social_content SET external_post_id=?,published_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP "
+                    "WHERE id=? AND user_id=? AND status='approved'",
+                    (external_post_id, row["content_id"], row["user_id"]),
+                )
             conn.commit()
         except Exception:
             conn.rollback()
