@@ -91,9 +91,12 @@ class SandboxService:
                     return_code = process.wait(timeout=self.TIMEOUT_SECONDS)
                 except subprocess.TimeoutExpired:
                     # Killing the Docker CLI alone can leave the daemon container alive.
-                    subprocess.run([docker, "kill", container_name], shell=False,
-                                   stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                   stderr=subprocess.DEVNULL, timeout=3, check=False)
+                    try:
+                        subprocess.run([docker, "kill", container_name], shell=False,
+                                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                       stderr=subprocess.DEVNULL, timeout=3, check=False)
+                    except (subprocess.TimeoutExpired, OSError):
+                        pass
                     try:
                         process.wait(timeout=3)
                     except subprocess.TimeoutExpired:
