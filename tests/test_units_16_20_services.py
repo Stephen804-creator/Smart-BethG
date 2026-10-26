@@ -50,6 +50,23 @@ class TestUnits16To20(SmartBethGTestCase):
         access = self.service.require_workspace_access(self.editor["id"], workspace_id, "admin")
         self.assertEqual(access["role"], "admin")
 
+    def test_membership_revocation_removes_workspace_access_and_protects_owners(self):
+        result = self.service.create_organization(self.owner["id"], "Revocation Team", "revocation-team")
+        organization_id = result["organization"]["id"]
+        workspace_id = result["default_workspace"]["id"]
+        self.service.add_organization_member(self.owner["id"], organization_id, self.editor["username"], "member")
+        self.service.add_workspace_member(self.owner["id"], workspace_id, self.editor["username"], "editor")
+        removed = self.service.remove_organization_member(
+            self.owner["id"], organization_id, self.editor["username"]
+        )
+        self.assertTrue(removed["removed"])
+        with self.assertRaises(PermissionError):
+            self.service.require_workspace_access(self.editor["id"], workspace_id, "view")
+        with self.assertRaises(PermissionError):
+            self.service.remove_organization_member(
+                self.owner["id"], organization_id, self.owner["username"]
+            )
+
     def test_sandbox_fails_closed_when_not_configured_and_records_attempt(self):
         with patch.dict(os.environ, {"SMART_BETHG_SANDBOX_ENABLED": "false"}):
             with self.assertRaises(SandboxUnavailableError):
