@@ -14,7 +14,7 @@ from services.mission_executor import MissionExecutor
 from services.workflow_executor import WorkflowExecutor
 from services.specialist_coordinator import SpecialistCoordinator
 from services.operations_service import OperationsService
-from services.sandbox_service import SandboxService
+from services.social_publishing_service import SocialPublishingService
 
 
 def main():
@@ -22,6 +22,7 @@ def main():
     from logging_setup import get_logger
     logger = get_logger("worker")
     operations = OperationsService()
+    social_publishing = SocialPublishingService()
     worker_id = os.getenv(
         "SMART_BETHG_WORKER_ID",
         f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}",
@@ -33,6 +34,7 @@ def main():
         while not stop_heartbeat.wait(15):
             try:
                 operations.heartbeat_worker(worker_id, "healthy", {"process_id": os.getpid()})
+                social_publishing.process_due(limit=10)
                 if time.monotonic() - last_prune >= 3600:
                     operations.prune_request_traces()
                     last_prune = time.monotonic()
