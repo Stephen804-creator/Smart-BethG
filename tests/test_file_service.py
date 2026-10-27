@@ -134,8 +134,15 @@ class TestFileService(SmartBethGTestCase):
         self.assertIsNone(result["summary"])
         self.assertIn("isn't connected", result["error"])
 
-    def test_summarize_unsupported_file_type_is_honest(self):
+    def test_summarize_image_without_ocr_runtime_is_honest(self):
         record = self.service.save_upload(self.user["id"], "photo.png", b"binary data")
         result = self.service.summarize(self.user["id"], record["id"])
         self.assertIsNone(result["summary"])
-        self.assertIn("isn't supported", result["error"])
+        # Raster images are a supported input type. Invalid bytes or missing
+        # optional OCR dependencies should be reported honestly, not as an
+        # unsupported file type.
+        self.assertIsNotNone(result["error"])
+        self.assertTrue(
+            "OCR" in result["error"] or "image" in result["error"].lower() or "read this image" in result["error"].lower(),
+            result["error"],
+        )
