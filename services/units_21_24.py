@@ -134,8 +134,8 @@ class ScheduledAgentJobService:
             ).fetchone()
             if not row:
                 return None
-            if row["status"] == "completed" and status == "active":
-                raise ValueError("A completed schedule cannot be reactivated; create a new schedule.")
+            if row["status"] in {"completed", "cancelled"} and status != row["status"]:
+                raise ValueError(f"A {row['status']} schedule is terminal; create a new schedule.")
             cursor = conn.execute(
                 "UPDATE scheduled_agent_jobs SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
                 (status, schedule_id, user_id),
