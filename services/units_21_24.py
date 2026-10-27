@@ -349,15 +349,17 @@ class ExtensionManifestService:
             required = action.get("required", [])
             if not isinstance(fields, dict) or len(fields) > 40 or not isinstance(required, list):
                 raise ValueError("Action fields/required must be bounded objects/lists.")
+            if any(not isinstance(item, str) for item in required):
+                raise ValueError("Required field names must be strings.")
             if set(required) - set(fields):
                 raise ValueError("Required fields must exist in the action field definitions.")
             clean_fields = {}
             for field, kind in fields.items():
-                if not isinstance(field, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", field) or kind not in FIELD_TYPES:
+                if not isinstance(field, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", field) or not isinstance(kind, str) or kind not in FIELD_TYPES:
                     raise ValueError("Unsupported field name or field type.")
                 clean_fields[field] = kind
             risk = action.get("risk", "read")
-            if risk not in RISK_LEVELS:
+            if not isinstance(risk, str) or risk not in RISK_LEVELS:
                 raise ValueError("Unsupported extension action risk.")
             side_effecting = action.get("side_effecting", False)
             if not isinstance(side_effecting, bool):
@@ -493,6 +495,9 @@ class CommercialAccountService:
             raise ValueError("Invalid plan status.")
         conn = get_connection()
         try:
+            exists = conn.execute("SELECT id FROM users WHERE id=?", (user_id,)).fetchone()
+            if not exists:
+                raise ValueError("Account was not found.")
             conn.execute(
                 "INSERT INTO account_plan_assignments(user_id,plan_key,status) VALUES (?,?,?) "
                 "ON CONFLICT(user_id) DO UPDATE SET plan_key=EXCLUDED.plan_key,status=EXCLUDED.status,updated_at=CURRENT_TIMESTAMP",
@@ -520,6 +525,9 @@ class CommercialAccountService:
             raise ValueError("Unsupported credit grant source.")
         conn = get_connection()
         try:
+            exists = conn.execute("SELECT id FROM users WHERE id=?", (user_id,)).fetchone()
+            if not exists:
+                raise ValueError("Account was not found.")
             row = conn.execute(
                 "INSERT INTO credit_ledger(user_id,delta_credits,reason,source,idempotency_key,metadata_json) "
                 "VALUES (?,?,?,?,?,?) ON CONFLICT(user_id,idempotency_key) DO NOTHING RETURNING id",
