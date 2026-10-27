@@ -26,17 +26,20 @@ class OCRLimitExceeded(RuntimeError):
 
 
 def _ocr_image(image, started):
-    try:
-        import pytesseract
-    except ImportError as exc:
-        raise OCRUnavailable("OCR is unavailable. Install the optional OCR dependencies.") from exc
-
+    # Validate cheap, deterministic bounds before checking optional runtime
+    # dependencies so the limits are always enforced and independently testable.
     width, height = image.size
     if width <= 0 or height <= 0 or width * height > MAX_IMAGE_PIXELS:
         raise OCRLimitExceeded("Image dimensions exceed the configured OCR pixel limit.")
     remaining = OCR_TIMEOUT_SECONDS - (time.monotonic() - started)
     if remaining <= 0:
         raise OCRLimitExceeded("OCR exceeded the configured time limit.")
+
+    try:
+        import pytesseract
+    except ImportError as exc:
+        raise OCRUnavailable("OCR is unavailable. Install the optional OCR dependencies.") from exc
+
     try:
         return pytesseract.image_to_string(image, timeout=max(1, int(remaining)))
     except RuntimeError as exc:
