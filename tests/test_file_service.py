@@ -76,11 +76,15 @@ class TestFileService(SmartBethGTestCase):
         self.assertIsNone(error)
         self.assertEqual(text, "# Hello\nWorld")
 
-    def test_extract_text_unsupported_type_is_honest(self):
+    def test_image_extraction_reports_invalid_or_unavailable_ocr_honestly(self):
         record = self.service.save_upload(self.user["id"], "photo.png", b"\x89PNG\r\n fake binary data")
         text, error = self.service.extract_text(self.user["id"], record["id"])
         self.assertIsNone(text)
-        self.assertIn("isn't supported", error)
+        self.assertIsNotNone(error)
+        self.assertTrue(
+            "OCR" in error or "image" in error.lower() or "read this image" in error.lower(),
+            error,
+        )
 
     def test_extract_text_from_real_pdf(self):
         """
@@ -130,8 +134,15 @@ class TestFileService(SmartBethGTestCase):
         self.assertIsNone(result["summary"])
         self.assertIn("isn't connected", result["error"])
 
-    def test_summarize_unsupported_file_type_is_honest(self):
+    def test_summarize_image_without_ocr_runtime_is_honest(self):
         record = self.service.save_upload(self.user["id"], "photo.png", b"binary data")
         result = self.service.summarize(self.user["id"], record["id"])
         self.assertIsNone(result["summary"])
-        self.assertIn("isn't supported", result["error"])
+        # Raster images are a supported input type. Invalid bytes or missing
+        # optional OCR dependencies should be reported honestly, not as an
+        # unsupported file type.
+        self.assertIsNotNone(result["error"])
+        self.assertTrue(
+            "OCR" in result["error"] or "image" in result["error"].lower() or "read this image" in result["error"].lower(),
+            result["error"],
+        )

@@ -1,0 +1,5 @@
+# Optional OCR support for image uploads and scanned PDFs.
+# Install Tesseract OCR as an operating-system package as well.
+Pillow>=10.4,<13
+pytesseract>=0.3.13,<1
+pdf2image>=1.17,<2
