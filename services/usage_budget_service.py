@@ -65,11 +65,11 @@ class UsageBudgetService:
             plan_counter = conn.execute(
                 "INSERT INTO plan_usage_counters(period_start,user_id,requests) "
                 "SELECT ?, ?, COUNT(*)+1 FROM usage_budget_reservations "
-                "WHERE user_id=? AND created_at>=CURRENT_DATE HAVING COUNT(*) < ? "
+                "WHERE user_id=? AND period_start=? HAVING COUNT(*) < ? "
                 "ON CONFLICT(period_start,user_id) DO UPDATE SET "
                 "requests=plan_usage_counters.requests+1,updated_at=CURRENT_TIMESTAMP "
                 "WHERE plan_usage_counters.requests < ?",
-                (period, user_id, user_id, plan_request_limit, plan_request_limit),
+                (period, user_id, user_id, period, plan_request_limit, plan_request_limit),
             )
             if plan_counter.rowcount != 1:
                 conn.rollback()
