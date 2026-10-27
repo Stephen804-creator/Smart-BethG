@@ -405,21 +405,21 @@ class UsageIntelligenceService:
                 "COALESCE(SUM(COALESCE(actual_output_tokens,estimated_output_tokens)),0) AS output_tokens,"
                 "COALESCE(SUM(COALESCE(actual_cost_micros,estimated_cost_micros)),0) AS cost_micros "
                 "FROM usage_budget_reservations WHERE user_id=? "
-                "AND created_at >= CURRENT_TIMESTAMP - (? * INTERVAL '1 day')",
+                "AND period_start >= (CURRENT_DATE - (? * INTERVAL '1 day'))::date::text",
                 (user_id, days),
             ).fetchone()
             by_model = conn.execute(
                 "SELECT provider,model,COUNT(*) AS requests,"
                 "COALESCE(SUM(COALESCE(actual_cost_micros,estimated_cost_micros)),0) AS cost_micros "
                 "FROM usage_budget_reservations WHERE user_id=? "
-                "AND created_at >= CURRENT_TIMESTAMP - (? * INTERVAL '1 day') "
+                "AND period_start >= (CURRENT_DATE - (? * INTERVAL '1 day'))::date::text "
                 "GROUP BY provider,model ORDER BY cost_micros DESC LIMIT 20",
                 (user_id, days),
             ).fetchall()
             today = conn.execute(
                 "SELECT COUNT(*) AS requests FROM usage_budget_reservations "
-                "WHERE user_id=? AND created_at >= CURRENT_DATE",
-                (user_id,),
+                "WHERE user_id=? AND period_start=?",
+                (user_id, datetime.now(timezone.utc).date().isoformat()),
             ).fetchone()
             plan = PLAN_CATALOG.get(plan_key, PLAN_CATALOG["free"])
             return {
