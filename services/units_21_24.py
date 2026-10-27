@@ -162,8 +162,7 @@ class ScheduledAgentJobService:
                 conn.execute("BEGIN")
                 row = conn.execute(
                     "SELECT s.* FROM scheduled_agent_jobs s "
-                    "JOIN workflows w ON w.id=s.workflow_id AND w.user_id=s.user_id "
-                    "WHERE s.status='active' AND s.next_run_at<=CURRENT_TIMESTAMP AND w.status='validated' "
+                    "WHERE s.status='active' AND s.next_run_at<=CURRENT_TIMESTAMP "
                     "ORDER BY s.next_run_at,s.id FOR UPDATE OF s SKIP LOCKED LIMIT 1"
                 ).fetchone()
                 if not row:
