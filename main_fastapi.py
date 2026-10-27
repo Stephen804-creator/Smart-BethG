@@ -23,7 +23,7 @@ from routes import (
     health, auth, auth_google, tasks, agents, approvals, audit, tools,
     providers, chat, files, memory, knowledge, projects, artifacts, missions, workflows,
     social_content, social_publishing, research, evidence, connectors, jobs,
-    training_export, pages, agent_intelligence, workspaces, sandbox, operations,
+    training_export, pages, agent_intelligence, workspaces, sandbox, operations, units_21_24,
 )
 from services.operations_service import OperationsService
 
@@ -189,7 +189,7 @@ def create_app() -> FastAPI:
         memory.router, knowledge.router, projects.router, artifacts.router, missions.router,
         workflows.router, social_content.router, social_publishing.router, research.router,
         evidence.router, connectors.router, jobs.router, agent_intelligence.router,
-        workspaces.router, sandbox.router, operations.router,
+        workspaces.router, sandbox.router, operations.router, units_21_24.router,
     ]
     for router in api_routers:
         if router in (chat.router, files.router, memory.router, knowledge.router):
