@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import config
 from database import get_connection
 from providers.model_catalog import MODEL_CATALOG
+from services.units_21_24 import PLAN_CATALOG
 
 
 class BudgetExceededError(Exception):
@@ -50,6 +51,29 @@ class UsageBudgetService:
         try:
             if not getattr(conn, "is_postgres", False):
                 conn.execute("BEGIN IMMEDIATE")
+            assignment = conn.execute(
+                "SELECT plan_key,status FROM account_plan_assignments WHERE user_id=?",
+                (user_id,),
+            ).fetchone()
+            plan_key = assignment["plan_key"] if assignment else "free"
+            plan_status = assignment["status"] if assignment else "active"
+            if plan_status != "active":
+                raise BudgetExceededError("This account's plan is not active.")
+            plan_request_limit = PLAN_CATALOG.get(plan_key, PLAN_CATALOG["free"])["daily_requests"]
+            # Seed from existing reservations on the first request after rollout,
+            # then increment atomically so concurrent workers cannot oversubscribe.
+            plan_counter = conn.execute(
+                "INSERT INTO plan_usage_counters(period_start,user_id,requests) "
+                "SELECT ?, ?, COUNT(*)+1 FROM usage_budget_reservations "
+                "WHERE user_id=? AND created_at>=CURRENT_DATE HAVING COUNT(*) < ? "
+                "ON CONFLICT(period_start,user_id) DO UPDATE SET "
+                "requests=plan_usage_counters.requests+1,updated_at=CURRENT_TIMESTAMP "
+                "WHERE plan_usage_counters.requests < ?",
+                (period, user_id, user_id, plan_request_limit, plan_request_limit),
+            )
+            if plan_counter.rowcount != 1:
+                conn.rollback()
+                raise BudgetExceededError("Your plan's daily request capacity has been reached.")
             for scope, scope_id, token_limit, cost_limit, request_limit in (
                 ("user", str(user_id), user_token_limit, user_cost_limit, config.USER_DAILY_REQUEST_BUDGET),
                 ("global", "all", global_token_limit, global_cost_limit, config.GLOBAL_DAILY_REQUEST_BUDGET),
