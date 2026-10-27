@@ -15,6 +15,7 @@ from services.workflow_executor import WorkflowExecutor
 from services.specialist_coordinator import SpecialistCoordinator
 from services.operations_service import OperationsService
 from services.social_publishing_service import SocialPublishingService
+from services.units_21_24 import ScheduledAgentJobService
 
 
 def main():
@@ -23,6 +24,7 @@ def main():
     logger = get_logger("worker")
     operations = OperationsService()
     social_publishing = SocialPublishingService()
+    scheduled_jobs = ScheduledAgentJobService()
     worker_id = os.getenv(
         "SMART_BETHG_WORKER_ID",
         f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}",
@@ -35,6 +37,7 @@ def main():
             try:
                 operations.heartbeat_worker(worker_id, "healthy", {"process_id": os.getpid()})
                 social_publishing.process_due(limit=10)
+                scheduled_jobs.process_due(limit=10)
                 if time.monotonic() - last_prune >= 3600:
                     operations.prune_request_traces()
                     last_prune = time.monotonic()
