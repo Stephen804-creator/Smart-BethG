@@ -448,8 +448,8 @@ class UsageIntelligenceService:
             limit = PLAN_CATALOG.get(plan_key, PLAN_CATALOG["free"])["daily_requests"]
             row = conn.execute(
                 "SELECT COUNT(*) AS requests FROM usage_budget_reservations "
-                "WHERE user_id=? AND created_at >= CURRENT_DATE",
-                (user_id,),
+                "WHERE user_id=? AND period_start=?",
+                (user_id, datetime.now(timezone.utc).date().isoformat()),
             ).fetchone()
             if int(row["requests"]) >= limit:
                 raise PermissionError("Your plan's daily request capacity has been reached.")
