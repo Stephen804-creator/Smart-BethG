@@ -99,3 +99,18 @@
 | SB-PROD-004 | Successful status check on main does not establish end-to-end production readiness. | Main combined status and documented test boundaries. | Confirmed verification limitation. |
 
 Add each new defect with a reproduction, root cause, fix commit, regression test, and verification result. Do not mark an item fixed until the regression test passes.
+
+## Updates from the 2026-10-27 follow-up
+
+- PR #16 was retargeted to `main` after its prerequisite PR #13 had already merged. Its current head is `eebfa8e9c0e695955697238522634130de09361e`; do not merge it until current checks are visible and pass.
+- PR #18 received a targeted scheduled-job state fix at commit `39b6cd3da7d3b791501a025adeffd060693ba158`. A cancelled schedule is now terminal, and a regression test verifies reactivation is rejected and no due workflow is dispatched. The test has not been executed in this environment.
+- PR #21 removes the `branches: [main]` filter from both `pull_request` workflow triggers so stacked PRs targeting feature branches receive PR-triggered test and security workflows. Current run/status evidence is not yet available through the connector.
+
+### Additional findings
+
+| ID | Finding | Evidence | Status |
+|---|---|---|---|
+| SB-PROD-005 | Test and security workflows restricted PR-triggered runs to PRs targeting `main`, leaving stacked feature-target PRs without those PR-triggered checks. | `.github/workflows/tests.yml` and `.github/workflows/security.yml` before PR #21. | Fix proposed in PR #21; verify checks after workflow execution. |
+| SB-PROD-006 | Cancelled scheduled jobs could be changed back to active, allowing a user-cancelled workflow to dispatch later. | `ScheduledAgentJobService.set_status()` only treated `completed` as terminal; regression test added in PR #18 head. | Code and regression test added; execution still unverified. |
+
+Keep both fixes unmerged until their relevant CI checks complete successfully. Do not interpret an unavailable run/status response as a passing check.
