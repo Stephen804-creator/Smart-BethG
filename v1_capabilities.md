@@ -468,3 +468,29 @@ PR #13 is not merged, and the latest connector changes still require a fresh CI 
 See docs/UNITS_6_9_IMPLEMENTATION.md and roadmap.md for configuration and release
 requirements. Do not describe these foundations as a production-verified or
 fully multi-instance deployment.
+
+
+## Units 10–15 status addendum (2026-10-24)
+
+The feature branch contains initial foundations, not production-complete roadmap implementations:
+- Validated workflows can be queued and tracked. The current worker dispatches mission steps only; workflow run completion means all child missions were dispatched, not that those missions finished.
+- Specialist coordination persists role assignments but does not execute independent specialist models.
+- Decision records and deterministic evaluation scores are owner-scoped. Scores are signals, not factual verification.
+- Model routing is a preview only; it does not call a provider or reserve/reconcile usage budgets.
+- Account data export and lifecycle requests exist. Deletion is not automatically performed and account-recovery delivery is not wired.
+
+
+## Units 10–15 follow-up status — 2026-10-25
+
+This section describes the PR #17 follow-up branch; it is not a production launch approval.
+
+| Area | Current status | Boundaries |
+|---|---|---|
+| Workflow execution | IMPLEMENTED FOUNDATION | Durable step ledger, sequential mission/research-record/artifact/social-draft steps, conditional skipping, completion aggregation, and per-step idempotency for internal record adapters. External publishing, compensation, and ambiguous external side-effect recovery are not implemented. |
+| Specialist coordination | IMPLEMENTED FOUNDATION | Sequential role-specific calls use existing budget controls, persisted outputs, prior-role context, atomic worker claims, and role-specific capability-tier preferences when catalog routes are available. Specialists do not execute tools. Distinct specialist message arbitration and safe per-role retry after ambiguous provider outcomes are not implemented. |
+| Decision ledger | PARTIALLY IMPLEMENTED | Workflow completion and specialist result decisions are recorded with evidence references. Complete decision instrumentation and enforced immutable retention are not implemented. |
+| Evaluation | PARTIALLY IMPLEMENTED | Deterministic rubric, human labels, and Brier/MAE diagnostics exist. Fewer than 10 labels are reported as insufficient; there is no reviewed benchmark corpus or independent factuality guarantee. |
+| Cost-aware routing | IMPLEMENTED FOUNDATION | Auto chat selection uses the cost-aware route preview, budget reservation/reconciliation, and provider telemetry. Observed success rate/latency affects ranking after five calls per model; route/fallback decisions are recorded. Live provider catalog smoke tests remain open. |
+| Data export | IMPLEMENTED FOUNDATION | Owner-scoped export manifest, reviewed parent scoping for mission runs/messages, recursive sensitive-key filtering, limits, and explicit omissions/truncation reporting. Operational logs are explicitly excluded due to free-form diagnostic text. Export completeness depends on the manifest. |
+| Account recovery/deletion | PARTIALLY IMPLEMENTED | Lifecycle requests are persisted. Verified recovery delivery, identity confirmation, automated deletion, retention enforcement, and legal/privacy approval are not wired. |
+| Verification | PENDING | Review the latest PR #17 workflow runs. No live provider sandbox, production recovery/deletion, or multi-worker crash/replay verification is claimed. |

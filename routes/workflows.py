@@ -1,4 +1,4 @@
-"""Authenticated workflow definition API. Validation does not execute steps."""
+"""Authenticated workflow definitions and durable execution history."""
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -68,6 +68,32 @@ def validate_workflow(workflow_id: int, user=Depends(get_current_user), service=
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found.")
     return workflow
+
+
+@router.post("/{workflow_id}/runs")
+def start_workflow_run(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
+    try:
+        run = service.start_run(user["id"], workflow_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not run:
+        raise HTTPException(status_code=404, detail="Workflow not found.")
+    return run
+
+
+@router.get("/{workflow_id}/runs")
+def list_workflow_runs(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
+    if not service.get(user["id"], workflow_id):
+        raise HTTPException(status_code=404, detail="Workflow not found.")
+    return {"runs": service.list_runs(user["id"], workflow_id)}
+
+
+@router.get("/runs/{run_id}")
+def get_workflow_run(run_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
+    run = service.get_run(user["id"], run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Workflow run not found.")
+    return run
 
 
 @router.delete("/{workflow_id}")

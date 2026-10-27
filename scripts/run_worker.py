@@ -7,10 +7,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from services.job_queue import JobWorker
 from services.mission_executor import MissionExecutor
+from services.workflow_executor import WorkflowExecutor
+from services.specialist_coordinator import SpecialistCoordinator
 
 
 def main():
-    worker = JobWorker(handlers={"mission.execute": MissionExecutor().execute})
+    worker = JobWorker(handlers={"mission.execute": MissionExecutor().execute, "workflow.execute": WorkflowExecutor().execute, "agent.team.execute": SpecialistCoordinator().execute})
     while True:
         try:
             worked = worker.run_once()
