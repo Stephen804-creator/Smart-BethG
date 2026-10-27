@@ -1,5 +1,24 @@
 # Smart BethG — Changelog
 
+## 2026-10-24 — Units 5–9 connector and execution foundation
+
+### Added
+- Typed connector capabilities with strict argument validation and explicit app-level permissions.
+- OAuth authorization flows for GitHub, Google Drive, and Slack, including owner-bound single-use state and Google PKCE.
+- Fernet-encrypted per-installation provider credentials, Google access-token refresh, and disconnect cleanup/revocation where supported.
+- Trusted provider adapters for GitHub issue listing/creation, Google Drive file search, and Slack message sending.
+- Durable PostgreSQL jobs and bounded mission-step execution with approval pauses/resume.
+
+### Security and boundaries
+- External OAuth apps must be configured by the operator; catalog presence alone does not mean an account is connected.
+- Write actions still require persisted approval. Legacy direct host-side actions remain disabled.
+- Natural-language mission planning, compensation/saga recovery, multi-worker crash/replay verification, live provider sandbox testing, and operator-managed KMS/secret-manager integration remain open gates.
+
+### Verification
+- New adapter and encrypted-credential tests were added.
+- Previously passing CI results apply to the earlier PR head only. A fresh CI run is required for these latest connector changes before merge.
+
+
 Records what actually changed in the software. Compare against
 `v1_capabilities.md` for current capability status; do not infer status
 from this list alone.
@@ -757,3 +776,12 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Added conservative memory and knowledge disagreement signals for similar statements with polarity/numeric differences. These signals warn for review and never silently resolve a conflict.
 - Added unit tests for conflict-signal behavior and updated the foundation backlog to distinguish completed foundations from deferred semantic memory retrieval, OCR, advanced reranking, external-source verification, and approval-based memory consolidation.
 - Corrected the test workflow's unsupported runner context in job-level environment configuration so named CI jobs can start. Verification is still in progress; see PR #12 checks before merging.
+
+
+## 2026-10-24 — Roadmap Units 6–9 implementation branch
+
+- Added the typed capability registry prerequisite, connector catalog/installations, trusted adapter interface, and permission-aware action service.
+- Added a fail-closed policy engine; write/destructive/financial actions require persisted approval and are revalidated before execution. Legacy host-side actions remain disabled.
+- Added PostgreSQL-backed background jobs with idempotency, leases, priorities, bounded retries, guarded completion, owner-scoped status/cancel endpoints, and a separate worker entry point.
+- Added validated connector-action plans to missions. Mission run creation and queue insertion share one transaction; the worker persists progress and pauses/resumes around approval-required steps.
+- Live external OAuth/token lifecycle and GitHub/Drive/Slack adapters are not included yet; those catalog entries are intentionally non-executable until trusted adapters are implemented and connected.

@@ -17,6 +17,8 @@ class TestMissionService(SmartBethGTestCase):
         mission = self.service.create(self.owner["id"], "Prepare a release plan", project_id=project["id"])
         started = self.service.start_run(self.owner["id"], mission["id"])
         self.assertEqual(started["status"], "running")
+        from services.job_queue import JobQueue
+        self.assertTrue(any(item["job_type"] == "mission.execute" for item in JobQueue().list_for_user(self.owner["id"])))
         run_id = started["runs"][0]["id"]
         finished = self.service.finish_run(
             self.owner["id"], mission["id"], run_id, "completed",

@@ -16,7 +16,7 @@ SERIAL_ID_TABLES = {
     "users", "agents", "tasks", "auth_rate_limit_events", "audit_events",
     "providers", "conversations", "messages", "provider_calls", "missions",
     "mission_runs", "files", "memory", "research", "evidence", "workflows",
-    "artifacts", "social_content", "social_content_versions", "projects", "logs",
+    "artifacts", "social_content", "social_content_versions", "projects", "logs", "connector_installations",
     "knowledge_chunks",
 }
 

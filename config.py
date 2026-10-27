@@ -57,6 +57,7 @@ if not _SECRET_KEY:
         RuntimeWarning,
     )
     _SECRET_KEY = secrets.token_hex(32)
+SECRET_KEY_IS_EPHEMERAL = not bool(_SECRET_KEY)
 SECRET_KEY = _SECRET_KEY
 
 SESSION_COOKIE_NAME = os.getenv("SMART_BETHG_SESSION_COOKIE", "smart_bethg_session")
@@ -74,6 +75,13 @@ DEFAULT_PROVIDER = os.getenv("SMART_BETHG_DEFAULT_PROVIDER", "")
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
 GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
+
+# External connector OAuth apps (configure callback URLs in each provider console).
+GITHUB_OAUTH_CLIENT_ID = os.getenv("GITHUB_OAUTH_CLIENT_ID", "").strip()
+GITHUB_OAUTH_CLIENT_SECRET = os.getenv("GITHUB_OAUTH_CLIENT_SECRET", "").strip()
+SLACK_OAUTH_CLIENT_ID = os.getenv("SLACK_OAUTH_CLIENT_ID", "").strip()
+SLACK_OAUTH_CLIENT_SECRET = os.getenv("SLACK_OAUTH_CLIENT_SECRET", "").strip()
+SMART_BETHG_PUBLIC_BASE_URL = os.getenv("SMART_BETHG_PUBLIC_BASE_URL", "").strip().rstrip("/")
 
 # Comma-separated exact origins. Empty means no cross-origin browser access.
 ALLOWED_ORIGINS = [

@@ -3,7 +3,7 @@
 **Status:** Active development — not yet cleared for unrestricted public launch.  
 **Last updated:** 2026-10-10 UTC. See [the decision log](docs/DECISION_LOG.md) and [architecture decisions](architecture.md) for dated records.
 
-Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration is kept open for continuous testing. Public launch is still blocked by unfinished account/privacy controls, legal review, and connector implementation; do not expose a production deployment to the public until those gates are completed.
+Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration is kept open for continuous testing. Public launch is still blocked by unfinished account/privacy controls, legal review, production connector validation, and operational recovery gates; do not expose a production deployment to the public until those gates are completed.
 
 ## Architecture decisions
 
@@ -11,7 +11,7 @@ Smart BethG is an AI-assisted agent workspace with chat, provider routing, memor
 - **Scaling:** one or multiple application instances use the same PostgreSQL database. Authentication rate-limit events are shared through the database.
 - **Files and workspaces:** local storage works for development and single-instance testing. Multiple instances require a shared durable storage mount for uploads, generated artifacts, and workspaces. PostgreSQL does not share local files between replicas.
 - **Hosting:** provider-neutral Python/ASGI application. No Render-specific manifest, API, or runtime is required. Deploy to any compatible Linux/Python host that can provide PostgreSQL and durable storage.
-- **Security:** self-registration stays open for testing. Direct host-side filesystem, Git, terminal, network, and Docker actions are disabled; application connectors will be the only future action path. Positive approval execution remains disabled until connector-aware authorization is implemented. Training export remains disabled until opt-in consent controls exist.
+- **Security:** self-registration stays open for testing. Direct host-side filesystem, Git, terminal, network, and Docker actions remain disabled. External connector actions use owner-scoped installations, OAuth credentials encrypted at rest, typed permissions, and approval for side effects. Training export remains disabled until opt-in consent controls exist.
 
 ## Requirements
 
@@ -152,7 +152,7 @@ A passing CI run covers only the tests that ran. It is not a penetration test, l
 
 ## Current limitations and launch gates
 
-See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). Current open items include broader PostgreSQL regression coverage and rehearsed upgrades from prior schemas; shared object storage for multiple instances; a durable isolated job runner; password recovery and account-management flows; account data export/deletion; connector registry/OAuth, permission scopes, and connector-aware approvals; CSP/CSRF adversarial verification; independent security review; legal review; monitoring/load tests; and backup/restore drills. Server-side session-version checks now invalidate copied signed cookies after logout, with regression tests; confirm the current CI run before merging. Database-backed rate limiting and per-user/global usage budgets have implementation coverage but require deeper production validation. Direct host execution and its approval-resume path have been disabled while the connector-first design is built. Confirm the latest CI results before merging.
+See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). Current open items include broader PostgreSQL regression coverage and rehearsed upgrades from prior schemas; shared object storage for multiple instances; a durable isolated job runner; password recovery and account-management flows; account data export/deletion; provider sandbox/end-to-end connector tests and operator-managed secret-manager integration; CSP/CSRF adversarial verification; independent security review; legal review; monitoring/load tests; and backup/restore drills. Server-side session-version checks now invalidate copied signed cookies after logout, with regression tests; confirm the current CI run before merging. Database-backed rate limiting and per-user/global usage budgets have implementation coverage but require deeper production validation. Direct host execution and its approval-resume path have been disabled while the connector-first design is built. Confirm the latest CI results before merging.
 
 ## Security reporting
 

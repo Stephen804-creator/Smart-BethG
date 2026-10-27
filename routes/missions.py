@@ -11,6 +11,7 @@ class MissionCreate(BaseModel):
     objective: str = Field(min_length=1, max_length=12000)
     priority: str = "normal"
     project_id: int | None = Field(default=None, ge=1)
+    steps: list[dict] = Field(default_factory=list, max_length=25)
 
 
 class RunFinish(BaseModel):
@@ -22,7 +23,7 @@ class RunFinish(BaseModel):
 @router.post("")
 def create_mission(payload: MissionCreate, user=Depends(get_current_user), service=Depends(get_mission_service)):
     try:
-        return service.create(user["id"], payload.objective, payload.priority, payload.project_id)
+        return service.create(user["id"], payload.objective, payload.priority, payload.project_id, payload.steps)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

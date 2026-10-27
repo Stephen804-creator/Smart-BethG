@@ -126,3 +126,16 @@ def get_research_service():
 
 def get_evidence_service():
     return EvidenceService()
+
+from services.connector_service import ConnectorInstallationService
+from services.connector_action_service import ConnectorActionService
+from services.job_queue import JobQueue
+
+def get_connector_installation_service():
+    return ConnectorInstallationService()
+
+def get_connector_action_service():
+    return ConnectorActionService()
+
+def get_job_queue():
+    return JobQueue()
