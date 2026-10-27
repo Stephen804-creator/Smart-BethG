@@ -1,3 +1,21 @@
+## 2026-10-25 — Units 10–15 execution hardening
+
+- Internal research, artifact, and social-draft adapters now use stable per-workflow-step idempotency keys, allowing safe replay after a worker crash between record creation and step completion. External side effects remain fail-closed.
+
+- Workflow runs now track each step durably, create child missions atomically with step records, and wait for child mission completion before completing the parent workflow.
+- Added sequential research-record, artifact, and social-content-draft workflow adapters. Social-content steps create drafts only; they do not publish to external platforms.
+- Added step-index-bound queue messages and replay safeguards for side-effecting adapters.
+- Specialist plans now queue sequential role-specific AI calls through ChatService, persist each contribution, pass earlier contributions as context, and use the existing chat usage-budget reservations.
+- Specialist prompts now define role-specific handoff, evidence discipline, critique, executor boundaries, and reviewer synthesis. Tool execution and publishing are not exposed to specialist prompts.
+- Workflow completion and specialist results are recorded in the decision ledger.
+- Added human-labelled evaluation outcomes and empirical calibration diagnostics; fewer than 10 labelled samples are explicitly marked insufficient for calibration.
+- Account export now has an explicit manifest, sensitive-column filtering, per-table and total-size limits, and omission/truncation reporting.
+- Account deletion remains a pending request pending verified identity, explicit confirmation, retention review, and configured operational/legal processes.
+- Auto routing now ranks configured catalog candidates using price and (after five recorded calls) measured provider success rate and latency; actual route/fallback outcomes are added to the decision ledger.
+- Specialist roles have explicit tier preferences and atomic execution claims. Concurrent duplicate workers are rejected, and stale in-flight provider calls fail closed rather than being automatically billed twice.
+- Account export explicitly lists operational logs as excluded because free-form diagnostics can contain sensitive data.
+- Current verification is tracked on PR #17; do not infer CI status from earlier commits.
+
 ## 2026-10-24 — Units 10–15 initial foundations
 
 ### Added

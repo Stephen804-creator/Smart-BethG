@@ -25,6 +25,10 @@ class EvaluationInput(BaseModel):
     output: str | dict | list
     criteria: list[str] = Field(default_factory=lambda: ["non_empty", "bounded_size", "structured_output"], max_length=10)
 
+class EvaluationLabelInput(BaseModel):
+    outcome: float = Field(ge=0, le=1)
+    note: str | None = Field(default=None, max_length=1000)
+
 class RoutePreviewInput(BaseModel):
     task_type: str = Field(default="general", max_length=100)
     complexity: str = "balanced"
@@ -64,9 +68,28 @@ def evaluate_output(payload: EvaluationInput, user=Depends(get_current_user)):
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
+@router.post("/evaluations/{evaluation_id}/label")
+def label_evaluation(evaluation_id: int, payload: EvaluationLabelInput, user=Depends(get_current_user)):
+    try:
+        return AgentEvaluator().label(user["id"], evaluation_id, payload.outcome, payload.note)
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if "not found" in str(exc).lower() else 422, detail=str(exc))
+
+@router.get("/evaluations/calibration")
+def evaluation_calibration(user=Depends(get_current_user)):
+    return AgentEvaluator().calibration(user["id"])
+
 @router.post("/model-route-preview")
 def model_route_preview(payload: RoutePreviewInput, user=Depends(get_current_user)):
-    return CostAwareRouter().preview(payload.task_type, payload.complexity, payload.max_cost_usd, payload.prefer_provider)
+    preview = CostAwareRouter().preview(
+        payload.task_type, payload.complexity, payload.max_cost_usd, payload.prefer_provider
+    )
+    DecisionLedger().record(
+        user["id"], "model_route_preview", preview,
+        evidence=[{"source": "local_model_catalog", "provider_call_made": False}],
+        outcome=preview.get("mode", "unavailable"),
+    )
+    return preview
 
 @router.get("/account/data-export")
 def export_account_data(user=Depends(get_current_user)):

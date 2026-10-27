@@ -124,6 +124,12 @@ class MissionService:
             conn.execute("UPDATE missions SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",(final_status,mission_id,user_id))
             conn.execute("INSERT INTO logs(mission_id,user_id,level,event_type,message) VALUES (?,?,?,?,?)",
                          (mission_id,user_id,"info" if status=="completed" else "error","mission_run_"+status,f"Mission run {run_id} marked {status}."))
+            # Parent workflow advancement and the next queue message share this
+            # transaction with child completion, so a crash cannot lose the handoff.
+            from services.workflow_service import WorkflowService
+            WorkflowService().on_child_mission_finished(
+                user_id, mission_id, final_status, result=result, error=error, conn=conn
+            )
             conn.commit()
         finally: conn.close()
         return self.get(user_id,mission_id)

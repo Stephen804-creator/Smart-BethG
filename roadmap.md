@@ -126,29 +126,43 @@ not overstated. A roadmap entry is not evidence that a feature is implemented.
 Status is implementation status, not a claim that live external provider integrations or multi-instance production readiness have been verified.
 
 
-## Numbered implementation status — Units 10–15 (2026-10-24, initial foundations)
+## Numbered implementation status — Units 10–15 (2026-10-25, implementation follow-up)
 
 ### Unit 10 — Reusable workflow execution
-- [x] Durable workflow-run records, atomic queue dispatch for validated workflows, worker dispatch, and execution-history APIs.
-- [x] Mission-dispatch steps execute through the existing mission queue.
-- [ ] Research/artifact/social-content adapters, child-mission completion aggregation, cross-workflow approval pause/resume, crash-safe step idempotency, conditions, and compensation remain open.
+- [x] Durable workflow-run and per-step records, atomic child-mission/step creation, sequential step dispatch, completion aggregation, and step-index-bound queue messages.
+- [x] Mission, research-record, artifact, and social-content-draft steps execute through existing trusted services. Social-content steps create drafts only and never publish externally.
+- [x] Child mission completion advances the parent workflow and queues the next step in the same database transaction.
+- [x] Bounded condition steps support earlier-step result paths, explicit comparison operators, and guarded downstream step skipping.
+- [x] Internal research, artifact, and social-draft adapters use stable per-step idempotency keys, allowing safe recovery after a crash between record creation and workflow-step completion; unsupported or external side effects fail closed.
+- [ ] Compensation/saga rollback, live publishing adapters, and automatic recovery from ambiguous external side-effect outcomes remain open.
 
 ### Unit 11 — Specialist coordination
-- [x] Owner-scoped specialist assignment planning and persistence.
-- [ ] Independent model execution, specialist messaging, arbitration, and shared evidence coordination remain disabled.
+- [x] Role-specific specialist calls run sequentially through ChatService, persist each contribution, pass prior contributions as context, and use role-specific capability-tier preferences when configured catalog routes are available.
+- [x] Specialist calls use the existing chat budget reservation/reconciliation path; results are stored and recorded in the decision ledger.
+- [x] Ambiguous interrupted provider calls fail closed to avoid duplicate billable calls.
+- [x] Role-specific tier preferences use the shared cost-aware router when catalog routes are available; critic and reviewer prompts provide basic challenge/synthesis behavior.
+- [ ] Explicit per-role provider overrides, a dedicated inter-agent message bus, deterministic arbitration, and safe automatic retry after ambiguous provider outcomes remain open.
 
 ### Unit 12 — Decision ledger and execution evidence
-- [x] Owner-scoped decision records with bounded evidence and optional mission/workflow links.
-- [ ] Automatic instrumentation of every execution decision and immutable retention policy remain open.
+- [x] Owner-scoped bounded decision records with optional mission/workflow references.
+- [x] Workflow step outcomes and specialist result metadata are automatically recorded with evidence references.
+- [ ] Complete instrumentation of every policy/provider/approval decision and enforced immutable retention/archival policy remain open.
 
 ### Unit 13 — Agent evaluation
-- [x] Versioned deterministic evaluation rubric and persisted records.
-- [ ] Labelled benchmark datasets, regression suites, calibrated reliability scoring, and factuality evaluation remain open.
+- [x] Versioned deterministic checks, owner-scoped evaluation records, human-labelled outcomes, and empirical Brier/MAE calibration diagnostics.
+- [x] Calibration responses explicitly report insufficient data until at least 10 labelled examples are available.
+- [ ] A reviewed, versioned human-labelled benchmark corpus, larger regression suite, statistically meaningful calibration data, and independent factuality evaluation remain open.
 
 ### Unit 14 — Cost-aware model routing
-- [x] Authenticated route-preview endpoint using configured providers and catalog tier/pricing estimates.
-- [ ] Live invocation integration, atomic budget reservation/reconciliation, latency feedback, and catalog verification remain open. Preview makes no provider call.
+- [x] Authenticated route preview estimates costs for configured catalog entries and records the preview decision.
+- [x] Existing synchronous ChatService calls already reserve budgets before provider calls, reconcile known usage, retain conservative reservations on unknown usage, and record latency/provider outcomes.
+- [x] Auto chat selection uses the cost-aware route preview; provider calls still reserve/reconcile usage through ChatService.
+- [x] Route ranking uses observed success rate and latency after at least five calls per model; actual route and fallback outcomes are recorded in the decision ledger.
+- [ ] Provider catalog live smoke checks remain open; no provider keys or live API smoke calls were used as part of this change. Mission workflow steps currently create records/artifacts/drafts or dispatch missions; they do not perform hidden AI generation.
 
 ### Unit 15 — Account recovery and data lifecycle
-- [x] Owner-scoped JSON export and auditable lifecycle request records.
-- [ ] Verified recovery delivery, deletion confirmation/execution, retention policy, export completeness review, and legal/privacy approval remain open. Deletion is not automatic.
+- [x] Owner-scoped JSON export with schema version, export manifest, nested sensitive-key filtering, row/size limits, and explicit omission/truncation reporting. Operational logs are explicitly excluded and disclosed in the manifest.
+- [x] Owner-scoped lifecycle request records for data export and account deletion.
+- [ ] Verified recovery delivery, identity verification and confirmation flow, safe deletion execution, retention schedule enforcement, and legal/privacy approval remain open. Deletion is not automatic.
+
+These are implementation states for the PR #17 follow-up branch, not a production launch approval. Provider sandbox testing, multi-worker crash/replay testing, deployment-specific recovery configuration, and full legal/privacy review remain required.

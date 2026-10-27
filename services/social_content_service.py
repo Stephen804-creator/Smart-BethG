@@ -8,7 +8,7 @@ class SocialContentService:
     PLATFORMS = {"facebook", "youtube", "instagram", "linkedin", "x", "blog", "other"}
     STATUSES = {"draft", "in_review", "approved", "archived"}
 
-    def create(self, user_id, platform, title, content, hashtags=None):
+    def create(self, user_id, platform, title, content, hashtags=None, idempotency_key=None):
         platform = (platform or "").strip().lower()
         title = (title or "").strip()
         if platform not in self.PLATFORMS:
@@ -17,22 +17,38 @@ class SocialContentService:
             raise ValueError("Title must be between 1 and 200 characters.")
         if not isinstance(content, str) or not content.strip() or len(content) > 20000:
             raise ValueError("Content must be between 1 and 20000 characters.")
+        if idempotency_key is not None:
+            idempotency_key = str(idempotency_key).strip()
+            if not idempotency_key or len(idempotency_key) > 200:
+                raise ValueError("Idempotency key must be between 1 and 200 characters.")
         tags = self._clean_tags(hashtags or [])
         tags_json = json.dumps(tags, ensure_ascii=False)
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "INSERT INTO social_content(user_id, platform, topic, caption, hashtags, status, version, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, 'draft', 1, CURRENT_TIMESTAMP)",
-                (user_id, platform, title, content, tags_json),
+                "INSERT INTO social_content(user_id, platform, topic, caption, hashtags, status, version, updated_at, idempotency_key) "
+                "VALUES (?, ?, ?, ?, ?, 'draft', 1, CURRENT_TIMESTAMP, ?) "
+                "ON CONFLICT(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING RETURNING id",
+                (user_id, platform, title, content, tags_json, idempotency_key),
             )
-            content_id = cursor.lastrowid
-            conn.execute(
-                "INSERT INTO social_content_versions(social_content_id, user_id, version, title, content, hashtags) "
-                "VALUES (?, ?, 1, ?, ?, ?)",
-                (content_id, user_id, title, content, tags_json),
-            )
-            conn.commit()
+            row = cursor.fetchone()
+            if not row:
+                conn.rollback()
+                existing = conn.execute(
+                    "SELECT id FROM social_content WHERE user_id=? AND idempotency_key=? LIMIT 1",
+                    (user_id, idempotency_key),
+                ).fetchone()
+                if not existing:
+                    raise RuntimeError("Social-content idempotency conflict did not resolve to an existing record.")
+                content_id = existing["id"]
+            else:
+                content_id = row["id"]
+                conn.execute(
+                    "INSERT INTO social_content_versions(social_content_id, user_id, version, title, content, hashtags) "
+                    "VALUES (?, ?, 1, ?, ?, ?)",
+                    (content_id, user_id, title, content, tags_json),
+                )
+                conn.commit()
         finally:
             conn.close()
         return self.get(user_id, content_id)
