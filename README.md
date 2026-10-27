@@ -94,6 +94,8 @@ Set these variables in the hosting provider's secret/configuration manager:
 - `SMART_BETHG_SECRET_KEY` — generate a long random secret; never commit it.
 - `SMART_BETHG_SESSION_HTTPS_ONLY=true`
 - `SMART_BETHG_STORAGE_ROOT=/absolute/path/to/durable/storage`
+- `SMART_BETHG_BACKUP_RESTORE_VERIFIED=true` only after an actual, documented PostgreSQL and storage restore drill has succeeded.
+- Sandbox execution is disabled by default. To enable the restricted Docker Python runner, review and pin a trusted image digest, add the exact image reference to `SMART_BETHG_DOCKER_ALLOWED_IMAGES`, set `SMART_BETHG_SANDBOX_PYTHON_IMAGE` to the exact same digest-pinned reference, and set `SMART_BETHG_SANDBOX_ENABLED=true`. Never allow user-selected images or commands.
 - `SMART_BETHG_ALLOWED_ORIGINS` — comma-separated exact browser origins only if a separate frontend origin needs CORS.
 - Provider API keys as needed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`.
 
@@ -103,7 +105,13 @@ Start command:
 uvicorn main_fastapi:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
-The process must have write access to `SMART_BETHG_STORAGE_ROOT`. Do not use an ephemeral filesystem for user uploads or workspaces. Before multi-instance mode, mount the same durable/shared storage at the same configured path for every replica and verify that each replica sees the same test file. The service must not be scaled horizontally until that test and background-job safety checks pass.
+The web process must have write access to `SMART_BETHG_STORAGE_ROOT`. Run the durable worker separately under a process supervisor:
+
+```bash
+python scripts/run_worker.py
+```
+
+The worker executes durable missions/workflows, records liveness heartbeats, and checks due social publishing schedules. No real social publishing adapter is registered by default; scheduled posts without a configured adapter are marked `blocked` rather than reported as published. Do not use an ephemeral filesystem for user uploads or workspaces. Before multi-instance mode, mount the same durable/shared storage at the same configured path for every replica and verify that each replica sees the same test file. The service must not be scaled horizontally until that test and background-job safety checks pass.
 
 Generate a secret locally with:
 
@@ -142,6 +150,12 @@ First take a backup and test against a fresh PostgreSQL database. The script ref
 
 The Terms of Service and Privacy Policy under `docs/` are **drafts, not final or approved legal documents**. Read [the dated legal/privacy launch checklist](docs/LEGAL_AND_PRIVACY_LAUNCH_CHECKLIST_2026-10-10.md) before preparing a public launch. The product owner can prepare initial drafts, but qualified Nigerian legal review is recommended before publication. Assess any NDPC registration, audit, or notification duties against the actual data-processing activities and current rules; do not assume the draft itself establishes compliance.
 
+## Operations and launch readiness
+
+The authenticated admin-only endpoints `/api/v1/ops/metrics` and `/api/v1/ops/readiness` expose low-cardinality request metrics and launch-gate checks. Requests return an `X-Request-ID` that can be correlated with application logs. The readiness endpoint intentionally remains not-ready until required configuration, worker liveness, and the backup/restore attestation are satisfied. It cannot prove that an operator actually performed a restore drill.
+
+See [Units 16–20 implementation notes](docs/UNITS_16_20_IMPLEMENTATION.md) and the [production launch checklist](docs/PRODUCTION_LAUNCH_CHECKLIST_2026-10-26.md). Organization/workspace permissions currently govern organization/workspace membership APIs; legacy projects, missions, workflows, artifacts, files, research, evidence, and social content are not yet automatically shared by workspace membership.
+
 ## Tests and CI
 
 GitHub Actions runs:
@@ -152,7 +166,7 @@ A passing CI run covers only the tests that ran. It is not a penetration test, l
 
 ## Current limitations and launch gates
 
-See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). Current open items include broader PostgreSQL regression coverage and rehearsed upgrades from prior schemas; shared object storage for multiple instances; a durable isolated job runner; password recovery and account-management flows; account data export/deletion; provider sandbox/end-to-end connector tests and operator-managed secret-manager integration; CSP/CSRF adversarial verification; independent security review; legal review; monitoring/load tests; and backup/restore drills. Server-side session-version checks now invalidate copied signed cookies after logout, with regression tests; confirm the current CI run before merging. Database-backed rate limiting and per-user/global usage budgets have implementation coverage but require deeper production validation. Direct host execution and its approval-resume path have been disabled while the connector-first design is built. Confirm the latest CI results before merging.
+See [the dated whole-codebase audit](docs/WHOLE_CODEBASE_AUDIT_2026-10-10.md). Current open items include broader PostgreSQL regression coverage and rehearsed upgrades from prior schemas; shared object storage for multiple instances; workspace binding for existing resource records; real social-platform publishing adapters; production Docker sandbox adversarial tests; password recovery and account-management flows; safe account deletion; provider sandbox/end-to-end connector tests and operator-managed secret-manager integration; CSP/CSRF adversarial verification; independent security review; legal review; monitoring/load tests; and backup/restore drills. Server-side session-version checks now invalidate copied signed cookies after logout, with regression tests; confirm the current CI run before merging. Database-backed rate limiting and per-user/global usage budgets have implementation coverage but require deeper production validation. Direct host execution and its approval-resume path have been disabled while the connector-first design is built. Confirm the latest CI results before merging.
 
 ## Security reporting
 

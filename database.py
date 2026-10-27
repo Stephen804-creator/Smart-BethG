@@ -19,6 +19,7 @@ SERIAL_ID_TABLES = {
     "artifacts", "social_content", "social_content_versions", "projects", "logs", "connector_installations",
     "knowledge_chunks", "workflow_runs", "decision_ledger", "agent_team_runs",
     "agent_evaluations", "account_lifecycle_requests", "workflow_step_runs",
+    "organizations", "organization_members", "workspaces", "workspace_members", "request_traces",
 }
 
 

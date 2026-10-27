@@ -494,3 +494,19 @@ This section describes the PR #17 follow-up branch; it is not a production launc
 | Data export | IMPLEMENTED FOUNDATION | Owner-scoped export manifest, reviewed parent scoping for mission runs/messages, recursive sensitive-key filtering, limits, and explicit omissions/truncation reporting. Operational logs are explicitly excluded due to free-form diagnostic text. Export completeness depends on the manifest. |
 | Account recovery/deletion | PARTIALLY IMPLEMENTED | Lifecycle requests are persisted. Verified recovery delivery, identity confirmation, automated deletion, retention enforcement, and legal/privacy approval are not wired. |
 | Verification | PENDING | Review the latest PR #17 workflow runs. No live provider sandbox, production recovery/deletion, or multi-worker crash/replay verification is claimed. |
+
+
+## Units 16–20 status addendum — 2026-10-26
+
+This addendum describes the Units 16–20 implementation branch, not a merged or production-verified release.
+
+| Area | Current status | Boundaries |
+|---|---|---|
+| Organizations/workspaces | IMPLEMENTED FOUNDATION | Organization and workspace membership APIs enforce role checks and protect owner roles. Legacy projects, missions, workflows, artifacts, research, files, and social content are not yet workspace-shared; their existing owner-scoped APIs remain authoritative. |
+| Sandboxed execution | IMPLEMENTED FOUNDATION | Opt-in Docker Python runner uses fixed command, no network, read-only source/root, resource limits, bounded output and timeouts. It is disabled unless a complete 64-hex SHA-256 digest-pinned image is explicitly allowlisted; timeout cleanup attempts kill and forced removal. Real Docker adversarial testing and rootless/dedicated runner verification remain open. |
+| Social publishing | PARTIALLY IMPLEMENTED | Approved drafts can be scheduled, cancelled, and processed by a worker. No real social platform publisher is registered; due posts are marked blocked instead of falsely reported as published. |
+| Operational observability | IMPLEMENTED FOUNDATION | Request IDs, database-backed route/status/duration traces, worker heartbeats, health reporting, and admin-only metrics exist. External alerting/log export, load testing, and production retention operations remain open. |
+| Production readiness/recovery | IMPLEMENTED FOUNDATION | Admin-only readiness checks and an operational launch checklist exist. Backup/restore verification is operator-attested; the endpoint cannot prove that a restore drill, security review, or legal review occurred. |
+| Verification | PENDING | Current branch must pass its latest unit, PostgreSQL integration, compilation, dependency, and secret-scanning checks. Docker sandbox and live publisher tests require deployment-specific infrastructure and accounts. |
+
+See `docs/UNITS_16_20_IMPLEMENTATION.md` and `docs/PRODUCTION_LAUNCH_CHECKLIST_2026-10-26.md`. Do not describe these foundations as fully production-ready.

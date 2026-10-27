@@ -1,5 +1,6 @@
 from tests.base import SmartBethGTestCase
 from services.health_service import check_database, check_providers, check_background_worker
+from services.operations_service import OperationsService
 
 
 class TestHealthChecks(SmartBethGTestCase):
@@ -13,6 +14,13 @@ class TestHealthChecks(SmartBethGTestCase):
         self.assertEqual(result["available"], [])
         self.assertIsNone(result["default"])
 
-    def test_background_worker_honestly_reports_not_implemented(self):
+    def test_background_worker_uses_persisted_liveness_heartbeat(self):
         result = check_background_worker()
-        self.assertEqual(result["status"], "not_implemented")
+        self.assertIn(result["status"], {"ok", "not_running", "unknown"})
+        self.assertIn("healthy_workers", result)
+
+    def test_background_worker_reports_healthy_after_heartbeat(self):
+        OperationsService().heartbeat_worker("health-test-worker", "healthy", {"test": True})
+        result = check_background_worker()
+        self.assertEqual(result["status"], "ok")
+        self.assertGreaterEqual(result["healthy_workers"], 1)

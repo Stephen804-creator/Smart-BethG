@@ -166,3 +166,60 @@ Status is implementation status, not a claim that live external provider integra
 - [ ] Verified recovery delivery, identity verification and confirmation flow, safe deletion execution, retention schedule enforcement, and legal/privacy approval remain open. Deletion is not automatic.
 
 These are implementation states for the PR #17 follow-up branch, not a production launch approval. Provider sandbox testing, multi-worker crash/replay testing, deployment-specific recovery configuration, and full legal/privacy review remain required.
+
+
+## Numbered implementation status — Units 16–20 (2026-10-26)
+
+### Unit 16 — Organizations and workspace permissions
+- [x] PostgreSQL organizations, organization memberships, workspaces, and workspace memberships with role validation.
+- [x] Owner/admin member management, inherited organization-admin workspace access, and fail-closed access checks.
+- [x] Owner roles cannot be demoted or removed through ordinary member-management endpoints; organization membership revocation also removes workspace grants atomically.
+- [ ] Bind legacy projects, missions, workflows, artifacts, files, research, evidence, and social content to workspaces and audit every resource read/write path. Until then, existing resources remain user-owner-scoped and are not automatically shared with workspace members.
+
+### Unit 17 — Sandboxed execution environment
+- [x] Added an opt-in Python runner through Docker with fixed interpreter, no network, read-only source mount/root filesystem, dropped capabilities, non-root user, process/memory/CPU limits, bounded output, timeout, and run records.
+- [x] Execution fails closed unless the exact image reference contains a complete 64-hex SHA-256 digest and is present in the operator allowlist; timeout cleanup attempts both kill and forced removal.
+- [ ] Build/review the production image and test adversarial workloads against the real Docker daemon; rootless/dedicated runner isolation and operational testing remain launch gates.
+
+### Unit 18 — Social content creation and publishing
+- [x] Approved drafts can be scheduled with timezone validation, idempotency keys, listing, cancellation, and due-job processing.
+- [x] Unconfigured or ambiguous external publication is marked blocked; it is never reported as published and is not blindly retried.
+- [ ] No Facebook, Instagram, LinkedIn, YouTube, X, or blog publisher is registered by this unit. Implement and validate platform-specific OAuth, scopes, rate limits, token lifecycle, and real sandbox/account posting before claiming external publishing is available.
+
+### Unit 19 — Monitoring, tracing, and operational observability
+- [x] Request IDs are returned and logged; bounded low-cardinality request metrics are persisted without bodies, cookies, query strings, or raw resource IDs.
+- [x] Worker process publishes database-backed heartbeats; health checks report actual heartbeat status.
+- [x] Admin-only metrics endpoint reports request totals, errors, latency aggregates, route summaries, and active worker heartbeats.
+- [ ] External log/trace export, alerting, load testing, queue-lag dashboards, and retention operations need deployment-level validation.
+
+### Unit 20 — Production security, recovery, and launch gates
+- [x] Admin-only readiness checks cover database/migrations, worker liveness, persistent session secret, secure cookies, backup/restore attestation, and sandbox image configuration.
+- [x] Added a production launch checklist for backups, schema rehearsal, shared storage, sandboxing, social publishers, monitoring, and security/privacy review.
+- [ ] A successful restore drill, security review, live deployment configuration, CSP enforcement decision, and legal/privacy approval are not performed by this code change. `SMART_BETHG_BACKUP_RESTORE_VERIFIED=true` is an operator attestation, not automated proof.
+
+See `docs/UNITS_16_20_IMPLEMENTATION.md` and `docs/PRODUCTION_LAUNCH_CHECKLIST_2026-10-26.md`. These are implementation foundations, not production launch approval.
+
+
+## Numbered implementation status — Units 21–24 (2026-10-27)
+
+### Unit 21 — Scheduled and recurring agent jobs
+- [x] Owner-scoped one-off/recurring schedules for validated workflows, with bounded intervals and run counts.
+- [x] Durable queue dispatch with transactional schedule occurrence/workflow-run linkage and idempotency keys.
+- [ ] Cron calendar/timezone UI, notifications, compensation, and production multi-worker crash/replay drills remain open.
+
+### Unit 22 — Capability extensions and developer SDK
+- [x] Python SDK builder for versioned declarative extension manifests and typed action contracts.
+- [x] Owner-scoped draft manifests with explicit admin approval/disable state; arbitrary extension code is never executed.
+- [ ] Trusted adapter implementation, extension signing/distribution, developer portal, and third-party runtime certification remain open.
+
+### Unit 23 — Usage intelligence and fairness
+- [x] Private account usage summaries for tokens, estimated spend, model/provider usage, and daily capacity.
+- [x] Plan-aware daily request caps enforced through an atomic PostgreSQL counter in the usage reservation transaction.
+- [ ] Provider invoice reconciliation, anomaly alerts, team allocation policies, and load/concurrency verification remain open.
+
+### Unit 24 — Plans, credits, rewards, and retention foundations
+- [x] Free/Starter/Pro/Team plan metadata, admin plan assignment, idempotent credit ledger, and non-negative transactional debits.
+- [x] Reward requests require admin review before credits are issued.
+- [ ] Checkout, payment/webhook integration, automatic monthly credit allocation, referral abuse controls, and legal/tax review remain open.
+
+See docs/UNITS_21_24_IMPLEMENTATION.md. The code is not a production launch approval; CI and deployment-specific verification remain required.

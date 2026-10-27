@@ -1,6 +1,10 @@
 """Run the durable worker separately from the web API: python scripts/run_worker.py."""
+import os
+import socket
 import sys
+import threading
 import time
+import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -9,19 +13,62 @@ from services.job_queue import JobWorker
 from services.mission_executor import MissionExecutor
 from services.workflow_executor import WorkflowExecutor
 from services.specialist_coordinator import SpecialistCoordinator
+from services.operations_service import OperationsService
+from services.social_publishing_service import SocialPublishingService
+from services.units_21_24 import ScheduledAgentJobService
 
 
 def main():
-    worker = JobWorker(handlers={"mission.execute": MissionExecutor().execute, "workflow.execute": WorkflowExecutor().execute, "agent.team.execute": SpecialistCoordinator().execute})
-    while True:
+    logger = None
+    from logging_setup import get_logger
+    logger = get_logger("worker")
+    operations = OperationsService()
+    social_publishing = SocialPublishingService()
+    scheduled_jobs = ScheduledAgentJobService()
+    worker_id = os.getenv(
+        "SMART_BETHG_WORKER_ID",
+        f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}",
+    )[:200]
+    stop_heartbeat = threading.Event()
+
+    def heartbeat_loop():
+        last_prune = time.monotonic()
+        while not stop_heartbeat.wait(15):
+            try:
+                operations.heartbeat_worker(worker_id, "healthy", {"process_id": os.getpid()})
+                social_publishing.process_due(limit=10)
+                scheduled_jobs.process_due(limit=10)
+                if time.monotonic() - last_prune >= 3600:
+                    operations.prune_request_traces()
+                    last_prune = time.monotonic()
+            except Exception:
+                logger.exception("Worker heartbeat or retention maintenance failed")
+
+    try:
+        operations.heartbeat_worker(worker_id, "starting", {"process_id": os.getpid()})
+        heartbeat_thread = threading.Thread(target=heartbeat_loop, name="worker-heartbeat", daemon=True)
+        heartbeat_thread.start()
+        worker = JobWorker(handlers={
+            "mission.execute": MissionExecutor().execute,
+            "workflow.execute": WorkflowExecutor().execute,
+            "agent.team.execute": SpecialistCoordinator().execute,
+        })
+        while True:
+            try:
+                worked = worker.run_once()
+            except Exception:
+                logger.exception("Worker poll failed")
+                worked = False
+            if not worked:
+                time.sleep(1)
+    except KeyboardInterrupt:
+        logger.info("Worker shutdown requested")
+    finally:
+        stop_heartbeat.set()
         try:
-            worked = worker.run_once()
+            operations.heartbeat_worker(worker_id, "stopping", {"process_id": os.getpid()})
         except Exception:
-            from logging_setup import get_logger
-            get_logger("worker").exception("Worker poll failed")
-            worked = False
-        if not worked:
-            time.sleep(1)
+            logger.exception("Could not persist worker shutdown state")
 
 
 if __name__ == "__main__":
