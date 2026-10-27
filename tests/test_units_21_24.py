@@ -37,10 +37,11 @@ class TestUnits21To24(SmartBethGTestCase):
         when = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
         with self.assertRaisesRegex(ValueError, "Validate the workflow"):
             self.schedules.create(self.owner["id"], "Later", workflow["id"], when)
+        validated = self.workflows.validate(self.owner["id"], workflow["id"])
         with self.assertRaisesRegex(ValueError, "timezone"):
-            self.schedules.create(self.owner["id"], "Bad time", workflow["id"], "2030-01-01T10:00:00")
+            self.schedules.create(self.owner["id"], "Bad time", validated["id"], "2030-01-01T10:00:00")
         with self.assertRaisesRegex(ValueError, "not found"):
-            self.schedules.create(self.other["id"], "Private", workflow["id"], when)
+            self.schedules.create(self.other["id"], "Private", validated["id"], when)
 
     def test_due_schedule_dispatches_once_and_advances_recurring_pointer(self):
         workflow = self._validated_workflow()
