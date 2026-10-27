@@ -33,14 +33,16 @@ def validate_manifest(manifest):
         required = action.get("required", [])
         if not isinstance(fields, dict) or len(fields) > 40 or not isinstance(required, list):
             raise ValueError("Invalid action fields.")
+        if any(not isinstance(item, str) for item in required):
+            raise ValueError("Required field names must be strings.")
         if set(required) - set(fields):
             raise ValueError("Required fields must exist in fields.")
         for field, kind in fields.items():
-            if not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", str(field)) or kind not in FIELD_TYPES:
+            if not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", str(field)) or not isinstance(kind, str) or kind not in FIELD_TYPES:
                 raise ValueError("Unsupported field name/type.")
         risk = action.get("risk", "read")
         side_effecting = action.get("side_effecting", False)
-        if risk not in RISKS or not isinstance(side_effecting, bool):
+        if not isinstance(risk, str) or risk not in RISKS or not isinstance(side_effecting, bool):
             raise ValueError("Invalid risk/side_effecting value.")
         if risk != "read" and not side_effecting:
             raise ValueError("Non-read actions must be marked side_effecting.")
