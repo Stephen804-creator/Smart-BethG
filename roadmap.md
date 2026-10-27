@@ -198,3 +198,28 @@ These are implementation states for the PR #17 follow-up branch, not a productio
 - [ ] A successful restore drill, security review, live deployment configuration, CSP enforcement decision, and legal/privacy approval are not performed by this code change. `SMART_BETHG_BACKUP_RESTORE_VERIFIED=true` is an operator attestation, not automated proof.
 
 See `docs/UNITS_16_20_IMPLEMENTATION.md` and `docs/PRODUCTION_LAUNCH_CHECKLIST_2026-10-26.md`. These are implementation foundations, not production launch approval.
+
+
+## Numbered implementation status — Units 21–24 (2026-10-27)
+
+### Unit 21 — Scheduled and recurring agent jobs
+- [x] Owner-scoped one-off/recurring schedules for validated workflows, with bounded intervals and run counts.
+- [x] Durable queue dispatch with transactional schedule occurrence/workflow-run linkage and idempotency keys.
+- [ ] Cron calendar/timezone UI, notifications, compensation, and production multi-worker crash/replay drills remain open.
+
+### Unit 22 — Capability extensions and developer SDK
+- [x] Python SDK builder for versioned declarative extension manifests and typed action contracts.
+- [x] Owner-scoped draft manifests with explicit admin approval/disable state; arbitrary extension code is never executed.
+- [ ] Trusted adapter implementation, extension signing/distribution, developer portal, and third-party runtime certification remain open.
+
+### Unit 23 — Usage intelligence and fairness
+- [x] Private account usage summaries for tokens, estimated spend, model/provider usage, and daily capacity.
+- [x] Plan-aware daily request caps enforced through an atomic PostgreSQL counter in the usage reservation transaction.
+- [ ] Provider invoice reconciliation, anomaly alerts, team allocation policies, and load/concurrency verification remain open.
+
+### Unit 24 — Plans, credits, rewards, and retention foundations
+- [x] Free/Starter/Pro/Team plan metadata, admin plan assignment, idempotent credit ledger, and non-negative transactional debits.
+- [x] Reward requests require admin review before credits are issued.
+- [ ] Checkout, payment/webhook integration, automatic monthly credit allocation, referral abuse controls, and legal/tax review remain open.
+
+See docs/UNITS_21_24_IMPLEMENTATION.md. The code is not a production launch approval; CI and deployment-specific verification remain required.
