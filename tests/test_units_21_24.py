@@ -33,7 +33,10 @@ class TestUnits21To24(SmartBethGTestCase):
         return self.workflows.validate(self.owner["id"], workflow["id"])
 
     def test_schedule_requires_owner_validated_workflow_and_timezone(self):
-        workflow = self.workflows.create(self.owner["id"], "Draft")
+        workflow = self.workflows.create(
+            self.owner["id"], "Draft",
+            steps=[{"type": "mission", "config": {"objective": "test scheduling"}}],
+        )
         when = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
         with self.assertRaisesRegex(ValueError, "Validate the workflow"):
             self.schedules.create(self.owner["id"], "Later", workflow["id"], when)
