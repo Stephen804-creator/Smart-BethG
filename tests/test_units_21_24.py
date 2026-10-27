@@ -1,5 +1,5 @@
 """Regression tests for roadmap Units 21-24."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone\nfrom unittest.mock import patch
 
 from tests.base import SmartBethGTestCase
 from services.auth_service import create_user
@@ -141,13 +141,13 @@ class TestUnits21To24(SmartBethGTestCase):
         )
         self.assertEqual(requested["credit_balance"], 0)
         self.assertEqual(requested["rewards"][0]["status"], "pending")
-        result = self.commercial.review_reward(999, requested["rewards"][0]["id"], "approved")
+        result = self.commercial.review_reward(self.other["id"], requested["rewards"][0]["id"], "approved")
         self.assertEqual(result["status"], "approved")
         self.assertEqual(result["credits_awarded"], 25)
         overview = self.commercial.overview(self.owner["id"])
         self.assertEqual(overview["credit_balance"], 25)
 
-    def test_usage_summary_uses_plan_and_private_owner_scope(self):
+    def test_plan_daily_request_limit_is_enforced_atomically(self):\n        from services.usage_budget_service import UsageBudgetService, BudgetExceededError\n        with patch.dict("services.units_21_24.PLAN_CATALOG", {"free": {"label": "Free", "daily_requests": 1, "monthly_credits": 100, "features": []}}):\n            budget = UsageBudgetService()\n            budget.reserve(self.owner["id"], "openai", "gpt-6-luna", 10, 20)\n            with self.assertRaises(BudgetExceededError):\n                budget.reserve(self.owner["id"], "openai", "gpt-6-luna", 10, 20)\n\n    def test_usage_summary_uses_plan_and_private_owner_scope(self):
         self.commercial.assign_plan(self.owner["id"], "pro")
         summary = UsageIntelligenceService().summary(self.owner["id"], days=7)
         self.assertEqual(summary["plan"], "pro")
