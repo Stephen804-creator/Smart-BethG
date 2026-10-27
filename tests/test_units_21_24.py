@@ -46,6 +46,40 @@ class TestUnits21To24(SmartBethGTestCase):
         with self.assertRaisesRegex(ValueError, "not found"):
             self.schedules.create(self.other["id"], "Private", validated["id"], when)
 
+    def test_cancelled_schedule_is_terminal_and_never_dispatches(self):
+        workflow = self._validated_workflow()
+        when = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+        schedule = self.schedules.create(self.owner["id"], "Cancel me", workflow["id"], when)
+
+        cancelled = self.schedules.set_status(self.owner["id"], schedule["id"], "cancelled")
+        self.assertEqual(cancelled["status"], "cancelled")
+        with self.assertRaisesRegex(ValueError, "terminal"):
+            self.schedules.set_status(self.owner["id"], schedule["id"], "active")
+
+        # Even if the due time passes while cancelled, the worker must not dispatch it.
+        conn = __import__("database").get_connection()
+        try:
+            conn.execute(
+                "UPDATE scheduled_agent_jobs SET next_run_at=CURRENT_TIMESTAMP - INTERVAL '1 second' WHERE id=?",
+                (schedule["id"],),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        self.assertEqual(self.schedules.process_due(limit=5), [])
+        persisted = self.schedules.get(self.owner["id"], schedule["id"])
+        self.assertEqual(persisted["status"], "cancelled")
+        conn = __import__("database").get_connection()
+        try:
+            runs = conn.execute(
+                "SELECT COUNT(*) AS total FROM scheduled_job_runs WHERE scheduled_job_id=?",
+                (schedule["id"],),
+            ).fetchone()["total"]
+            self.assertEqual(runs, 0)
+        finally:
+            conn.close()
+
     def test_due_schedule_dispatches_once_and_advances_recurring_pointer(self):
         workflow = self._validated_workflow()
         when = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
