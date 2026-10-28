@@ -84,6 +84,8 @@
                 type="button"
                 id="newChatButton"
                 class="btn btn-secondary btn-block new-chat-button"
+                title="New chat"
+                aria-label="Start a new chat"
             >
                 <i class="fa-solid fa-plus" aria-hidden="true"></i>
                 <span>New chat</span>
@@ -175,13 +177,21 @@
 
                 <div class="assistant-input">
 
-                    <select
-                        id="providerSelect"
-                        aria-label="AI provider"
-                        class="form-control provider-select"
-                    >
-                    </select>
-                    <p id="providerStatus" class="form-help provider-status" role="status" hidden></p>
+                    <details class="chat-response-options">
+                        <summary>
+                            <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                            <span>Response options</span>
+                            <i class="fa-solid fa-chevron-down options-chevron" aria-hidden="true"></i>
+                        </summary>
+                        <label class="form-label" for="providerSelect">Response routing</label>
+                        <select
+                            id="providerSelect"
+                            aria-label="Response routing"
+                            class="form-control provider-select"
+                        >
+                        </select>
+                        <p id="providerStatus" class="form-help provider-status" role="status" hidden></p>
+                    </details>
 
                     <textarea
                         id="prompt"
