@@ -90,10 +90,12 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
-# Self-registration is intentionally open for ongoing product testing.
-# It cannot silently close because a deployment variable is absent.
-# Invite codes are disabled; rate limits and password validation remain active.
-REGISTRATION_OPEN = True
+# Self-registration is available by default in development/test only.
+# Production is fail-closed: an operator must explicitly opt in after launch review.
+REGISTRATION_OPEN = os.getenv(
+    "SMART_BETHG_REGISTRATION_OPEN",
+    "false" if IS_PRODUCTION else "true",
+).strip().lower() == "true"
 REGISTRATION_INVITE_CODE = ""
 
 # Database-backed rate limiting uses these limits across processes and replicas.
