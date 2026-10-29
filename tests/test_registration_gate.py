@@ -1,10 +1,8 @@
 import unittest
 from unittest.mock import patch
 
-from fastapi import HTTPException
 from starlette.requests import Request
 
-import config
 from routes.auth import RegisterRequest, register
 
 
@@ -21,22 +19,19 @@ def _request():
     })
 
 
-class TestRegistrationGate(unittest.TestCase):
-    def test_closed_registration_rejects_before_rate_limiter_or_database(self):
-        previous = config.REGISTRATION_OPEN
-        config.REGISTRATION_OPEN = False
-        try:
-            with patch("routes.auth.check_rate_limit", side_effect=AssertionError(
-                "rate limiter must not run when registration is disabled"
-            )), patch("routes.auth.create_user", side_effect=AssertionError(
-                "database account creation must not run when registration is disabled"
-            )):
-                with self.assertRaises(HTTPException) as raised:
-                    register(RegisterRequest(username="new-user", password="safe-test-password"), _request())
-            self.assertEqual(raised.exception.status_code, 403)
-            self.assertEqual(raised.exception.detail, "Registration is currently disabled.")
-        finally:
-            config.REGISTRATION_OPEN = previous
+class TestPublicRegistration(unittest.TestCase):
+    def test_registration_creates_an_ordinary_user_without_invite_code(self):
+        created_user = {"id": 123, "username": "public-user", "role": "user"}
+        with patch("routes.auth.check_rate_limit", return_value=True), patch(
+            "routes.auth.create_user", return_value=created_user
+        ) as create:
+            response = register(
+                RegisterRequest(username="public-user", password="safe-test-password"),
+                _request(),
+            )
+        self.assertTrue(response["created"])
+        self.assertEqual(response["user"]["role"], "user")
+        create.assert_called_once_with("public-user", "safe-test-password")
 
 
 if __name__ == "__main__":
