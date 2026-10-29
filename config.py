@@ -90,13 +90,10 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
-# Smart BethG is currently a public-testing product: self-registration is open
-# by default in every environment. Operators can explicitly disable it when needed.
-REGISTRATION_OPEN = os.getenv(
-    "SMART_BETHG_REGISTRATION_OPEN",
-    "true",
-).strip().lower() == "true"
-REGISTRATION_INVITE_CODE = ""
+# Self-registration is intentionally open: this is a public application.
+# It cannot silently close because a deployment variable is absent.
+# There is no invite code; rate limits and password validation remain active.
+REGISTRATION_OPEN = True
 
 # Database-backed rate limiting uses these limits across processes and replicas.
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_MAX", "10"))
