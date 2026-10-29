@@ -90,11 +90,11 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
-# Self-registration is available by default in development/test only.
-# Production is fail-closed: an operator must explicitly opt in after launch review.
+# Smart BethG is currently a public-testing product: self-registration is open
+# by default in every environment. Operators can explicitly disable it when needed.
 REGISTRATION_OPEN = os.getenv(
     "SMART_BETHG_REGISTRATION_OPEN",
-    "false" if IS_PRODUCTION else "true",
+    "true",
 ).strip().lower() == "true"
 REGISTRATION_INVITE_CODE = ""
 
