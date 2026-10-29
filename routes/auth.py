@@ -78,8 +78,8 @@ def logout(request: Request, _csrf=Depends(require_csrf)):
 @router.post("/register")
 def register(payload: RegisterRequest, request: Request, _csrf=Depends(require_csrf)):
     """
-    Create an account only when the deployment explicitly permits registration.
-    Production defaults to closed; development/test defaults to open.
+    Create an account when public registration is enabled.
+    Registration is open by default for the current public-testing phase.
     """
     if not config.REGISTRATION_OPEN:
         raise HTTPException(status_code=403, detail="Registration is currently disabled.")
