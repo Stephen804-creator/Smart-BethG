@@ -4,7 +4,6 @@
   const modeToggle = document.getElementById("authModeToggle");
   const submitBtn = document.getElementById("authSubmit");
   const title = document.getElementById("authTitle");
-  const inviteCodeGroup = document.getElementById("inviteCodeGroup");
   let mode = "login";
 
   async function getCsrfToken() {
@@ -21,12 +20,10 @@
       title.textContent = "Log in to Smart BethG";
       submitBtn.textContent = "Log in";
       modeToggle.textContent = "Need an account? Create one";
-      inviteCodeGroup.hidden = true;
     } else {
       title.textContent = "Create your Smart BethG account";
       submitBtn.textContent = "Create account";
       modeToggle.textContent = "Already have an account? Log in";
-      inviteCodeGroup.hidden = false;
     }
     errorEl.textContent = "";
   }
@@ -59,12 +56,11 @@
     try {
       const csrfToken = await getCsrfToken();
       if (mode === "register") {
-        const inviteCode = form.inviteCode.value.trim();
         const res = await fetch("/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
           credentials: "same-origin",
-          body: JSON.stringify({ username, password, invite_code: inviteCode || null }),
+          body: JSON.stringify({ username, password }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -97,10 +93,6 @@
   fetch("/auth/config")
     .then((r) => r.json())
     .then((data) => {
-      if (data.registration_open === false) {
-        modeToggle.hidden = true;
-        inviteCodeGroup.hidden = true;
-      }
       if (data.google_oauth_enabled) {
         document.getElementById("googleAuthDivider").hidden = false;
         document.getElementById("googleAuthButton").hidden = false;
