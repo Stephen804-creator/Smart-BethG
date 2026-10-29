@@ -11,7 +11,7 @@ Smart BethG is an AI-assisted agent workspace with chat, provider routing, memor
 - **Scaling:** one or multiple application instances use the same PostgreSQL database. Authentication rate-limit events are shared through the database.
 - **Files and workspaces:** local storage works for development and single-instance testing. Multiple instances require a shared durable storage mount for uploads, generated artifacts, and workspaces. PostgreSQL does not share local files between replicas.
 - **Hosting:** provider-neutral Python/ASGI application. No Render-specific manifest, API, or runtime is required. Deploy to any compatible Linux/Python host that can provide PostgreSQL and durable storage.
-- **Security:** self-registration stays open for public testing by default; operators can explicitly disable it with SMART_BETHG_REGISTRATION_OPEN=false. Direct host-side filesystem, Git, terminal, network, and Docker actions remain disabled. External connector actions use owner-scoped installations, OAuth credentials encrypted at rest, typed permissions, and approval for side effects. Training export remains disabled until opt-in consent controls exist.
+- **Security:** self-registration is intentionally open for this public application; no invite code or deployment flag is required. Direct host-side filesystem, Git, terminal, network, and Docker actions remain disabled. External connector actions use owner-scoped installations, OAuth credentials encrypted at rest, typed permissions, and approval for side effects. Training export remains disabled until opt-in consent controls exist.
 
 ## Requirements
 
@@ -93,7 +93,6 @@ Set these variables in the hosting provider's secret/configuration manager:
 - `DATABASE_URL=postgresql://...` — use the database provider's TLS-enabled connection URL when available.
 - `SMART_BETHG_SECRET_KEY` — generate a long random secret; never commit it.
 - `SMART_BETHG_SESSION_HTTPS_ONLY=true`
-- `SMART_BETHG_REGISTRATION_OPEN=true` for the current public-testing phase. Set it to `false` only when you intentionally want to pause new account creation; existing users should still be able to log in.
 - `SMART_BETHG_STORAGE_ROOT=/absolute/path/to/durable/storage`
 - `SMART_BETHG_ALLOWED_ORIGINS` — comma-separated exact browser origins only if a separate frontend origin needs CORS.
 - Provider API keys as needed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`.
