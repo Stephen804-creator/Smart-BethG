@@ -34,6 +34,26 @@ class TestRateLimiter(SmartBethGTestCase):
             check_rate_limit(key)
         self.assertFalse(check_rate_limit(key))
 
+    def test_epoch_columns_preserve_rate_limit_window_precision(self):
+        conn = get_connection()
+        try:
+            event_type = conn.execute(
+                "SELECT data_type FROM information_schema.columns "
+                "WHERE table_schema=current_schema() "
+                "AND table_name='auth_rate_limit_events' AND column_name='hit_epoch'"
+            ).fetchone()
+            lock_type = conn.execute(
+                "SELECT data_type FROM information_schema.columns "
+                "WHERE table_schema=current_schema() "
+                "AND table_name='auth_rate_limit_locks' AND column_name='last_seen_epoch'"
+            ).fetchone()
+            self.assertIsNotNone(event_type)
+            self.assertIsNotNone(lock_type)
+            self.assertEqual(event_type["data_type"], "double precision")
+            self.assertEqual(lock_type["data_type"], "double precision")
+        finally:
+            conn.close()
+
     def test_different_keys_are_independent(self):
         for _ in range(3):
             check_rate_limit("login:1.1.1.1")
