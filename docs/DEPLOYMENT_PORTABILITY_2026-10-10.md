@@ -30,7 +30,7 @@ Required configuration contract:
 - `SMART_BETHG_SECRET_KEY` set to a long, random, persistent secret. Changing it invalidates signed sessions.
 - `SMART_BETHG_SESSION_HTTPS_ONLY=true` behind HTTPS.
 - `SMART_BETHG_STORAGE_ROOT` set to a durable writable storage location, or configure a future shared-storage backend when available.
-- `SMART_BETHG_REGISTRATION_OPEN=false` until the public-launch gates are approved.
+- `SMART_BETHG_REGISTRATION_OPEN=false` until the public-launch gates are approved. Production defaults to closed when the variable is absent; explicitly setting it to true is an operator decision that must follow launch review.
 - `SMART_BETHG_ALLOWED_ORIGINS` set to exact trusted browser origins; leave empty if no cross-origin browser client is needed.
 - Provider API keys supplied through the host's secret manager/environment, never committed to Git.
 
