@@ -24,6 +24,7 @@
         rel="stylesheet"
         href="{{ url_for('static', filename='css/main.css') }}"
     >
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/onboarding.css') }}">
 
     <link
         rel="stylesheet"
@@ -84,6 +85,8 @@
                 type="button"
                 id="newChatButton"
                 class="btn btn-secondary btn-block new-chat-button"
+                title="New chat"
+                aria-label="Start a new chat"
             >
                 <i class="fa-solid fa-plus" aria-hidden="true"></i>
                 <span>New chat</span>
@@ -108,6 +111,10 @@
             </div>
 
             <div class="topbar-actions">
+
+<button type="button" id="helpButton" class="icon-button onboarding-help-button" aria-label="How to use Smart BethG" title="Help and getting started">
+                    <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
+                </button>
 
 <button
                     type="button"
@@ -175,13 +182,21 @@
 
                 <div class="assistant-input">
 
-                    <select
-                        id="providerSelect"
-                        aria-label="AI provider"
-                        class="form-control provider-select"
-                    >
-                    </select>
-                    <p id="providerStatus" class="form-help provider-status" role="status" hidden></p>
+                    <details class="chat-response-options">
+                        <summary>
+                            <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                            <span>Response options</span>
+                            <i class="fa-solid fa-chevron-down options-chevron" aria-hidden="true"></i>
+                        </summary>
+                        <label class="form-label" for="providerSelect">Response routing</label>
+                        <select
+                            id="providerSelect"
+                            aria-label="Response routing"
+                            class="form-control provider-select"
+                        >
+                        </select>
+                        <p id="providerStatus" class="form-help provider-status" role="status" hidden></p>
+                    </details>
 
                     <textarea
                         id="prompt"
@@ -226,6 +241,47 @@
 <script src="{{ url_for('static', filename='js/topbar.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 <script src="{{ url_for('static', filename='js/register-sw.js') }}"></script>
+<script src="{{ url_for('static', filename='js/onboarding.js') }}" defer></script>
+
+    <!-- First-run guide: describes real user journeys, not implementation details. -->
+    <dialog class="onboarding-dialog" id="onboardingDialog" aria-labelledby="onboardingTitle" aria-describedby="onboardingDescription">
+        <div class="onboarding-shell">
+            <header class="onboarding-header">
+                <a class="onboarding-brand" href="{{ url_for('main.home') }}" aria-label="Smart BethG home">
+                    <span class="onboarding-brand-mark" aria-hidden="true"><i class="fa-solid fa-brain"></i></span>
+                    <span>Smart BethG <small>Getting started</small></span>
+                </a>
+                <button type="button" class="onboarding-close" id="onboardingClose" aria-label="Close getting started guide"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            </header>
+            <div class="onboarding-progress" aria-label="Guide progress">
+                <span id="onboardingProgressBar"></span>
+            </div>
+            <div class="onboarding-main">
+                <aside class="onboarding-visual" aria-hidden="true">
+                    <div class="onboarding-orbit orbit-one"></div><div class="onboarding-orbit orbit-two"></div>
+                    <div class="onboarding-visual-icon" id="onboardingVisualIcon"><i class="fa-solid fa-compass"></i></div>
+                    <span class="onboarding-visual-caption" id="onboardingVisualCaption">Your ideas, in one workspace</span>
+                </aside>
+                <section class="onboarding-copy">
+                    <p class="eyebrow" id="onboardingStepLabel">STEP 1 OF 6</p>
+                    <h2 id="onboardingTitle">Welcome to Smart BethG</h2>
+                    <p id="onboardingDescription">A workspace for thinking through tasks, having conversations, and organizing work with an AI assistant.</p>
+                    <div class="onboarding-tip" id="onboardingTip">
+                        <i class="fa-solid fa-lightbulb" aria-hidden="true"></i>
+                        <span>Start with what you want to achieve. You do not need special commands.</span>
+                    </div>
+                </section>
+            </div>
+            <footer class="onboarding-footer">
+                <button type="button" class="btn btn-ghost" id="onboardingBack" disabled>Back</button>
+                <div class="onboarding-dots" id="onboardingDots" aria-label="Guide steps"></div>
+                <div class="onboarding-footer-actions">
+                    <button type="button" class="btn btn-secondary" id="onboardingSkip">Skip guide</button>
+                    <button type="button" class="btn btn-primary" id="onboardingNext">Next <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+                </div>
+            </footer>
+        </div>
+    </dialog>
 
 </body>
 

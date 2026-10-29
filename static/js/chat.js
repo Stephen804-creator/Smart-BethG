@@ -207,6 +207,7 @@
       conversationId = null;
       window.localStorage.removeItem(STORAGE_KEY);
       messagesEl.innerHTML = "";
+      renderWelcome();
       promptEl.focus();
       loadConversationList();
     });
@@ -271,6 +272,55 @@
     }
   }
 
+  function renderWelcome() {
+    if (messagesEl.querySelector(".chat-welcome")) return;
+    const welcome = document.createElement("section");
+    welcome.className = "chat-welcome";
+    welcome.setAttribute("aria-labelledby", "chatWelcomeTitle");
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = "YOUR AI WORKSPACE";
+    const title = document.createElement("h2");
+    title.id = "chatWelcomeTitle";
+    title.textContent = "What would you like to work on?";
+    const description = document.createElement("p");
+    description.className = "chat-welcome-description";
+    description.textContent = "Start with an idea, a question, or something you want to build. Choose a starting point or write your own request below.";
+    const suggestions = document.createElement("div");
+    suggestions.className = "chat-suggestions";
+    const options = [
+      ["fa-code", "Build an application", "Plan and build an app step by step.", "Help me plan and build an application step by step. Start by asking what the application should do."],
+      ["fa-lightbulb", "Explore an idea", "Turn an idea into a practical plan.", "Help me turn an idea into a practical plan. Ask me the key questions first."],
+      ["fa-graduation-cap", "Learn something", "Explain a topic with examples.", "Teach me a topic step by step with beginner-friendly explanations and practical examples."],
+      ["fa-list-check", "Organise a project", "Break work into clear tasks.", "Help me organise a project into clear goals, tasks, and milestones."]
+    ];
+    options.forEach(([iconClass, headingText, detailText, promptText]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "chat-suggestion";
+      const icon = document.createElement("i");
+      icon.className = "fa-solid " + iconClass;
+      icon.setAttribute("aria-hidden", "true");
+      const heading = document.createElement("strong");
+      heading.textContent = headingText;
+      const detail = document.createElement("span");
+      detail.textContent = detailText;
+      button.append(icon, heading, detail);
+      button.addEventListener("click", () => {
+        promptEl.value = promptText;
+        promptEl.focus();
+        promptEl.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      suggestions.appendChild(button);
+    });
+    welcome.append(eyebrow, title, description, suggestions);
+    messagesEl.appendChild(welcome);
+  }
+
+  function clearWelcome() {
+    messagesEl.querySelector(".chat-welcome")?.remove();
+  }
+
   function renderMessage(role, content, note) {
     const wrapper = document.createElement("div");
     wrapper.className = "message " + (role === "user" ? "message-user" : "message-assistant");
@@ -314,7 +364,13 @@
       }
       if (!res.ok) throw new Error("Conversation messages request failed.");
       const data = await res.json();
-      (data.messages || []).forEach((m) => renderMessage(m.role, m.content));
+      const history = data.messages || [];
+      messagesEl.replaceChildren();
+      if (history.length) {
+        history.forEach((m) => renderMessage(m.role, m.content));
+      } else {
+        renderWelcome();
+      }
       const status = document.getElementById("conversationStatus");
       if (status) status.replaceChildren();
     } catch (err) {
@@ -324,6 +380,7 @@
   }
 
   async function sendMessage(text) {
+    messagesEl.querySelector(".chat-welcome")?.remove();
     renderMessage("user", text);
     sendBtn.disabled = true;
     promptEl.disabled = true;
@@ -409,7 +466,8 @@
   if (prefill) promptEl.value = prefill;
 
   loadProviders();
-  loadHistory();
+  if (conversationId) loadHistory();
+  else renderWelcome();
   loadConversationList();
   loadApprovals();
 })();
