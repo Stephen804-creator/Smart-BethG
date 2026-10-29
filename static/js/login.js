@@ -97,6 +97,10 @@
   fetch("/auth/config")
     .then((r) => r.json())
     .then((data) => {
+      if (data.registration_open === false) {
+        modeToggle.hidden = true;
+        inviteCodeGroup.hidden = true;
+      }
       if (data.google_oauth_enabled) {
         document.getElementById("googleAuthDivider").hidden = false;
         document.getElementById("googleAuthButton").hidden = false;
