@@ -78,11 +78,8 @@ def logout(request: Request, _csrf=Depends(require_csrf)):
 @router.post("/register")
 def register(payload: RegisterRequest, request: Request, _csrf=Depends(require_csrf)):
     """
-    Create an account when public registration is enabled.
-    Registration is open by default for the current public-testing phase.
+    Public self-registration is always open; rate limits and password validation apply.
     """
-    if not config.REGISTRATION_OPEN:
-        raise HTTPException(status_code=403, detail="Registration is currently disabled.")
     if not check_rate_limit(f"register:{_client_ip(request)}"):
         logger.warning("Registration rate-limited for %s", _client_ip(request))
         raise HTTPException(status_code=429, detail="Too many attempts. Please wait and try again.")
