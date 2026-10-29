@@ -90,11 +90,10 @@ ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 
-# Self-registration is intentionally open for ongoing product testing.
+# Self-registration is intentionally open: this is a public application.
 # It cannot silently close because a deployment variable is absent.
-# Invite codes are disabled; rate limits and password validation remain active.
+# There is no invite code; rate limits and password validation remain active.
 REGISTRATION_OPEN = True
-REGISTRATION_INVITE_CODE = ""
 
 # Database-backed rate limiting uses these limits across processes and replicas.
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_MAX", "10"))
