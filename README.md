@@ -3,7 +3,7 @@
 **Status:** Active development — not yet cleared for unrestricted public launch.  
 **Last updated:** 2026-10-10 UTC. See [the decision log](docs/DECISION_LOG.md) and [architecture decisions](architecture.md) for dated records.
 
-Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration is kept open for continuous testing. Public launch is still blocked by unfinished account/privacy controls, legal review, production connector validation, and operational recovery gates; do not expose a production deployment to the public until those gates are completed.
+Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration is open by default so the owner can share the app with testers and gather feedback. Public availability does not grant administrator permissions; privileged operations must remain separately authorized. Public launch is still blocked by unfinished account/privacy controls, legal review, production connector validation, and operational recovery gates.
 
 ## Architecture decisions
 
@@ -11,7 +11,7 @@ Smart BethG is an AI-assisted agent workspace with chat, provider routing, memor
 - **Scaling:** one or multiple application instances use the same PostgreSQL database. Authentication rate-limit events are shared through the database.
 - **Files and workspaces:** local storage works for development and single-instance testing. Multiple instances require a shared durable storage mount for uploads, generated artifacts, and workspaces. PostgreSQL does not share local files between replicas.
 - **Hosting:** provider-neutral Python/ASGI application. No Render-specific manifest, API, or runtime is required. Deploy to any compatible Linux/Python host that can provide PostgreSQL and durable storage.
-- **Security:** self-registration stays open for testing. Direct host-side filesystem, Git, terminal, network, and Docker actions remain disabled. External connector actions use owner-scoped installations, OAuth credentials encrypted at rest, typed permissions, and approval for side effects. Training export remains disabled until opt-in consent controls exist.
+- **Security:** self-registration is intentionally open for this public application; no invite code or deployment flag is required. Direct host-side filesystem, Git, terminal, network, and Docker actions remain disabled. External connector actions use owner-scoped installations, OAuth credentials encrypted at rest, typed permissions, and approval for side effects. Training export remains disabled until opt-in consent controls exist.
 
 ## Requirements
 
@@ -115,7 +115,7 @@ Never paste the generated value into source code or commit history.
 
 ## Initial administrator
 
-Self-registration is open for testing and is not a public-launch approval. After setting up the production PostgreSQL database, create the first administrator from a trusted terminal:
+Self-registration is open for testing and is not, by itself, public-launch approval. After setting up the production PostgreSQL database, create the first administrator from a trusted terminal:
 
 ```bash
 python scripts/manage_user.py create-admin

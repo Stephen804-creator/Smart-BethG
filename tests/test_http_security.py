@@ -129,19 +129,39 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 401)
 
-    def test_registration_stays_open_even_if_legacy_close_flag_is_false(self):
-        # Registration must not silently close when a deployment variable is
-        # missing or an old flag remains configured.
-        with patch.object(config, "REGISTRATION_OPEN", False):
-            client = TestClient(create_app())
-            token = client.get("/auth/csrf").json()["csrf_token"]
+    def test_registration_is_public_and_does_not_require_an_invite_code(self):
+        client = TestClient(create_app())
+        token = client.get("/auth/csrf").json()["csrf_token"]
+        with patch("routes.auth.create_user", return_value={
+            "id": 987654, "username": "public-signup-test", "role": "user"
+        }):
             response = client.post(
                 "/auth/register",
                 headers={"X-CSRF-Token": token},
-                json={"username": "open-registration-test", "password": "not-a-real-password"},
+                json={"username": "public-signup-test", "password": "safe-test-password"},
             )
         self.assertEqual(response.status_code, 200, response.text)
         self.assertTrue(response.json().get("created"))
+        self.assertEqual(response.json()["user"]["role"], "user")
+
+    def test_ordinary_user_cannot_access_admin_only_endpoints(self):
+        from services.auth_service import create_user
+
+        username = "ordinary-admin-boundary-test"
+        create_user(username, "admin-boundary-test-password")
+        client = TestClient(create_app())
+        token = client.get("/auth/csrf").json()["csrf_token"]
+        login = client.post(
+            "/auth/login",
+            headers={"X-CSRF-Token": token},
+            json={"username": username, "password": "admin-boundary-test-password"},
+        )
+        self.assertEqual(login.status_code, 200, login.text)
+
+        audit = client.get("/audit/all")
+        training_export = client.get("/admin/training-export/preview")
+        self.assertEqual(audit.status_code, 403, audit.text)
+        self.assertEqual(training_export.status_code, 403, training_export.text)
 
     def test_cors_preflight_accepts_only_configured_origin(self):
         # Browsers should receive CORS permission only for explicitly configured

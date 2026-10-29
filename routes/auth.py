@@ -78,9 +78,7 @@ def logout(request: Request, _csrf=Depends(require_csrf)):
 @router.post("/register")
 def register(payload: RegisterRequest, request: Request, _csrf=Depends(require_csrf)):
     """
-    Public self-registration remains open for continuous testing.
-    Rate limiting, password validation, and duplicate-account checks remain active.
-    No deployment flag or invite code can silently disable registration.
+    Public self-registration is always open; rate limits and password validation apply.
     """
     if not check_rate_limit(f"register:{_client_ip(request)}"):
         logger.warning("Registration rate-limited for %s", _client_ip(request))
@@ -99,7 +97,10 @@ def register(payload: RegisterRequest, request: Request, _csrf=Depends(require_c
 @router.get("/config")
 def auth_config():
     """Lets the frontend know which sign-in options are actually usable."""
-    return {"google_oauth_enabled": config.GOOGLE_OAUTH_ENABLED}
+    return {
+        "google_oauth_enabled": config.GOOGLE_OAUTH_ENABLED,
+        "registration_open": config.REGISTRATION_OPEN,
+    }
 
 
 @router.get("/me")
