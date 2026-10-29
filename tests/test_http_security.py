@@ -129,19 +129,23 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 401)
 
-    def test_registration_stays_open_even_if_legacy_close_flag_is_false(self):
-        # Registration must not silently close when a deployment variable is
-        # missing or an old flag remains configured.
+    def test_registration_is_rejected_when_registration_gate_is_closed(self):
+        # The deployment gate must be enforced by the HTTP route, not merely
+        # reflected in frontend configuration. A closed gate must not create an account.
+        from services.auth_service import get_user_by_username
+
+        username = "closed-registration-test"
         with patch.object(config, "REGISTRATION_OPEN", False):
             client = TestClient(create_app())
             token = client.get("/auth/csrf").json()["csrf_token"]
             response = client.post(
                 "/auth/register",
                 headers={"X-CSRF-Token": token},
-                json={"username": "open-registration-test", "password": "not-a-real-password"},
+                json={"username": username, "password": "not-a-real-password"},
             )
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertTrue(response.json().get("created"))
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertIn("Registration is currently disabled", response.text)
+        self.assertIsNone(get_user_by_username(username))
 
     def test_cors_preflight_accepts_only_configured_origin(self):
         # Browsers should receive CORS permission only for explicitly configured
