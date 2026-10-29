@@ -3,7 +3,7 @@
 **Status:** Active development — not yet cleared for unrestricted public launch.  
 **Last updated:** 2026-10-10 UTC. See [the decision log](docs/DECISION_LOG.md) and [architecture decisions](architecture.md) for dated records.
 
-Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration is kept open for continuous testing. Public launch is still blocked by unfinished account/privacy controls, legal review, production connector validation, and operational recovery gates; do not expose a production deployment to the public until those gates are completed.
+Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration defaults to open in development/test and closed in production; production signup must be explicitly enabled by an operator only after launch approval. Public launch is still blocked by unfinished account/privacy controls, legal review, production connector validation, and operational recovery gates; do not expose a production deployment to the public until those gates are completed.
 
 ## Architecture decisions
 
@@ -93,6 +93,7 @@ Set these variables in the hosting provider's secret/configuration manager:
 - `DATABASE_URL=postgresql://...` — use the database provider's TLS-enabled connection URL when available.
 - `SMART_BETHG_SECRET_KEY` — generate a long random secret; never commit it.
 - `SMART_BETHG_SESSION_HTTPS_ONLY=true`
+- `SMART_BETHG_REGISTRATION_OPEN=false` until public-launch gates are approved; production defaults to closed if this variable is absent.
 - `SMART_BETHG_STORAGE_ROOT=/absolute/path/to/durable/storage`
 - `SMART_BETHG_ALLOWED_ORIGINS` — comma-separated exact browser origins only if a separate frontend origin needs CORS.
 - Provider API keys as needed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`.
