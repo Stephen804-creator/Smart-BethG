@@ -144,6 +144,25 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
         self.assertTrue(response.json().get("created"))
         self.assertEqual(response.json()["user"]["role"], "user")
 
+    def test_ordinary_user_cannot_access_admin_only_endpoints(self):
+        from services.auth_service import create_user
+
+        username = "ordinary-admin-boundary-test"
+        create_user(username, "admin-boundary-test-password")
+        client = TestClient(create_app())
+        token = client.get("/auth/csrf").json()["csrf_token"]
+        login = client.post(
+            "/auth/login",
+            headers={"X-CSRF-Token": token},
+            json={"username": username, "password": "admin-boundary-test-password"},
+        )
+        self.assertEqual(login.status_code, 200, login.text)
+
+        audit = client.get("/audit/all")
+        training_export = client.get("/admin/training-export/preview")
+        self.assertEqual(audit.status_code, 403, audit.text)
+        self.assertEqual(training_export.status_code, 403, training_export.text)
+
     def test_cors_preflight_accepts_only_configured_origin(self):
         # Browsers should receive CORS permission only for explicitly configured
         # origins; a successful preflight for an arbitrary origin could expose
