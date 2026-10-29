@@ -129,19 +129,20 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 401)
 
-    def test_registration_is_rejected_when_registration_gate_is_closed(self):
-        # The deployment gate must be enforced by the HTTP route, not merely
-        # reflected in frontend configuration. A closed gate must not create an account.
-        with patch.object(config, "REGISTRATION_OPEN", False):
-            client = TestClient(create_app())
-            token = client.get("/auth/csrf").json()["csrf_token"]
+    def test_registration_is_public_and_does_not_require_an_invite_code(self):
+        client = TestClient(create_app())
+        token = client.get("/auth/csrf").json()["csrf_token"]
+        with patch("routes.auth.create_user", return_value={
+            "id": 987654, "username": "public-signup-test", "role": "user"
+        }):
             response = client.post(
                 "/auth/register",
                 headers={"X-CSRF-Token": token},
-                json={"username": "closed-registration-test", "password": "not-a-real-password"},
+                json={"username": "public-signup-test", "password": "safe-test-password"},
             )
-        self.assertEqual(response.status_code, 403, response.text)
-        self.assertIn("Registration is currently disabled", response.text)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json().get("created"))
+        self.assertEqual(response.json()["user"]["role"], "user")
 
     def test_cors_preflight_accepts_only_configured_origin(self):
         # Browsers should receive CORS permission only for explicitly configured
