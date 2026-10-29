@@ -20,8 +20,6 @@ services:
         value: production
       - key: SMART_BETHG_SESSION_HTTPS_ONLY
         value: "true"
-      - key: SMART_BETHG_REGISTRATION_OPEN
-        value: "true"
       - key: DATABASE_URL
         sync: false
       - key: SMART_BETHG_SECRET_KEY
