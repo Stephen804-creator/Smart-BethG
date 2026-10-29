@@ -3,7 +3,7 @@
 **Status:** Active development — not yet cleared for unrestricted public launch.  
 **Last updated:** 2026-10-10 UTC. See [the decision log](docs/DECISION_LOG.md) and [architecture decisions](architecture.md) for dated records.
 
-Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration defaults to open in development/test and closed in production; production signup must be explicitly enabled by an operator only after launch approval. Public launch is still blocked by unfinished account/privacy controls, legal review, production connector validation, and operational recovery gates; do not expose a production deployment to the public until those gates are completed.
+Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration is open by default so the owner can share the app with testers and gather feedback. Public availability does not grant administrator permissions; privileged operations must remain separately authorized. Public launch is still blocked by unfinished account/privacy controls, legal review, production connector validation, and operational recovery gates.
 
 ## Architecture decisions
 
@@ -11,7 +11,7 @@ Smart BethG is an AI-assisted agent workspace with chat, provider routing, memor
 - **Scaling:** one or multiple application instances use the same PostgreSQL database. Authentication rate-limit events are shared through the database.
 - **Files and workspaces:** local storage works for development and single-instance testing. Multiple instances require a shared durable storage mount for uploads, generated artifacts, and workspaces. PostgreSQL does not share local files between replicas.
 - **Hosting:** provider-neutral Python/ASGI application. No Render-specific manifest, API, or runtime is required. Deploy to any compatible Linux/Python host that can provide PostgreSQL and durable storage.
-- **Security:** self-registration stays open for testing. Direct host-side filesystem, Git, terminal, network, and Docker actions remain disabled. External connector actions use owner-scoped installations, OAuth credentials encrypted at rest, typed permissions, and approval for side effects. Training export remains disabled until opt-in consent controls exist.
+- **Security:** self-registration stays open for public testing by default; operators can explicitly disable it with SMART_BETHG_REGISTRATION_OPEN=false. Direct host-side filesystem, Git, terminal, network, and Docker actions remain disabled. External connector actions use owner-scoped installations, OAuth credentials encrypted at rest, typed permissions, and approval for side effects. Training export remains disabled until opt-in consent controls exist.
 
 ## Requirements
 
@@ -93,7 +93,7 @@ Set these variables in the hosting provider's secret/configuration manager:
 - `DATABASE_URL=postgresql://...` — use the database provider's TLS-enabled connection URL when available.
 - `SMART_BETHG_SECRET_KEY` — generate a long random secret; never commit it.
 - `SMART_BETHG_SESSION_HTTPS_ONLY=true`
-- `SMART_BETHG_REGISTRATION_OPEN=false` until public-launch gates are approved; production defaults to closed if this variable is absent.
+- `SMART_BETHG_REGISTRATION_OPEN=true` for the current public-testing phase. Set it to `false` only when you intentionally want to pause new account creation; existing users should still be able to log in.
 - `SMART_BETHG_STORAGE_ROOT=/absolute/path/to/durable/storage`
 - `SMART_BETHG_ALLOWED_ORIGINS` — comma-separated exact browser origins only if a separate frontend origin needs CORS.
 - Provider API keys as needed: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`.
@@ -116,7 +116,7 @@ Never paste the generated value into source code or commit history.
 
 ## Initial administrator
 
-Self-registration is open for testing and is not a public-launch approval. After setting up the production PostgreSQL database, create the first administrator from a trusted terminal:
+Self-registration is open for testing and is not, by itself, public-launch approval. After setting up the production PostgreSQL database, create the first administrator from a trusted terminal:
 
 ```bash
 python scripts/manage_user.py create-admin
