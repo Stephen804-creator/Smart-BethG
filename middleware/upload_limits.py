@@ -70,11 +70,13 @@ class UploadBodyLimitMiddleware:
             while True:
                 message = await receive()
                 if message["type"] == "http.disconnect":
+                    body.close()
                     return
                 if message["type"] != "http.request":
                     continue
                 chunk = message.get("body", b"")
                 if total + len(chunk) > self.max_body_bytes:
+                    body.close()
                     await self._reject(send, 413, "Upload request exceeds the configured size limit.")
                     return
                 body.write(chunk)
