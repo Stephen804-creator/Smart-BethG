@@ -39,7 +39,7 @@ class SandboxService:
             runtime, image = resolve_runtime(runtime_id)
         except RuntimeUnavailableError as exc:
             self._record(run_id, user_id, workspace_id, "rejected", None,
-                         runtime_id, None, {}, "sandbox_unavailable")
+                         runtime.command_name, None, {}, "sandbox_unavailable")
             raise SandboxUnavailableError(str(exc)) from exc
         if len(source.encode("utf-8")) > runtime.max_source_bytes:
             raise ValueError(
@@ -48,7 +48,7 @@ class SandboxService:
         docker = shutil.which("docker")
         if not docker:
             self._record(run_id, user_id, workspace_id, "rejected", image,
-                         runtime_id, None, {}, "sandbox_unavailable")
+                         runtime.command_name, None, {}, "sandbox_unavailable")
             raise SandboxUnavailableError("The isolated execution service is unavailable.")
         if config.IS_PRODUCTION and not self._docker_is_rootless(docker):
             self._record(run_id, user_id, workspace_id, "rejected", image,
@@ -57,7 +57,7 @@ class SandboxService:
                 "Production code execution requires a rootless Docker runtime."
             )
 
-        self._record(run_id, user_id, workspace_id, "running", image, runtime_id, None, {}, None)
+        self._record(run_id, user_id, workspace_id, "running", image, runtime.command_name, None, {}, None)
         started = time.monotonic()
         container_name = "sbx-" + run_id.replace("-", "")[:24]
         try:
@@ -148,7 +148,7 @@ class SandboxService:
                     "duration_ms": elapsed_ms,
                     "output_truncated": True,
                 }
-                self._record(run_id, user_id, workspace_id, "timed_out", image, runtime_id,
+                self._record(run_id, user_id, workspace_id, "timed_out", image, runtime.command_name,
                              None, payload, "timeout")
                 return {"id": run_id, "status": "timed_out", "exit_code": None, **payload}
             if output_limit_reached.is_set():
@@ -158,7 +158,7 @@ class SandboxService:
                     "duration_ms": elapsed_ms,
                     "output_truncated": True,
                 }
-                self._record(run_id, user_id, workspace_id, "failed", image, runtime_id,
+                self._record(run_id, user_id, workspace_id, "failed", image, runtime.command_name,
                              None, payload, "output_limit")
                 return {"id": run_id, "status": "failed", "exit_code": None, **payload}
 
@@ -170,12 +170,12 @@ class SandboxService:
                 "output_truncated": False,
             }
             status = "succeeded" if return_code == 0 else "failed"
-            self._record(run_id, user_id, workspace_id, status, image, runtime_id,
+            self._record(run_id, user_id, workspace_id, status, image, runtime.command_name,
                          return_code, payload, None if return_code == 0 else "nonzero_exit")
             return {"id": run_id, "status": status, "exit_code": return_code, **payload}
         except Exception:
             self._cleanup_container(docker, container_name)
-            self._record(run_id, user_id, workspace_id, "failed", image, runtime_id,
+            self._record(run_id, user_id, workspace_id, "failed", image, runtime.command_name,
                          None, {}, "sandbox_runtime_error")
             raise
 
