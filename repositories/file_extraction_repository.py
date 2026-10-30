@@ -32,6 +32,31 @@ class FileExtractionRepository:
         finally:
             conn.close()
 
+    def reconcile_abandoned(self):
+        """Close pending extraction states whose durable jobs exhausted their leases."""
+        conn = get_connection()
+        try:
+            cursor = conn.execute(
+                "UPDATE file_extractions AS extraction SET status='failed',"
+                "error_code='worker_lease_exhausted',updated_at=CURRENT_TIMESTAMP "
+                "WHERE extraction.status='pending' AND NOT EXISTS ("
+                "SELECT 1 FROM background_jobs j WHERE j.user_id=extraction.user_id "
+                "AND j.job_type='file.extract_pdf' "
+                "AND j.idempotency_key='file-pdf-extract:' || extraction.file_id "
+                "AND j.status IN ('queued','running')) "
+                "AND EXISTS (SELECT 1 FROM background_jobs j "
+                "WHERE j.user_id=extraction.user_id AND j.job_type='file.extract_pdf' "
+                "AND j.idempotency_key='file-pdf-extract:' || extraction.file_id "
+                "AND j.status='failed')"
+            )
+            conn.commit()
+            return cursor.rowcount
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def fail(self, file_id, user_id, error_code):
         conn = get_connection()
         try:
