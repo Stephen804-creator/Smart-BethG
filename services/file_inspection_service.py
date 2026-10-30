@@ -70,12 +70,42 @@ class ClamAVScanner:
         raise InspectionUnavailable("Malware scanner returned an unrecognized result.")
 
 
+def _validate_zip_directory_bounds(content, max_entries):
+    """Reject oversized/multi-disk/ZIP64 central directories before zipfile allocates entries."""
+    signature = bytes((0x50, 0x4B, 0x05, 0x06))
+    offset = content.rfind(signature, max(0, len(content) - 65557))
+    if offset < 0 or offset + 22 > len(content):
+        raise InspectionRejected("archive_invalid")
+    try:
+        _signature, disk, directory_disk, disk_entries, total_entries, directory_size, directory_offset, comment_size = struct.unpack_from(
+            "<4s4H2LH", content, offset
+        )
+    except struct.error as exc:
+        raise InspectionRejected("archive_invalid") from exc
+    if offset + 22 + comment_size != len(content):
+        raise InspectionRejected("archive_invalid")
+    if disk or directory_disk or disk_entries != total_entries:
+        raise InspectionRejected("archive_multidisk_not_supported")
+    if (
+        disk_entries == 0xFFFF
+        or total_entries == 0xFFFF
+        or directory_size == 0xFFFFFFFF
+        or directory_offset == 0xFFFFFFFF
+    ):
+        raise InspectionRejected("archive_zip64_not_supported")
+    if total_entries > max_entries:
+        raise InspectionRejected("archive_entry_limit")
+    if directory_offset + directory_size != offset:
+        raise InspectionRejected("archive_invalid_directory_bounds")
+
+
 def inspect_zip_structure(content):
     """Validate ZIP metadata without extracting or writing archive members."""
     max_entries = config.FILE_ARCHIVE_MAX_ENTRIES
     max_expanded = config.FILE_ARCHIVE_MAX_EXPANDED_BYTES
     max_ratio = config.FILE_ARCHIVE_MAX_COMPRESSION_RATIO
     try:
+        _validate_zip_directory_bounds(content, max_entries)
         with zipfile.ZipFile(io.BytesIO(content), "r") as archive:
             entries = archive.infolist()
             if len(entries) > max_entries:
