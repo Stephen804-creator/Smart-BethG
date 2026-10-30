@@ -41,7 +41,7 @@ class ClamAVScanner:
         try:
             with socket.create_connection((self.host, self.port), timeout=self.timeout) as sock:
                 sock.settimeout(self.timeout)
-                sock.sendall(b"zINSTREAM\\0")
+                sock.sendall(b"zINSTREAM\0")
                 view = memoryview(content)
                 for offset in range(0, len(view), 64 * 1024):
                     chunk = view[offset:offset + 64 * 1024]
@@ -54,12 +54,12 @@ class ClamAVScanner:
                     if not chunk:
                         break
                     response.extend(chunk)
-                    if b"\\0" in chunk or b"\\n" in chunk:
+                    if b"\0" in chunk or b"\n" in chunk:
                         break
         except (OSError, TimeoutError) as exc:
             raise InspectionUnavailable("Malware scanner is temporarily unavailable.") from exc
 
-        result = bytes(response).strip(b"\\0\\r\\n")
+        result = bytes(response).strip(b"\0\r\n")
         if result.endswith(b": OK"):
             return {"engine": "clamav", "status": "clean"}
         if result.endswith(b": FOUND"):
@@ -137,28 +137,26 @@ class FileInspectionService:
                 archive_result = inspect_zip_structure(content)
             scan_result = self.scanner.scan(content)
             released = self._release(record, content)
-            self.repository.set_inspection_state(
-                quarantine_id, job["user_id"], "clean",
-                engine=scan_result.get("engine", "clamav"),
-            )
             return {"status": "released", "file_id": released["file_id"], "archive": archive_result}
         except InspectionRejected as exc:
             self.repository.set_inspection_state(
                 quarantine_id, job["user_id"], "rejected",
                 error_code=str(exc)[:100],
             )
-            raise
+            return {"status": "rejected", "reason_code": str(exc)[:100]}
         except InspectionUnavailable:
+            final_attempt = int(job.get("attempts", 1)) >= int(job.get("max_attempts", 5))
             self.repository.set_inspection_state(
-                quarantine_id, job["user_id"], "queued",
-                error_code="scanner_unavailable",
+                quarantine_id, job["user_id"], "failed" if final_attempt else "queued",
+                error_code="scanner_unavailable" if not final_attempt else "scanner_unavailable_after_retries",
             )
             raise
         except Exception:
             logger.exception("Unexpected file inspection failure id=%s", quarantine_id)
+            final_attempt = int(job.get("attempts", 1)) >= int(job.get("max_attempts", 5))
             self.repository.set_inspection_state(
-                quarantine_id, job["user_id"], "queued",
-                error_code="inspection_error",
+                quarantine_id, job["user_id"], "failed" if final_attempt else "queued",
+                error_code="inspection_error" if not final_attempt else "inspection_error_after_retries",
             )
             raise
 
