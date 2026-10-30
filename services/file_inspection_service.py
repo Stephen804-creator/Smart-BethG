@@ -63,7 +63,7 @@ class ClamAVScanner:
         result = bytes(response).strip(b"\0\r\n")
         if result.endswith(b": OK"):
             return {"engine": "clamav", "status": "clean"}
-        if result.endswith(b": FOUND"):
+        if result.endswith(b" FOUND"):
             raise InspectionRejected("malware_detected")
         if b"ERROR" in result or not result:
             raise InspectionUnavailable("Malware scanner returned an indeterminate result.")
