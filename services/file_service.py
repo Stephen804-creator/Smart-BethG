@@ -1,12 +1,12 @@
 """Owner-scoped file storage, bounded extraction, and budgeted summaries."""
 import hashlib
-import io
 import os
 import re
 import uuid
 
 import config
 from repositories.file_repository import FileRepository
+from repositories.file_extraction_repository import FileExtractionRepository
 from providers.provider_manager import provider_manager
 from providers.model_catalog import model_for_tier
 from services.usage_budget_service import UsageBudgetService, BudgetExceededError
@@ -34,6 +34,7 @@ class FileService:
 
     def __init__(self, repo: FileRepository = None, budget_service: UsageBudgetService = None, storage=None):
         self.repo = repo or FileRepository()
+        self.extraction_repo = FileExtractionRepository()
         self.budget_service = budget_service or UsageBudgetService()
         self.storage = storage or get_storage_backend()
 
@@ -123,30 +124,12 @@ class FileService:
             return text, None
 
         if record["filename"].lower().endswith(".pdf"):
-            try:
-                from pypdf import PdfReader
-                reader = PdfReader(io.BytesIO(content), strict=False)
-                pieces = []
-                total = 0
-                for page_number, page in enumerate(reader.pages):
-                    if page_number >= self.MAX_PDF_PAGES:
-                        pieces.append("\n[Smart BethG stopped extraction at the configured page limit.]")
-                        break
-                    piece = page.extract_text() or ""
-                    remaining = self.MAX_EXTRACTED_TEXT_CHARS - total
-                    if remaining <= 0:
-                        pieces.append("\n[Smart BethG truncated extraction at the configured text limit.]")
-                        break
-                    if len(piece) > remaining:
-                        pieces.append(piece[:remaining])
-                        pieces.append("\n[Smart BethG truncated extraction at the configured text limit.]")
-                        break
-                    pieces.append(piece)
-                    total += len(piece)
-                return "\n".join(pieces), None
-            except Exception as exc:
-                logger.warning("PDF extraction failed: user=%s file_id=%s error_type=%s", user_id, file_id, type(exc).__name__)
-                return None, "Could not extract text from this PDF. Check that it is a valid, unencrypted PDF."
+            extraction = self.extraction_repo.get_for_user(file_id, user_id)
+            if not extraction or extraction["status"] == "pending":
+                return None, "PDF extraction is still processing in the background. Please try again shortly."
+            if extraction["status"] != "ready":
+                return None, "Smart BethG could not extract text from this PDF. The original file is still available to download."
+            return extraction.get("extracted_text") or "", None
         return None, "This file type isn't supported for content extraction yet."
 
     def summarize(self, user_id, file_id):
