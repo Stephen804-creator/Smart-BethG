@@ -12,6 +12,7 @@ import socket
 import stat
 import struct
 import zipfile
+import zlib
 
 import config
 from repositories.file_quarantine_repository import FileQuarantineRepository
@@ -131,7 +132,7 @@ def inspect_zip_structure(content):
         # The worker's wall-clock guard must trigger a retry/failure state,
         # not mislabel an interrupted inspection as a corrupt archive.
         raise
-    except (zipfile.BadZipFile, OSError, RuntimeError, ValueError) as exc:
+    except (zipfile.BadZipFile, OSError, RuntimeError, ValueError, EOFError, zlib.error) as exc:
         raise InspectionRejected("archive_invalid") from exc
     return {"entries": len(entries), "expanded_bytes": total_size}
 
