@@ -6,6 +6,7 @@ from api.dependencies import get_current_user
 from services.rate_limiter import check_rate_limit
 from services.file_service import FileService
 from services.file_quarantine_service import FileQuarantineService
+from repositories.file_extraction_repository import FileExtractionRepository
 
 router = APIRouter(prefix="/files", tags=["files"])
 
@@ -103,6 +104,26 @@ def search_files(q: str = Query(min_length=1, max_length=1000), user=Depends(get
     for record in records:
         record.pop("path", None)
     return {"files": records}
+
+
+
+@router.get("/{file_id}/extraction-status")
+def file_extraction_status(
+    file_id: int,
+    user=Depends(get_current_user),
+    service: FileService = Depends(get_file_service),
+):
+    record = service.get_file(user["id"], file_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found.")
+    if not str(record["filename"]).lower().endswith(".pdf"):
+        return {"file_id": file_id, "status": "not_required"}
+    extraction = FileExtractionRepository().get_for_user(file_id, user["id"])
+    return {
+        "file_id": file_id,
+        "status": extraction["status"] if extraction else "pending",
+        "page_count": extraction.get("page_count") if extraction else None,
+    }
 
 
 @router.get("/{file_id}/download")
