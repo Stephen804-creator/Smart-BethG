@@ -4,7 +4,7 @@ import io
 import config
 from repositories.file_repository import FileRepository
 from repositories.file_extraction_repository import FileExtractionRepository
-from storage.backend import get_storage_backend
+from storage.backend import get_storage_backend, StorageError
 from logging_setup import get_logger
 
 logger = get_logger("file_extraction")
@@ -51,7 +51,7 @@ class FileExtractionService:
         final_attempt = int(job.get("attempts", 1)) >= int(job.get("max_attempts", 3))
         try:
             content = self.storage.get_bytes("uploads", job["user_id"], record["path"])
-        except (OSError, TimeoutError):
+        except (StorageError, OSError, TimeoutError):
             if final_attempt:
                 try:
                     self.extractions.fail(file_id, job["user_id"], "pdf_storage_unavailable")
