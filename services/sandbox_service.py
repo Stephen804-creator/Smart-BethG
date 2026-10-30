@@ -39,7 +39,7 @@ class SandboxService:
             runtime, image = resolve_runtime(runtime_id)
         except RuntimeUnavailableError as exc:
             self._record(run_id, user_id, workspace_id, "rejected", None,
-                         runtime.command_name, None, {}, "sandbox_unavailable")
+                         runtime_id, None, {}, "sandbox_unavailable")
             raise SandboxUnavailableError(str(exc)) from exc
         if len(source.encode("utf-8")) > runtime.max_source_bytes:
             raise ValueError(
