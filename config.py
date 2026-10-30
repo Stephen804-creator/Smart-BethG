@@ -238,6 +238,16 @@ def _validate_runtime_config() -> None:
     storage_backend = os.getenv("SMART_BETHG_OBJECT_STORAGE", "local").strip().lower()
     if not 1 <= FILE_SCANNER_PORT <= 65535:
         invalid.append("FILE_SCANNER_PORT must be between 1 and 65535")
+    if FILE_SCANNER_TIMEOUT_SECONDS <= 0 or FILE_SCANNER_TIMEOUT_SECONDS > 120:
+        invalid.append("FILE_SCANNER_TIMEOUT_SECONDS must be greater than 0 and at most 120")
+    if FILE_INSPECTION_JOB_TIMEOUT_SECONDS < 1 or FILE_INSPECTION_JOB_TIMEOUT_SECONDS > 600:
+        invalid.append("FILE_INSPECTION_JOB_TIMEOUT_SECONDS must be between 1 and 600")
+    if FILE_ARCHIVE_MAX_ENTRIES < 1 or FILE_ARCHIVE_MAX_ENTRIES > 10000:
+        invalid.append("FILE_ARCHIVE_MAX_ENTRIES must be between 1 and 10000")
+    if FILE_ARCHIVE_MAX_EXPANDED_BYTES < 1 or FILE_ARCHIVE_MAX_EXPANDED_BYTES > MAX_UPLOAD_SIZE_BYTES * 20:
+        invalid.append("FILE_ARCHIVE_MAX_EXPANDED_BYTES is outside the permitted range")
+    if FILE_ARCHIVE_MAX_COMPRESSION_RATIO < 1 or FILE_ARCHIVE_MAX_COMPRESSION_RATIO > 1000:
+        invalid.append("FILE_ARCHIVE_MAX_COMPRESSION_RATIO must be between 1 and 1000")
     if storage_backend not in {"local", "s3", "s3-compatible"}:
         invalid.append("SMART_BETHG_OBJECT_STORAGE must be local or s3")
     if storage_backend in {"s3", "s3-compatible"} and not os.getenv("SMART_BETHG_S3_BUCKET", "").strip():
