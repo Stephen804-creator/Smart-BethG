@@ -19,7 +19,12 @@ class TestUploadBodyLimitMiddleware(unittest.TestCase):
 
         async def app(inner_scope, inner_receive, inner_send):
             called.append(True)
-            first = await inner_receive()
+            chunks = []
+            while True:
+                message = await inner_receive()
+                chunks.append(message.get("body", b""))
+                if not message.get("more_body", False):
+                    break
             await inner_send({
                 "type": "http.response.start",
                 "status": 200,
@@ -27,7 +32,7 @@ class TestUploadBodyLimitMiddleware(unittest.TestCase):
             })
             await inner_send({
                 "type": "http.response.body",
-                "body": first.get("body", b""),
+                "body": b"".join(chunks),
             })
 
         middleware.app = app
