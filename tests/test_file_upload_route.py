@@ -78,6 +78,8 @@ class TestFileUploadRoute(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()["files"]), 1)
         self.assertEqual(response.json()["files"][0]["inspection_status"], "queued")
+        self.assertNotIn("object_locator", response.json()["files"][0])
+        self.assertNotIn("user_id", response.json()["files"][0])
 
 
 if __name__ == "__main__":
