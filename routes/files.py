@@ -57,7 +57,8 @@ async def upload_file(
             "sha256": record["sha256"],
             "media_type": record["detected_media_type"],
             "status": record["status"],
-            "message": "Upload received and quarantined. It is not available for extraction, indexing, or execution.",
+            "inspection_status": record.get("inspection_status", "queued"),
+            "message": "Upload received. Smart BethG is checking it in the background; it will become available when checks pass.",
         }
     finally:
         await file.close()
