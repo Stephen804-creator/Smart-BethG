@@ -52,5 +52,5 @@ SELECT
     3,
     to_char(CURRENT_TIMESTAMP AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"+00:00"')
 FROM files f
-WHERE lower(f.filename) LIKE '%.pdf'
+WHERE right(lower(f.filename),4) = '.pdf'
 ON CONFLICT(user_id,idempotency_key) DO NOTHING;
