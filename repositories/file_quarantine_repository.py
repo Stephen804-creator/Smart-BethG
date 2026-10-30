@@ -153,6 +153,57 @@ class FileQuarantineRepository:
         finally:
             conn.close()
 
+    def retry_inspection(self, quarantine_id, user_id):
+        """Requeue a failed check without asking the user to upload the file again."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT inspection_retry_generation FROM file_quarantine_records "
+                "WHERE id=? AND user_id=? AND status='quarantined' "
+                "AND inspection_status='failed' LIMIT 1",
+                (quarantine_id, user_id),
+            ).fetchone()
+            if not row:
+                conn.rollback()
+                return False
+            generation = int(row["inspection_retry_generation"] or 0) + 1
+            cursor = conn.execute(
+                "UPDATE file_quarantine_records SET inspection_status='queued',"
+                "inspection_attempts=0,inspection_retry_generation=?,"
+                "inspection_error_code=NULL,inspected_at=NULL "
+                "WHERE id=? AND user_id=? AND status='quarantined' "
+                "AND inspection_status='failed'",
+                (generation, quarantine_id, user_id),
+            )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                return False
+            from services.job_queue import JobQueue
+            JobQueue().enqueue_in_transaction(
+                conn, user_id, "file.inspect",
+                {"quarantine_id": quarantine_id,
+                 "sha256": self._sha256_for_retry(conn, quarantine_id, user_id)},
+                f"file-inspect:{quarantine_id}:retry:{generation}",
+                priority=2, max_attempts=5,
+            )
+            conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _sha256_for_retry(conn, quarantine_id, user_id):
+        row = conn.execute(
+            "SELECT sha256 FROM file_quarantine_records WHERE id=? AND user_id=? LIMIT 1",
+            (quarantine_id, user_id),
+        ).fetchone()
+        if not row:
+            raise RuntimeError("Quarantine record disappeared while retrying inspection.")
+        return row["sha256"]
+
     def delete(self, quarantine_id, user_id):
         conn = get_connection()
         try:
