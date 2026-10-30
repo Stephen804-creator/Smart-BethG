@@ -121,8 +121,9 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
 
     def test_container_absence_verification_retries_cleanup_for_existing_container(self):
         present = SimpleNamespace(returncode=0, stdout="[]", stderr="")
-        with patch("services.sandbox_service.subprocess.run", return_value=present), \\
-             patch.object(SandboxService, "_cleanup_container", return_value=True) as cleanup:
+        with patch("services.sandbox_service.subprocess.run", return_value=present), patch.object(
+            SandboxService, "_cleanup_container", return_value=True
+        ) as cleanup:
             self.assertTrue(SandboxService._ensure_container_absent("/usr/bin/docker", "sbx-test"))
         cleanup.assert_called_once_with("/usr/bin/docker", "sbx-test")
 
