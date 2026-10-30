@@ -73,6 +73,23 @@ def list_quarantined_files(
     return {"files": service.list_for_user(user["id"])}
 
 
+@router.post("/quarantine/{quarantine_id}/retry")
+def retry_quarantined_file(
+    quarantine_id: str,
+    user=Depends(get_current_user),
+    service: FileQuarantineService = Depends(get_file_quarantine_service),
+):
+    if not check_rate_limit(
+        f"file-inspection-retry-user:{user['id']}",
+        max_attempts=3,
+        window_seconds=3600,
+    ):
+        raise HTTPException(status_code=429, detail="File inspection retry limit reached. Please try again later.")
+    if not service.retry(user["id"], quarantine_id):
+        raise HTTPException(status_code=409, detail="This file is not eligible for an inspection retry.")
+    return {"queued": True, "inspection_status": "queued"}
+
+
 @router.delete("/quarantine/{quarantine_id}")
 def delete_quarantined_file(
     quarantine_id: str,
