@@ -62,7 +62,7 @@ RUNTIME_DEFINITIONS = {
 
 
 def is_digest_pinned_image(image: str) -> bool:
-    return bool(re.fullmatch(r"[^@\\s]+@sha256:[0-9a-f]{64}", image or ""))
+    return bool(re.fullmatch(r"[^@\s]+@sha256:[0-9a-f]{64}", image or ""))
 
 
 def resolve_runtime(runtime_id: str) -> tuple[RuntimeDefinition, str]:
