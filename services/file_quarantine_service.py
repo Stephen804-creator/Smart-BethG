@@ -24,7 +24,7 @@ _IMAGE_SIGNATURES = {
     ".png": (b"\x89PNG\r\n\x1a\n", "image/png"),
     ".jpg": (b"\xff\xd8\xff", "image/jpeg"),
     ".jpeg": (b"\xff\xd8\xff", "image/jpeg"),
-    ".gif": (b"GIF87a", "image/gif"),
+    ".gif": ((b"GIF87a", b"GIF89a"), "image/gif"),
 }
 _ARCHIVE_EXTENSIONS = {".zip"}
 
@@ -61,8 +61,8 @@ class FileQuarantineService:
                 raise ValueError("File content does not match its PDF extension.")
             return "application/pdf", "scanner_not_configured"
         if extension in _IMAGE_SIGNATURES:
-            signature, media_type = _IMAGE_SIGNATURES[extension]
-            if not content.startswith(signature):
+            signatures, media_type = _IMAGE_SIGNATURES[extension]
+            if not any(content.startswith(signature) for signature in (signatures if isinstance(signatures, tuple) else (signatures,))):
                 raise ValueError("File content does not match its image extension.")
             return media_type, "scanner_not_configured"
         if extension in _ARCHIVE_EXTENSIONS:
