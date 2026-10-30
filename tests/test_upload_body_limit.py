@@ -74,6 +74,20 @@ class TestUploadBodyLimitMiddleware(unittest.TestCase):
         self.assertEqual(sent[0]["status"], 200)
         self.assertEqual(sent[1]["body"], b"12345")
 
+
+    def test_rejects_declared_oversize_on_legacy_upload_alias(self):
+        middleware = UploadBodyLimitMiddleware(lambda *_: None, max_body_bytes=10)
+        sent, called = self.run_asgi(
+            middleware,
+            {
+                "type": "http", "method": "POST", "path": "/api/files",
+                "headers": [(b"content-length", b"11")],
+            },
+            [],
+        )
+        self.assertFalse(called)
+        self.assertEqual(sent[0]["status"], 413)
+
     def test_ignores_non_upload_routes(self):
         middleware = UploadBodyLimitMiddleware(lambda *_: None, max_body_bytes=2)
         sent, called = self.run_asgi(
