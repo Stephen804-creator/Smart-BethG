@@ -17,6 +17,7 @@ class FakeQuarantineService:
         record = {
             "id": "q-123",
             "user_id": user_id,
+            "object_locator": "/private/storage/quarantine/41/opaque-object",
             "original_filename": filename,
             "byte_size": len(content),
             "sha256": "a" * 64,
