@@ -223,11 +223,23 @@ class FileInspectionService:
                 record["detected_media_type"],
             )
         except Exception:
+            # A connection error can happen after COMMIT. Confirm the durable
+            # result before deleting the copied object; preserving an orphan is
+            # safer than deleting bytes referenced by a committed file row.
             try:
-                self.storage.delete("uploads", record["user_id"], locator)
+                committed_file_id = self.repository.get_released_file_id(
+                    record["id"], record["user_id"]
+                )
             except Exception:
-                logger.exception("Could not clean up copied file after release failure")
-            raise
+                logger.exception("Release outcome is unknown; preserving copied object for reconciliation")
+                raise
+            if committed_file_id is None:
+                try:
+                    self.storage.delete("uploads", record["user_id"], locator)
+                except Exception:
+                    logger.exception("Could not clean up uncommitted trusted object")
+                raise
+            file_id = committed_file_id
         try:
             self.storage.delete("quarantine", record["user_id"], record["object_locator"])
         except Exception:
