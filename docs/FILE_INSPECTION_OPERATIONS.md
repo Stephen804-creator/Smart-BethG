@@ -35,7 +35,7 @@ Run the file worker as a separately deployed restricted Linux container or host 
 - bounded log output;
 - pinned image digest, reviewed dependencies, SBOM and vulnerability scanning.
 
-The process alarm is a second line of defense, not a substitute for cgroups/container resource controls. ClamAV must have its own memory/CPU limits, current signature updates, bounded stream size and private network policy. A scanner response other than explicit `OK` is not clean.
+The process alarm is a second line of defense, not a substitute for cgroups/container resource controls. ClamAV must have its own memory/CPU limits, current signature updates, bounded stream size and private network policy. Configure archive inspection and verify its behavior for every supported archive type; set `MaxScanSize`, `MaxFileSize`, `MaxRecursion` and `MaxFiles` to cover the application policy, and enable alerts when scan limits are exceeded (for example, `AlertExceedsMax yes`). A scanner response other than explicit `OK` is not clean. Do not assume a plain `OK` proves archive members were inspected unless the deployed ClamAV configuration has been tested to do so.
 
 ## State and recovery
 
