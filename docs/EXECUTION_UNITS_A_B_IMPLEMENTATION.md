@@ -25,6 +25,13 @@ The architecture is modular responsibilities, not a demand for seven microservic
 - ZIP files are held with archive_inspection_required. The API does not open or extract ZIP files.
 - No scanner is configured, so accepted uploads remain quarantined. There is intentionally no user-facing release/accept endpoint. Quarantined content cannot enter the existing files/knowledge/execution path through the new upload route.
 
+## Compatibility and user-impact warning
+
+- Existing file records and their existing read/download/extract behavior are not migrated by this change.
+- New uploads are returned as quarantine records, not ordinary file records. They do not appear in the normal `/files` list and cannot yet be passed to existing file-id extraction/summary/knowledge endpoints.
+- This is an intentional security boundary but a breaking upload-response/workflow change for any client that assumes upload immediately returns a usable file ID. No UI/client migration is included here.
+- Do not merge/deploy this upload-route behavior until the scanner/release pipeline and client status/ready workflow are implemented and tested together. The live deployment has not been changed.
+
 ## Important limitations — do not call Unit B fully complete yet
 
 1. Scanner integration and an operator-controlled release workflow are not implemented. Missing scanner must remain fail-closed.
