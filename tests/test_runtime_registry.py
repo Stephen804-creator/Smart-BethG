@@ -99,6 +99,40 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
         self.assertEqual(command[-4:], ["python", "-I", "-B", "/workspace/main.py"])
         self.assertEqual(command[-5], "approved@sha256:" + ("c" * 64))
 
+    def test_cleanup_attempts_force_remove_even_when_kill_fails(self):
+        missing = SimpleNamespace(returncode=1, stdout="", stderr="Error: No such object: sbx-test")
+        with patch("services.sandbox_service.subprocess.run", side_effect=[
+            OSError("docker kill failed"),
+            SimpleNamespace(returncode=0, stdout="", stderr=""),
+            missing,
+        ]) as run:
+            self.assertTrue(SandboxService._cleanup_container("/usr/bin/docker", "sbx-test"))
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(commands[0][1], "kill")
+        self.assertEqual(commands[1][1:3], ["rm", "--force"])
+        self.assertEqual(commands[2][1], "inspect")
+
+    def test_cleanup_fails_closed_when_daemon_cannot_confirm_absence(self):
+        unavailable = SimpleNamespace(
+            returncode=1, stdout="", stderr="Cannot connect to the Docker daemon"
+        )
+        with patch("services.sandbox_service.subprocess.run", return_value=unavailable):
+            self.assertFalse(SandboxService._cleanup_container("/usr/bin/docker", "sbx-test"))
+
+    def test_container_absence_verification_retries_cleanup_for_existing_container(self):
+        present = SimpleNamespace(returncode=0, stdout="[]", stderr="")
+        with patch("services.sandbox_service.subprocess.run", return_value=present), \\
+             patch.object(SandboxService, "_cleanup_container", return_value=True) as cleanup:
+            self.assertTrue(SandboxService._ensure_container_absent("/usr/bin/docker", "sbx-test"))
+        cleanup.assert_called_once_with("/usr/bin/docker", "sbx-test")
+
+    def test_container_absence_verification_rejects_ambiguous_inspect_failure(self):
+        unavailable = SimpleNamespace(
+            returncode=1, stdout="", stderr="Cannot connect to the Docker daemon"
+        )
+        with patch("services.sandbox_service.subprocess.run", return_value=unavailable):
+            self.assertFalse(SandboxService._ensure_container_absent("/usr/bin/docker", "sbx-test"))
+
     def test_rootless_detection_fails_closed_on_command_error(self):
         with patch("services.sandbox_service.subprocess.run", return_value=SimpleNamespace(
             returncode=1, stdout="", stderr="unavailable"
