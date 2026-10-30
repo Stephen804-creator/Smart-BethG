@@ -29,7 +29,7 @@ The architecture is modular responsibilities, not a demand for seven microservic
 1. Scanner integration and an operator-controlled release workflow are not implemented. Missing scanner must remain fail-closed.
 2. ZIP central-directory inspection, traversal/link checks, archive-bomb limits, and safe extraction need an isolated inspection worker; they are not performed in the API process.
 3. PDF/document parsing still exists in FileService and still runs in the application process for legacy records. Moving parsers to a restricted worker remains required.
-4. The route bounds reads, but the ASGI multipart parser can spool request bodies before the endpoint reads UploadFile. A request-level streaming body cap must be verified/implemented before public exposure.
+4. Request-level body limiting is implemented in middleware with a bounded pre-buffer and two concurrent upload slots per process. The full multipart API behavior still needs integration tests and production memory/load validation.
 5. Existing file rows uploaded before this migration have not been retroactively moved or reclassified. Their status and handling need a deliberate compatibility migration and review.
 6. No live object-storage durability, malware scanner, isolated archive worker, or production runner host was available for verification.
 
