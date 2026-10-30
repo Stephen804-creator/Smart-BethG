@@ -38,14 +38,24 @@ class JobQueue:
             rows=conn.execute("SELECT id,user_id,job_type,status,attempts,max_attempts,priority,idempotency_key,available_at,started_at,completed_at,last_error,result_json,created_at FROM background_jobs WHERE user_id=? ORDER BY created_at DESC LIMIT ?",(user_id,max(1,min(100,int(limit))))).fetchall()
             return [self._decode(row) for row in rows]
         finally: conn.close()
-    def claim(self,lease_seconds=90):
+    def claim(self,lease_seconds=90,job_types=None):
+        allowed_types = None
+        if job_types is not None:
+            allowed_types = tuple(sorted(set(job_types) & self.VALID_TYPES))
+            if not allowed_types:
+                return None
+        type_filter = ""
+        type_params = ()
+        if allowed_types is not None:
+            type_filter = " AND job_type IN (" + ",".join("?" for _ in allowed_types) + ")"
+            type_params = allowed_types
         now=_now(); token=str(uuid.uuid4()); conn=get_connection()
         try:
             conn.execute("BEGIN")
             conn.execute("UPDATE background_jobs SET status='failed',last_error='Worker lease expired after maximum attempts.',completed_at=?,updated_at=?,lease_token=NULL,lease_until=NULL WHERE status='running' AND lease_until<? AND attempts>=max_attempts",
                          (_iso(now), _iso(now), _iso(now)))
-            row=conn.execute("WITH candidate AS (SELECT id FROM background_jobs WHERE ((status='queued' AND available_at<=?) OR (status='running' AND lease_until<?)) AND attempts<max_attempts ORDER BY priority DESC,available_at,created_at FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE background_jobs AS job SET status='running',attempts=job.attempts+1,lease_token=?,lease_until=?,started_at=COALESCE(job.started_at,?),updated_at=? FROM candidate WHERE job.id=candidate.id RETURNING job.id,job.user_id,job.job_type,job.payload_json,job.attempts,job.max_attempts,job.idempotency_key,job.lease_token",
-                            (_iso(now),_iso(now),token,_iso(now+timedelta(seconds=lease_seconds)),_iso(now),_iso(now))).fetchone()
+            row=conn.execute("WITH candidate AS (SELECT id FROM background_jobs WHERE ((status='queued' AND available_at<=?) OR (status='running' AND lease_until<?)) AND attempts<max_attempts" + type_filter + " ORDER BY priority DESC,available_at,created_at FOR UPDATE SKIP LOCKED LIMIT 1) UPDATE background_jobs AS job SET status='running',attempts=job.attempts+1,lease_token=?,lease_until=?,started_at=COALESCE(job.started_at,?),updated_at=? FROM candidate WHERE job.id=candidate.id RETURNING job.id,job.user_id,job.job_type,job.payload_json,job.attempts,job.max_attempts,job.idempotency_key,job.lease_token",
+                            (_iso(now),_iso(now),*type_params,token,_iso(now+timedelta(seconds=lease_seconds)),_iso(now),_iso(now))).fetchone()
             conn.commit()
             if not row: return None
             item=dict(row); item["payload"]=json.loads(item.pop("payload_json") or "{}"); return item
@@ -96,7 +106,7 @@ class JobWorker:
     def __init__(self,queue=None,handlers=None):
         self.queue=queue or JobQueue(); self.handlers=dict(handlers or {})
     def run_once(self):
-        job=self.queue.claim()
+        job=self.queue.claim(job_types=tuple(self.handlers))
         if not job: return False
         handler=self.handlers.get(job["job_type"])
         if handler is None:
