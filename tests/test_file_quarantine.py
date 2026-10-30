@@ -8,6 +8,8 @@ from tests.base import SmartBethGTestCase
 from services.auth_service import create_user
 from services.file_quarantine_service import FileQuarantineService
 from services.file_service import FileService
+from services.job_queue import JobQueue
+from services.file_inspection_service import FileInspectionService
 
 
 class TestFileQuarantineService(SmartBethGTestCase):
@@ -15,7 +17,9 @@ class TestFileQuarantineService(SmartBethGTestCase):
         super().setUp()
         self.root = tempfile.mkdtemp(prefix="sbg_quarantine_")
         self.old_quarantine_dir = config.STORAGE_DIRS["quarantine"]
+        self.old_uploads_dir = config.STORAGE_DIRS["uploads"]
         config.STORAGE_DIRS["quarantine"] = self.root
+        config.STORAGE_DIRS["uploads"] = self.root + "_trusted"
         suffix = os.path.basename(self._tmp_dir)[-8:]
         self.owner = create_user("quarantine-owner-" + suffix, "password123")
         self.other = create_user("quarantine-other-" + suffix, "password123")
@@ -23,7 +27,9 @@ class TestFileQuarantineService(SmartBethGTestCase):
 
     def tearDown(self):
         config.STORAGE_DIRS["quarantine"] = self.old_quarantine_dir
+        config.STORAGE_DIRS["uploads"] = self.old_uploads_dir
         shutil.rmtree(self.root, ignore_errors=True)
+        shutil.rmtree(self.root + "_trusted", ignore_errors=True)
         super().tearDown()
 
     def test_upload_is_quarantined_and_not_added_to_trusted_file_library(self):
@@ -37,7 +43,10 @@ class TestFileQuarantineService(SmartBethGTestCase):
         self.assertEqual(record["declared_media_type"], "application/x-executable")
         self.assertEqual(record["sha256"], hashlib.sha256(payload).hexdigest())
         self.assertEqual(record["byte_size"], len(payload))
+        self.assertEqual(record["inspection_status"], "queued")
         self.assertEqual(FileService().list_files(self.owner["id"]), [])
+        jobs = JobQueue().list_for_user(self.owner["id"])
+        self.assertTrue(any(job["job_type"] == "file.inspect" and job["status"] == "queued" for job in jobs))
 
     def test_upload_content_is_stored_in_quarantine_namespace(self):
         record = self.service.quarantine_upload(
@@ -55,6 +64,35 @@ class TestFileQuarantineService(SmartBethGTestCase):
         self.assertEqual(self.service.list_for_user(self.other["id"]), [])
         self.assertFalse(self.service.delete(self.other["id"], record["id"]))
         self.assertEqual(len(self.service.list_for_user(self.owner["id"])), 1)
+
+
+    def test_clean_inspection_releases_file_and_preserves_owner_scope(self):
+        record = self.service.quarantine_upload(
+            self.owner["id"], "ready.txt", b"safe content"
+        )
+
+        class CleanScanner:
+            def scan(self, _content):
+                return {"engine": "clamav", "status": "clean"}
+
+        job = {
+            "user_id": self.owner["id"],
+            "attempts": 1,
+            "max_attempts": 5,
+            "payload": {"quarantine_id": record["id"], "sha256": record["sha256"]},
+        }
+        result = FileInspectionService(
+            repository=self.service.repository,
+            storage=self.service.storage,
+            scanner=CleanScanner(),
+        ).inspect_job(job)
+
+        self.assertEqual(result["status"], "released")
+        files = FileService().list_files(self.owner["id"])
+        self.assertEqual(len(files), 1)
+        self.assertEqual(files[0]["filename"], "ready.txt")
+        self.assertEqual(self.service.repository.get(record["id"], self.owner["id"])["status"], "released")
+        self.assertEqual(FileService().list_files(self.other["id"]), [])
 
     def test_owner_can_delete_their_quarantined_upload(self):
         record = self.service.quarantine_upload(
