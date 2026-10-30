@@ -1,6 +1,6 @@
 # Units A–B — Execution Architecture and Quarantine Intake
 
-Status: Unit A specifications and Unit B asynchronous quarantine/inspection code implemented; deployment and host-isolation acceptance remain gated.
+Status: Unit A and Unit B code paths implemented; production deployment and host-isolation acceptance remain gated.
 Date: 2026-10-30
 
 ## Unit A — Architecture and security contract
@@ -28,7 +28,7 @@ The architecture is modular responsibilities, not a demand for seven microservic
 - Sanitize display filenames and derive media type from extension plus basic content signature/UTF-8 validation; client MIME type is recorded only as untrusted metadata.
 - Reject unsupported extensions, empty files, invalid UTF-8 text, binary data presented as text, and obvious signature mismatches.
 - ZIP files are held with archive_inspection_required. The API does not open or extract ZIP files.
-- No scanner is configured, so accepted uploads remain quarantined. There is intentionally no user-facing release/accept endpoint. Quarantined content cannot enter the existing files/knowledge/execution path through the new upload route.
+- Scanner configuration is external to the repository. Until a private ClamAV endpoint is configured and the worker is deployed, accepted uploads remain quarantined and eventually show a failed inspection state. There is intentionally no user-facing release/accept endpoint.
 
 ## Compatibility and user-impact warning
 
@@ -39,10 +39,10 @@ The architecture is modular responsibilities, not a demand for seven microservic
 
 ## Remaining acceptance gates
 
-1. Configure and deploy a private ClamAV daemon and a separately deployed inspection worker. The repository contains the client and durable worker handler, but the actual scanner host/service is not provisioned or verified here.
+1. Configure and deploy a private ClamAV daemon and a separately deployed inspection worker. The repository contains the client, durable queue integration, and worker handler, but the actual scanner host/service is not provisioned or verified here.
 2. The inspection worker must run in a restricted container/host with no public ingress, no Docker socket, no unrelated application/provider secrets, strict CPU/memory/PID/disk limits, and private-only scanner/storage/database access. Code separation alone does not prove host isolation.
-3. ZIP metadata inspection is implemented without extraction. If archive extraction is later enabled, it must be a separate isolated operation with additional nested-depth, actual decompressed-byte, path/link and timeout enforcement.
-4. PDF/document parsing for legacy trusted file records still exists in FileService and has not yet been migrated to the isolated worker. New uploads are malware-scanned before release, but PDF parser isolation remains a release blocker for production-grade file processing.
+3. ZIP metadata inspection and bounded decompression-to-discard are implemented without writing archive members to disk. ZIP extraction is deliberately not enabled. If extraction is later enabled, it must be a separate isolated operation with a reviewed path/link and resource policy.
+4. PDF parsing now runs through the durable worker and stores bounded extraction output separately. The worker process must still be deployed inside a restricted container/host; code separation alone does not provide OS-level parser isolation.
 5. Request-level body limiting is implemented on both upload aliases with bounded pre-buffering and two concurrent slots per process. The limit is per process, not global across replicas; production ingress must enforce a body cap too, and memory/load behavior needs deployment-level validation.
 6. Existing file rows uploaded before this migration have not been retroactively moved or reclassified. Their status and handling need a deliberate compatibility migration and review.
 7. No live object-storage durability, malware scanner, isolated worker host, or production runner host was available for verification.
