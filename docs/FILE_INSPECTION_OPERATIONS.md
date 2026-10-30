@@ -43,8 +43,8 @@ The process alarm is a second line of defense, not a substitute for cgroups/cont
 - Jobs use the existing PostgreSQL lease/retry/idempotency queue. Each worker claims only the job types it has registered.
 - Clean inspection copies the object to trusted uploads storage and commits the normal file row plus released quarantine state atomically. The quarantine copy is then deleted; cleanup failure is logged for operations follow-up.
 - Malware or archive-policy failures remain quarantined and show rejected status.
-- Temporary scanner/worker errors retry with bounded backoff; after the retry budget, the record remains quarantined with failed status. It is not automatically deleted or released.
-- User deletion is owner-scoped and allowed only while the quarantine record remains quarantined.
+- Temporary scanner/worker errors retry with bounded backoff; after the retry budget, the record remains quarantined with failed status. The owner can request another bounded inspection attempt after the service is restored; it is not automatically deleted or released.
+- User deletion and retry are owner-scoped. Retry is available only for a failed inspection and creates a new idempotency generation; it does not bypass scanning or release the file.
 - PDF extraction has its own durable job and status endpoint: `GET /api/v1/files/{file_id}/extraction-status`.
 - Migration 0018 creates extraction state and queues existing PDFs for background text extraction. It does not retroactively malware-scan legacy stored files. Monitor queue depth before/after applying this migration to a large library.
 
