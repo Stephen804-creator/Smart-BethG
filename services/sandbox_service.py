@@ -1,16 +1,21 @@
 """Restricted Docker sandbox. Arbitrary host shell execution is never exposed."""
 import json
 import os
-import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 import uuid
 from pathlib import Path
 
 import config
 from database import get_connection
+from services.runtime_registry import (
+    RuntimeUnavailableError,
+    is_digest_pinned_image,
+    resolve_runtime,
+)
 from services.workspace_service import WorkspaceService
 
 
@@ -19,122 +24,229 @@ class SandboxUnavailableError(RuntimeError):
 
 
 class SandboxService:
-    MAX_SOURCE_BYTES = 64_000
     MAX_OUTPUT_BYTES = 16_000
-    TIMEOUT_SECONDS = 15
-    MEMORY_LIMIT = "256m"
-    CPU_LIMIT = "0.50"
 
     def execute_python(self, user_id, source, workspace_id=None):
+        return self.execute_runtime(user_id, "python", source, workspace_id)
+
+    def execute_runtime(self, user_id, runtime_id, source, workspace_id=None):
         if not isinstance(source, str) or not source.strip():
-            raise ValueError("Python source is required.")
-        if len(source.encode("utf-8")) > self.MAX_SOURCE_BYTES:
-            raise ValueError("Python source exceeds the 64 KB limit.")
+            raise ValueError("Source code is required.")
         run_id = str(uuid.uuid4())
         if workspace_id is not None:
             WorkspaceService().require_workspace_access(user_id, workspace_id, "edit")
-        image = os.getenv("SMART_BETHG_SANDBOX_PYTHON_IMAGE", "").strip()
-        enabled = os.getenv("SMART_BETHG_SANDBOX_ENABLED", "false").strip().lower() == "true"
-        docker = shutil.which("docker")
-        if (not enabled or not self._is_digest_pinned_image(image)
-                or image not in config.DOCKER_ALLOWED_IMAGES or not docker):
-            self._record(run_id, user_id, workspace_id, "rejected", image or None,
-                         "python_script", None, {}, "sandbox_unavailable")
-            raise SandboxUnavailableError(
-                "Sandbox execution is disabled or not safely configured. Configure Docker and a trusted digest-pinned image."
+        try:
+            runtime, image = resolve_runtime(runtime_id)
+        except RuntimeUnavailableError as exc:
+            self._record(run_id, user_id, workspace_id, "rejected", None,
+                         runtime_id, None, {}, "sandbox_unavailable")
+            raise SandboxUnavailableError(str(exc)) from exc
+        if len(source.encode("utf-8")) > runtime.max_source_bytes:
+            raise ValueError(
+                f"Source code exceeds the {runtime.max_source_bytes // 1000} KB limit."
             )
-        self._record(run_id, user_id, workspace_id, "running", image, "python_script", None, {}, None)
+        docker = shutil.which("docker")
+        if not docker:
+            self._record(run_id, user_id, workspace_id, "rejected", image,
+                         runtime.command_name, None, {}, "sandbox_unavailable")
+            raise SandboxUnavailableError("The isolated execution service is unavailable.")
+        if config.IS_PRODUCTION and not self._docker_is_rootless(docker):
+            self._record(run_id, user_id, workspace_id, "rejected", image,
+                         runtime_id, None, {}, "sandbox_host_not_rootless")
+            raise SandboxUnavailableError(
+                "Production code execution requires a rootless Docker runtime."
+            )
+
+        self._record(run_id, user_id, workspace_id, "running", image, runtime.command_name, None, {}, None)
         started = time.monotonic()
+        container_name = "sbx-" + run_id.replace("-", "")[:24]
         try:
             with tempfile.TemporaryDirectory(prefix="smartbethg-sandbox-") as directory:
                 root = Path(directory)
+                # The parent temporary directory is private to the host process.
+                # Docker's fixed non-root UID needs traverse/read access only to
+                # this one read-only input directory and file.
                 root.chmod(0o755)
-                script = root / "main.py"
+                script = root / runtime.source_filename
                 script.write_text(source, encoding="utf-8")
                 script.chmod(0o444)
-                # Every security-sensitive option is fixed here. No caller-provided
-                # image, arguments, mounts, environment, network, or shell is accepted.
-                container_name = "sbx-" + run_id.replace("-", "")[:24]
-                command = [
-                    docker, "run", "--rm", "--name", container_name,
-                    "--network=none", "--read-only",
-                    "--cap-drop=ALL", "--security-opt=no-new-privileges",
-                    "--pids-limit=64", "--memory", self.MEMORY_LIMIT,
-                    "--cpus", self.CPU_LIMIT, "--user=65534:65534",
-                    "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
-                    "--mount", f"type=bind,src={root},dst=/workspace,readonly",
-                    image, "python", "-I", "-B", "/workspace/main.py",
-                ]
+                command = self._docker_run_command(
+                    docker, container_name, root, image, runtime
+                )
                 process = subprocess.Popen(
                     command, shell=False, stdin=subprocess.DEVNULL,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     env={"PATH": os.path.dirname(docker), "LANG": "C.UTF-8"},
                 )
-                output = {"stdout": bytearray(), "stderr": bytearray(),
-                          "stdout_total": 0, "stderr_total": 0}
+                output = {"stdout": bytearray(), "stderr": bytearray(), "total": 0}
+                output_lock = threading.Lock()
+                output_limit_reached = threading.Event()
+
                 def drain(stream, key):
-                    total_key = key + "_total"
                     while True:
                         chunk = stream.read(4096)
                         if not chunk:
                             break
-                        output[total_key] += len(chunk)
-                        remaining = self.MAX_OUTPUT_BYTES - len(output[key])
-                        if remaining > 0:
-                            output[key].extend(chunk[:remaining])
-                import threading
+                        with output_lock:
+                            remaining = self.MAX_OUTPUT_BYTES - output["total"]
+                            if remaining > 0:
+                                accepted = chunk[:remaining]
+                                output[key].extend(accepted)
+                                output["total"] += len(accepted)
+                            if len(chunk) > max(0, remaining):
+                                output_limit_reached.set()
+
                 readers = [
                     threading.Thread(target=drain, args=(process.stdout, "stdout"), daemon=True),
                     threading.Thread(target=drain, args=(process.stderr, "stderr"), daemon=True),
                 ]
                 for reader in readers:
                     reader.start()
-                try:
-                    return_code = process.wait(timeout=self.TIMEOUT_SECONDS)
-                except subprocess.TimeoutExpired:
-                    # Killing the Docker CLI alone can leave the daemon container alive.
+
+                deadline = started + runtime.timeout_seconds
+                timed_out = False
+                while process.poll() is None:
+                    if output_limit_reached.is_set():
+                        break
+                    remaining_time = deadline - time.monotonic()
+                    if remaining_time <= 0:
+                        timed_out = True
+                        break
+                    try:
+                        process.wait(timeout=min(0.05, remaining_time))
+                    except subprocess.TimeoutExpired:
+                        continue
+
+                if timed_out or output_limit_reached.is_set():
                     self._cleanup_container(docker, container_name)
                     try:
-                        process.wait(timeout=3)
+                        process.wait(timeout=2)
                     except subprocess.TimeoutExpired:
                         process.kill()
                         process.wait(timeout=2)
-                    for reader in readers:
-                        reader.join(timeout=2)
-                    self._record(run_id, user_id, workspace_id, "timed_out", image, "python_script",
-                                 None, {"duration_ms": int((time.monotonic() - started) * 1000),
-                                        "output_truncated": True}, "timeout")
-                    return {"id": run_id, "status": "timed_out", "exit_code": None,
-                            "stdout": output["stdout"].decode("utf-8", "replace"),
-                            "stderr": "Execution exceeded the 15 second time limit."}
+                else:
+                    process.wait(timeout=2)
+
                 for reader in readers:
                     reader.join(timeout=2)
+
+                # --rm is a second cleanup layer; verify the daemon no longer
+                # knows this named container, and force-remove if it remains.
+                cleanup_verified = self._ensure_container_absent(docker, container_name)
+                if not cleanup_verified:
+                    raise SandboxUnavailableError(
+                        "Execution ended but the isolated container could not be confirmed removed."
+                    )
+
             elapsed_ms = int((time.monotonic() - started) * 1000)
             stdout = output["stdout"].decode("utf-8", "replace")
             stderr = output["stderr"].decode("utf-8", "replace")
-            truncated = (output["stdout_total"] > self.MAX_OUTPUT_BYTES or
-                         output["stderr_total"] > self.MAX_OUTPUT_BYTES)
+            if timed_out:
+                payload = {
+                    "stdout": stdout,
+                    "stderr": f"Execution exceeded the {runtime.timeout_seconds} second time limit.",
+                    "duration_ms": elapsed_ms,
+                    "output_truncated": True,
+                }
+                self._record(run_id, user_id, workspace_id, "timed_out", image, runtime.command_name,
+                             None, payload, "timeout")
+                return {"id": run_id, "status": "timed_out", "exit_code": None, **payload}
+            if output_limit_reached.is_set():
+                payload = {
+                    "stdout": stdout,
+                    "stderr": "Execution exceeded the 16 KB combined output limit.",
+                    "duration_ms": elapsed_ms,
+                    "output_truncated": True,
+                }
+                self._record(run_id, user_id, workspace_id, "failed", image, runtime.command_name,
+                             None, payload, "output_limit")
+                return {"id": run_id, "status": "failed", "exit_code": None, **payload}
+
+            return_code = process.returncode
+            payload = {
+                "stdout": stdout,
+                "stderr": stderr,
+                "duration_ms": elapsed_ms,
+                "output_truncated": False,
+            }
             status = "succeeded" if return_code == 0 else "failed"
-            payload = {"stdout": stdout, "stderr": stderr, "duration_ms": elapsed_ms,
-                       "output_truncated": truncated}
-            self._record(run_id, user_id, workspace_id, status, image, "python_script",
+            self._record(run_id, user_id, workspace_id, status, image, runtime.command_name,
                          return_code, payload, None if return_code == 0 else "nonzero_exit")
             return {"id": run_id, "status": status, "exit_code": return_code, **payload}
         except Exception:
-            if "container_name" in locals() and "docker" in locals() and container_name:
-                self._cleanup_container(docker, container_name)
-            self._record(run_id, user_id, workspace_id, "failed", image, "python_script",
+            self._cleanup_container(docker, container_name)
+            self._record(run_id, user_id, workspace_id, "failed", image, runtime.command_name,
                          None, {}, "sandbox_runtime_error")
             raise
 
     @staticmethod
+    def _docker_run_command(docker, container_name, root, image, runtime):
+        """Build the fixed, deny-by-default Docker invocation."""
+        return [
+            docker, "run", "--rm", "--pull=never", "--name", container_name,
+            "--network=none", "--ipc=private", "--read-only",
+            "--cap-drop=ALL", "--security-opt=no-new-privileges:true",
+            "--pids-limit", str(runtime.pids_limit),
+            "--memory", runtime.memory_limit,
+            # Equal memory and memory-swap limits prevent additional swap use.
+            "--memory-swap", runtime.memory_limit,
+            "--cpus", runtime.cpu_limit,
+            "--shm-size=16m",
+            "--ulimit", "nofile=64:64",
+            "--ulimit", "fsize=1048576:1048576",
+            "--ulimit", "core=0:0",
+            "--log-driver=none", "--stop-timeout=1",
+            "--user=65534:65534",
+            "--tmpfs", f"/tmp:rw,noexec,nosuid,nodev,size={runtime.tmpfs_size},mode=1777",
+            "--workdir=/workspace",
+            "--mount", f"type=bind,src={root},dst=/workspace,readonly",
+            image, runtime.executable, *runtime.arguments,
+            f"/workspace/{runtime.source_filename}",
+        ]
+
+    @staticmethod
+    def _docker_is_rootless(docker):
+        """Production execution is blocked unless Docker reports rootless mode."""
+        try:
+            result = subprocess.run(
+                [docker, "info", "--format", "{{json .SecurityOptions}}"],
+                shell=False, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                text=True, timeout=5, check=False,
+                env={"PATH": os.path.dirname(docker), "LANG": "C.UTF-8"},
+            )
+            if result.returncode != 0:
+                return False
+            options = json.loads(result.stdout or "[]")
+            return any("rootless" in str(option).lower() for option in options)
+        except (OSError, subprocess.TimeoutExpired, ValueError, TypeError):
+            return False
+
+    @classmethod
+    def _ensure_container_absent(cls, docker, container_name):
+        try:
+            inspect = subprocess.run(
+                [docker, "inspect", container_name],
+                shell=False, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, timeout=3, check=False,
+            )
+            if inspect.returncode != 0:
+                message = (inspect.stderr or "").lower()
+                return "no such object" in message or "not found" in message
+            return cls._cleanup_container(docker, container_name)
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+
+    @staticmethod
     def _is_digest_pinned_image(image):
-        return bool(re.fullmatch(r"[^@\s]+@sha256:[0-9a-f]{64}", image or ""))
+        return is_digest_pinned_image(image)
 
     @staticmethod
     def _cleanup_container(docker, container_name):
-        # Try both kill and forced removal. A timed-out Docker CLI can leave the
-        # daemon-side container alive, so cleanup must not stop after one failure.
+        # Try kill and force-remove independently. A failed kill must never
+        # prevent the removal attempt. Only a clear "not found" response proves
+        # absence; a daemon/connection error is not treated as successful cleanup.
         for action in ("kill", "rm"):
             command = [docker, action]
             if action == "rm":
@@ -146,6 +258,19 @@ class SandboxService:
                                timeout=3, check=False)
             except (subprocess.TimeoutExpired, OSError):
                 continue
+        try:
+            inspect = subprocess.run(
+                [docker, "inspect", container_name],
+                shell=False, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, timeout=3, check=False,
+            )
+            if inspect.returncode == 0:
+                return False
+            message = (inspect.stderr or "").lower()
+            return "no such object" in message or "not found" in message
+        except (subprocess.TimeoutExpired, OSError):
+            return False
 
     @staticmethod
     def _record(run_id, user_id, workspace_id, status, image, command_name, exit_code, result, error_code):

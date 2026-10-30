@@ -3,8 +3,9 @@ name: Smart BethG security checks
 on:
   pull_request:
     branches: [main]
+  # Run security checks on feature branches as well as main so stacked PRs
+  # receive dependency and secret-scan coverage before their eventual merge.
   push:
-    branches: [main]
   schedule:
     - cron: "17 5 * * 1"
   workflow_dispatch:
