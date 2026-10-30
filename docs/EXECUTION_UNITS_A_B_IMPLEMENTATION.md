@@ -1,6 +1,6 @@
 # Units A–B — Execution Architecture and Quarantine Intake
 
-Status: Unit A specifications added. Unit B quarantine intake foundation implemented; full secure-import acceptance is not yet complete.
+Status: Unit A specifications and Unit B asynchronous quarantine/inspection code implemented; deployment and host-isolation acceptance remain gated.
 Date: 2026-10-30
 
 ## Unit A — Architecture and security contract
@@ -13,11 +13,16 @@ Added:
 
 The architecture is modular responsibilities, not a demand for seven microservices. Rootless Docker, gVisor and Firecracker remain candidates pending inspection of the actual runner host. The UI is intentionally not implemented.
 
-## Unit B — Implemented intake foundation
+## Unit B — Implemented intake and inspection pipeline
 
 - Added PostgreSQL quarantine metadata migration 0017.
 - Added a dedicated quarantine storage namespace, repository and service.
-- New POST /api/v1/files uploads stream from UploadFile in bounded chunks and enter quarantine, not the ordinary files table.
+- New POST /api/v1/files uploads are read in bounded chunks and enter quarantine, not the ordinary files table.
+- The quarantine row and a durable `file.inspect` job are committed in one PostgreSQL transaction. The existing worker now claims inspection jobs alongside mission/workflow jobs.
+- The worker verifies the stored SHA-256, sends content to a ClamAV daemon using the bounded INSTREAM protocol, and releases only a clean file. Scanner absence, timeout, malformed response, or indeterminate result retries and eventually leaves the file failed/quarantined.
+- Clean release copies the opaque object to the trusted uploads namespace and creates the ordinary file row plus released quarantine state in one database transaction. No user-facing release endpoint exists.
+- ZIP metadata is inspected without extraction; traversal/absolute/drive paths, symlinks, duplicate paths, encrypted entries, nested archives, excessive entry counts, expanded size, and suspicious compression ratios are rejected. The original ZIP may be released as a file but is never automatically extracted.
+- User status includes the separate inspection state (queued/checking/clean/rejected/failed); rejected content remains private in quarantine until the user deletes it or an operator applies a reviewed retention action.
 - Added owner-scoped quarantine listing and deletion endpoints.
 - Calculate SHA-256 and byte size server-side.
 - Sanitize display filenames and derive media type from extension plus basic content signature/UTF-8 validation; client MIME type is recorded only as untrusted metadata.
@@ -32,14 +37,15 @@ The architecture is modular responsibilities, not a demand for seven microservic
 - This is an intentional security boundary but a breaking upload-response/workflow change for any client that assumes upload immediately returns a usable file ID. No UI/client migration is included here.
 - Do not merge/deploy this upload-route behavior until the scanner/release pipeline and client status/ready workflow are implemented and tested together. The live deployment has not been changed.
 
-## Important limitations — do not call Unit B fully complete yet
+## Remaining acceptance gates
 
-1. Scanner integration and an operator-controlled release workflow are not implemented. Missing scanner must remain fail-closed.
-2. ZIP central-directory inspection, traversal/link checks, archive-bomb limits, and safe extraction need an isolated inspection worker; they are not performed in the API process.
-3. PDF/document parsing still exists in FileService and still runs in the application process for legacy records. Moving parsers to a restricted worker remains required.
-4. Request-level body limiting is implemented on both upload aliases with bounded pre-buffering and two concurrent slots per process. The limit is per process, not global across replicas; production ingress must enforce a body cap too, and memory/load behavior needs deployment-level validation.
-5. Existing file rows uploaded before this migration have not been retroactively moved or reclassified. Their status and handling need a deliberate compatibility migration and review.
-6. No live object-storage durability, malware scanner, isolated archive worker, or production runner host was available for verification.
+1. Configure and deploy a private ClamAV daemon and a separately deployed inspection worker. The repository contains the client and durable worker handler, but the actual scanner host/service is not provisioned or verified here.
+2. The inspection worker must run in a restricted container/host with no public ingress, no Docker socket, no unrelated application/provider secrets, strict CPU/memory/PID/disk limits, and private-only scanner/storage/database access. Code separation alone does not prove host isolation.
+3. ZIP metadata inspection is implemented without extraction. If archive extraction is later enabled, it must be a separate isolated operation with additional nested-depth, actual decompressed-byte, path/link and timeout enforcement.
+4. PDF/document parsing for legacy trusted file records still exists in FileService and has not yet been migrated to the isolated worker. New uploads are malware-scanned before release, but PDF parser isolation remains a release blocker for production-grade file processing.
+5. Request-level body limiting is implemented on both upload aliases with bounded pre-buffering and two concurrent slots per process. The limit is per process, not global across replicas; production ingress must enforce a body cap too, and memory/load behavior needs deployment-level validation.
+6. Existing file rows uploaded before this migration have not been retroactively moved or reclassified. Their status and handling need a deliberate compatibility migration and review.
+7. No live object-storage durability, malware scanner, isolated worker host, or production runner host was available for verification.
 
 ## Verification required before closing Unit B
 
