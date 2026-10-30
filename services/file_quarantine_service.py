@@ -120,6 +120,9 @@ class FileQuarantineService:
             raise
         return saved
 
+    def reconcile_abandoned(self):
+        return self.repository.reconcile_abandoned_inspections()
+
     def list_for_user(self, user_id):
         return self.repository.list_for_user(user_id)
 
