@@ -17,6 +17,7 @@ from services.operations_service import OperationsService
 from services.social_publishing_service import SocialPublishingService
 from services.units_21_24 import ScheduledAgentJobService
 from services.file_inspection_service import FileInspectionService
+from services.file_extraction_service import FileExtractionService
 
 
 def main():
@@ -50,11 +51,13 @@ def main():
         heartbeat_thread = threading.Thread(target=heartbeat_loop, name="worker-heartbeat", daemon=True)
         heartbeat_thread.start()
         file_inspection = FileInspectionService()
+        file_extraction = FileExtractionService()
         worker = JobWorker(handlers={
             "mission.execute": MissionExecutor().execute,
             "workflow.execute": WorkflowExecutor().execute,
             "agent.team.execute": SpecialistCoordinator().execute,
             "file.inspect": file_inspection.inspect_job,
+            "file.extract_pdf": file_extraction.extract_pdf_job,
         })
         while True:
             try:
