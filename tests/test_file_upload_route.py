@@ -12,6 +12,8 @@ class FakeQuarantineService:
         self.records = []
 
     def quarantine_upload(self, user_id, filename, content, declared_media_type=None):
+        if filename.lower().endswith(".exe"):
+            raise ValueError("This file type is not accepted for import.")
         record = {
             "id": "q-123",
             "user_id": user_id,
