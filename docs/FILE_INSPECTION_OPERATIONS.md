@@ -21,7 +21,7 @@ Status: implementation contract; no scanner service or production worker was pro
 | `SMART_BETHG_FILE_ARCHIVE_MAX_EXPANDED_BYTES` | `104857600` | Maximum actual decompressed bytes streamed to discard. |
 | `SMART_BETHG_FILE_ARCHIVE_MAX_COMPRESSION_RATIO` | `100` | Maximum per-entry expansion ratio. |
 
-The worker also needs the same PostgreSQL schema and access to the configured private object storage. Use a separate worker identity and least-privilege credentials. Do not give the worker provider API keys, session-signing secrets, public ingress, Docker socket access, or access to unrelated project data.
+The file worker also needs the same PostgreSQL schema and access to the configured private object storage. Set `SMART_BETHG_PROCESS_ROLE=file-worker` (the entrypoint sets this itself). Use a separate worker identity and least-privilege credentials. Do not give the worker provider API keys, session-signing secrets, public ingress, Docker socket access, or access to unrelated project data.
 
 ## Isolation requirements
 
@@ -49,7 +49,7 @@ The ClamAV daemon must have its own memory/CPU limits, current signature updates
 ## Rollout checklist
 
 1. Provision ClamAV as a private service and configure signature updates, maximum stream size, resource limits, and network ACLs.
-2. Deploy `scripts/run_worker.py` as a separate worker service with least-privilege database/storage access and the scanner host variable.
+2. Deploy `scripts/run_file_worker.py` as a separate restricted service with least-privilege database/storage access and the scanner host variable.
 3. Ensure API and worker use the same durable shared object storage. Local filesystem storage is not suitable across separate hosts or replicas.
 4. Apply PostgreSQL migrations and verify migration 0018 completed.
 5. Upload the standard EICAR test file in a controlled non-production environment; verify it is rejected and never appears in the normal files list.
