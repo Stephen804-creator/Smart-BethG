@@ -1,5 +1,6 @@
 """Bound multipart upload bodies before Starlette parses/spools UploadFile."""
 import asyncio
+import tempfile
 
 
 class UploadBodyLimitMiddleware:
@@ -64,7 +65,8 @@ class UploadBodyLimitMiddleware:
                 return
 
         async with self.semaphore:
-            body = bytearray()
+            body = tempfile.SpooledTemporaryFile(max_size=1024 * 1024, mode="w+b")
+            total = 0
             while True:
                 message = await receive()
                 if message["type"] == "http.disconnect":
@@ -72,20 +74,28 @@ class UploadBodyLimitMiddleware:
                 if message["type"] != "http.request":
                     continue
                 chunk = message.get("body", b"")
-                if len(body) + len(chunk) > self.max_body_bytes:
+                if total + len(chunk) > self.max_body_bytes:
                     await self._reject(send, 413, "Upload request exceeds the configured size limit.")
                     return
-                body.extend(chunk)
+                body.write(chunk)
+                total += len(chunk)
                 if not message.get("more_body", False):
                     break
 
-            replayed = False
+            body.seek(0)
+            body_finished = False
 
             async def bounded_receive():
-                nonlocal replayed
-                if not replayed:
-                    replayed = True
-                    return {"type": "http.request", "body": bytes(body), "more_body": False}
-                return {"type": "http.disconnect"}
+                nonlocal body_finished
+                if body_finished:
+                    return {"type": "http.disconnect"}
+                chunk = body.read(64 * 1024)
+                more_body = body.tell() < total
+                if not more_body:
+                    body_finished = True
+                return {"type": "http.request", "body": chunk, "more_body": more_body}
 
-            await self.app(scope, bounded_receive, send)
+            try:
+                await self.app(scope, bounded_receive, send)
+            finally:
+                body.close()
