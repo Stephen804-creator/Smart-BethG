@@ -20,6 +20,7 @@ from logging_setup import get_logger, setup_logging
 from services.file_extraction_service import FileExtractionService
 from services.file_inspection_service import FileInspectionService
 from services.job_queue import JobWorker
+import config
 
 
 def main():
@@ -36,9 +37,26 @@ def main():
 
     inspection = FileInspectionService()
     extraction = FileExtractionService()
+
+    def bounded(handler):
+        def run(job):
+            # This entrypoint is Linux-only in production. The process/container
+            # also needs cgroup limits; this alarm bounds individual parser jobs.
+            previous = signal.getsignal(signal.SIGALRM)
+            signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(
+                TimeoutError("File inspection job exceeded its wall-clock limit.")
+            ))
+            signal.setitimer(signal.ITIMER_REAL, config.FILE_INSPECTION_JOB_TIMEOUT_SECONDS)
+            try:
+                return handler(job)
+            finally:
+                signal.setitimer(signal.ITIMER_REAL, 0)
+                signal.signal(signal.SIGALRM, previous)
+        return run
+
     worker = JobWorker(handlers={
-        "file.inspect": inspection.inspect_job,
-        "file.extract_pdf": extraction.extract_pdf_job,
+        "file.inspect": bounded(inspection.inspect_job),
+        "file.extract_pdf": bounded(extraction.extract_pdf_job),
     })
 
     logger.info("File inspection worker started; registered job types=file.inspect,file.extract_pdf")
