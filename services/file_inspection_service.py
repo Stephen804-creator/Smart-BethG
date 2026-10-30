@@ -87,7 +87,9 @@ def inspect_zip_structure(content):
                 mode = (entry.external_attr >> 16) & 0xFFFF
                 if (
                     name.startswith("/")
-                    or any(part in {"", ".", ".."} for part in parts if part != "")
+                    or not name
+                    or any(part in {"", ".", ".."} for part in parts[:-1])
+                    or parts[-1] in {".", ".."}
                     or (len(name) > 1 and name[1] == ":")
                     or stat.S_ISLNK(mode)
                 ):
