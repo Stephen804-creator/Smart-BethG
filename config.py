@@ -11,6 +11,8 @@ import warnings
 
 ENVIRONMENT = os.getenv("SMART_BETHG_ENV", "development").strip().lower()
 PROCESS_ROLE = os.getenv("SMART_BETHG_PROCESS_ROLE", "web").strip().lower()
+if PROCESS_ROLE not in {"web", "agent-worker", "file-worker"}:
+    raise RuntimeError("SMART_BETHG_PROCESS_ROLE must be web, agent-worker, or file-worker.")
 if ENVIRONMENT not in {"development", "test", "production"}:
     raise RuntimeError(
         "SMART_BETHG_ENV must be one of: development, test, production. "
@@ -53,12 +55,13 @@ if SECRET_KEY_IS_EPHEMERAL:
         raise RuntimeError(
             "SMART_BETHG_SECRET_KEY must be set for production web/agent workers."
         )
-    warnings.warn(
-        "SMART_BETHG_SECRET_KEY is not set; using a temporary random key for "
-        "this process only. Sessions will not survive a restart. Set "
-        "SMART_BETHG_SECRET_KEY before deploying.",
-        RuntimeWarning,
-    )
+    if not (IS_PRODUCTION and PROCESS_ROLE == "file-worker"):
+        warnings.warn(
+            "SMART_BETHG_SECRET_KEY is not set; using a temporary random key for "
+            "this process only. Sessions will not survive a restart. Set "
+            "SMART_BETHG_SECRET_KEY before deploying.",
+            RuntimeWarning,
+        )
     _SECRET_KEY = secrets.token_hex(32)
 SECRET_KEY = _SECRET_KEY
 
