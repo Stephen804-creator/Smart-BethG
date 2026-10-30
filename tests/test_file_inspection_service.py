@@ -185,6 +185,23 @@ class TestInspectionFailClosed(unittest.TestCase):
         self.assertEqual([state for state, _ in self.repository.states], ["checking", "rejected"])
         self.assertEqual(self.repository.releases, 0)
 
+    def test_indeterminate_scanner_verdict_never_releases(self):
+        class IndeterminateScanner:
+            def scan(inner, _content):
+                return {"engine": "clamav", "status": "unknown"}
+
+        self.service.scanner = IndeterminateScanner()
+        job = {
+            "user_id": 9,
+            "attempts": 1,
+            "max_attempts": 5,
+            "payload": {"quarantine_id": "q-1", "sha256": self.record["sha256"]},
+        }
+        with self.assertRaises(InspectionUnavailable):
+            self.service.inspect_job(job)
+        self.assertEqual([state for state, _ in self.repository.states], ["checking", "queued"])
+        self.assertEqual(self.repository.releases, 0)
+
     def test_scanner_unavailable_retries_without_release(self):
         job = {
             "user_id": 9,
