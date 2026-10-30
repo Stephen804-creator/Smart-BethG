@@ -113,6 +113,13 @@ class FileService:
         record = self.repo.get(file_id, user_id)
         if not record:
             return None, "File not found."
+        if record["filename"].lower().endswith(".pdf"):
+            extraction = self.extraction_repo.get_for_user(file_id, user_id)
+            if not extraction or extraction["status"] == "pending":
+                return None, "PDF extraction is still processing in the background. Please try again shortly."
+            if extraction["status"] != "ready":
+                return None, "Smart BethG could not extract text from this PDF. The original file is still available to download."
+            return extraction.get("extracted_text") or "", None
         content, _ = self.read_bytes(user_id, file_id)
         if content is None:
             return None, "The stored file is unavailable."
@@ -123,13 +130,6 @@ class FileService:
                 text = text[:self.MAX_EXTRACTED_TEXT_CHARS] + "\n[Smart BethG truncated extraction at the configured text limit.]"
             return text, None
 
-        if record["filename"].lower().endswith(".pdf"):
-            extraction = self.extraction_repo.get_for_user(file_id, user_id)
-            if not extraction or extraction["status"] == "pending":
-                return None, "PDF extraction is still processing in the background. Please try again shortly."
-            if extraction["status"] != "ready":
-                return None, "Smart BethG could not extract text from this PDF. The original file is still available to download."
-            return extraction.get("extracted_text") or "", None
         return None, "This file type isn't supported for content extraction yet."
 
     def summarize(self, user_id, file_id):
