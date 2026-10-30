@@ -93,6 +93,20 @@ class TestUploadBodyLimitMiddleware(unittest.TestCase):
         self.assertFalse(called)
         self.assertEqual(sent[0]["status"], 413)
 
+
+    def test_spools_larger_bodies_without_changing_received_content(self):
+        payload = b"x" * (1024 * 1024 + 123)
+        middleware = UploadBodyLimitMiddleware(lambda *_: None, max_body_bytes=len(payload))
+        sent, called = self.run_asgi(
+            middleware,
+            {"type": "http", "method": "POST", "path": "/api/v1/files", "headers": []},
+            [{"type": "http.request", "body": payload, "more_body": False}],
+        )
+        self.assertTrue(called)
+        self.assertEqual(sent[0]["status"], 200)
+        self.assertEqual(len(sent[1]["body"]), len(payload))
+        self.assertEqual(sent[1]["body"], payload)
+
     def test_ignores_non_upload_routes(self):
         middleware = UploadBodyLimitMiddleware(lambda *_: None, max_body_bytes=2)
         sent, called = self.run_asgi(
