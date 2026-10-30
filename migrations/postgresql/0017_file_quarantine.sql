@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS file_quarantine_records (
     reason_code TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     reviewed_at TIMESTAMPTZ,
-    released_file_id BIGINT REFERENCES files(id) ON DELETE SET NULL
+    released_file_id INTEGER REFERENCES files(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_file_quarantine_owner
     ON file_quarantine_records(user_id, created_at DESC);
