@@ -168,6 +168,23 @@ class TestInspectionFailClosed(unittest.TestCase):
             scanner=MissingScanner(),
         )
 
+    def test_malware_rejection_never_releases(self):
+        class MalwareScanner:
+            def scan(inner, _content):
+                raise InspectionRejected("malware_detected")
+
+        self.service.scanner = MalwareScanner()
+        job = {
+            "user_id": 9,
+            "attempts": 1,
+            "max_attempts": 5,
+            "payload": {"quarantine_id": "q-1", "sha256": self.record["sha256"]},
+        }
+        result = self.service.inspect_job(job)
+        self.assertEqual(result["status"], "rejected")
+        self.assertEqual([state for state, _ in self.repository.states], ["checking", "rejected"])
+        self.assertEqual(self.repository.releases, 0)
+
     def test_scanner_unavailable_retries_without_release(self):
         job = {
             "user_id": 9,
