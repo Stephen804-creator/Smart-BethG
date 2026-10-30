@@ -46,15 +46,15 @@ def make_zip(entries):
 
 class TestClamAVScanner(unittest.TestCase):
     def test_clean_result_requires_explicit_clamav_ok(self):
-        fake = FakeSocket(b"stream: OK\\0")
+        fake = FakeSocket(b"stream: OK\0")
         with patch("services.file_inspection_service.socket.create_connection", return_value=fake):
             result = ClamAVScanner(host="scanner", port=3310).scan(b"hello")
         self.assertEqual(result, {"engine": "clamav", "status": "clean"})
-        self.assertEqual(fake.sent[0], b"zINSTREAM\\0")
-        self.assertEqual(fake.sent[-1], b"\\0\\0\\0\\0")
+        self.assertEqual(fake.sent[0], b"zINSTREAM\0")
+        self.assertEqual(fake.sent[-1], b"\0\0\0\0")
 
     def test_malware_result_is_rejected(self):
-        fake = FakeSocket(b"stream: Eicar-Test-Signature FOUND\\0")
+        fake = FakeSocket(b"stream: Eicar-Test-Signature FOUND\0")
         with patch("services.file_inspection_service.socket.create_connection", return_value=fake):
             with self.assertRaisesRegex(InspectionRejected, "malware_detected"):
                 ClamAVScanner(host="scanner").scan(b"malware")
@@ -91,7 +91,7 @@ class TestZipInspection(unittest.TestCase):
 
     def test_rejects_nested_archives(self):
         with self.assertRaisesRegex(InspectionRejected, "archive_nested_archive_not_supported"):
-            inspect_zip_structure(make_zip([("nested.zip", b"PK\\x03\\x04")]))
+            inspect_zip_structure(make_zip([("nested.zip", b"PK\x03\x04")]))
 
     def test_rejects_entry_count_limit(self):
         from config import FILE_ARCHIVE_MAX_ENTRIES
