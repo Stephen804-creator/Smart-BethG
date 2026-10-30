@@ -16,6 +16,7 @@ from services.specialist_coordinator import SpecialistCoordinator
 from services.operations_service import OperationsService
 from services.social_publishing_service import SocialPublishingService
 from services.units_21_24 import ScheduledAgentJobService
+from services.file_inspection_service import FileInspectionService
 
 
 def main():
@@ -48,10 +49,12 @@ def main():
         operations.heartbeat_worker(worker_id, "starting", {"process_id": os.getpid()})
         heartbeat_thread = threading.Thread(target=heartbeat_loop, name="worker-heartbeat", daemon=True)
         heartbeat_thread.start()
+        file_inspection = FileInspectionService()
         worker = JobWorker(handlers={
             "mission.execute": MissionExecutor().execute,
             "workflow.execute": WorkflowExecutor().execute,
             "agent.team.execute": SpecialistCoordinator().execute,
+            "file.inspect": file_inspection.inspect_job,
         })
         while True:
             try:
