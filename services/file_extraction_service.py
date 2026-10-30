@@ -53,8 +53,14 @@ class FileExtractionService:
             if len(content) > config.MAX_UPLOAD_SIZE_BYTES:
                 raise ValueError("pdf_size_limit")
             extracted_text, page_count = extract_pdf_content(content)
-            self.extractions.complete(file_id, job["user_id"], extracted_text, page_count)
+            if not self.extractions.complete(file_id, job["user_id"], extracted_text, page_count):
+                raise RuntimeError("PDF extraction state could not be committed.")
             return {"status": "ready", "file_id": file_id, "page_count": page_count}
+        except TimeoutError:
+            final_attempt = int(job.get("attempts", 1)) >= int(job.get("max_attempts", 3))
+            if final_attempt:
+                self.extractions.fail(file_id, job["user_id"], "pdf_extraction_timeout")
+            raise
         except Exception as exc:
             logger.warning(
                 "PDF extraction failed in worker: user=%s file_id=%s error_type=%s",
