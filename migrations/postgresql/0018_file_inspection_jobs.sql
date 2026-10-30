@@ -4,6 +4,7 @@ ALTER TABLE file_quarantine_records
     ADD COLUMN IF NOT EXISTS inspection_status TEXT NOT NULL DEFAULT 'queued'
         CHECK (inspection_status IN ('queued','checking','clean','rejected','failed')),
     ADD COLUMN IF NOT EXISTS inspection_attempts INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS inspection_retry_generation INTEGER NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS inspection_engine TEXT,
     ADD COLUMN IF NOT EXISTS inspected_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS inspection_error_code TEXT;
