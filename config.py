@@ -244,7 +244,7 @@ def _validate_runtime_config() -> None:
         invalid.append("FILE_INSPECTION_JOB_TIMEOUT_SECONDS must be between 1 and 600")
     if FILE_ARCHIVE_MAX_ENTRIES < 1 or FILE_ARCHIVE_MAX_ENTRIES > 10000:
         invalid.append("FILE_ARCHIVE_MAX_ENTRIES must be between 1 and 10000")
-    if FILE_ARCHIVE_MAX_EXPANDED_BYTES < 1 or FILE_ARCHIVE_MAX_EXPANDED_BYTES > MAX_UPLOAD_SIZE_BYTES * 20:
+    if FILE_ARCHIVE_MAX_EXPANDED_BYTES < 1 or FILE_ARCHIVE_MAX_EXPANDED_BYTES > 1024 * 1024 * 1024:
         invalid.append("FILE_ARCHIVE_MAX_EXPANDED_BYTES is outside the permitted range")
     if FILE_ARCHIVE_MAX_COMPRESSION_RATIO < 1 or FILE_ARCHIVE_MAX_COMPRESSION_RATIO > 1000:
         invalid.append("FILE_ARCHIVE_MAX_COMPRESSION_RATIO must be between 1 and 1000")
