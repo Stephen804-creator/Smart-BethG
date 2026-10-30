@@ -99,6 +99,9 @@ class TestFileQuarantineService(SmartBethGTestCase):
         record = self.service.quarantine_upload(
             self.owner["id"], "retry.txt", b"keep this upload"
         )
+        initial_job = JobQueue().claim(job_types=("file.inspect",))
+        self.assertIsNotNone(initial_job)
+        JobQueue().fail(initial_job, "scanner unavailable", retryable=False)
         self.service.repository.set_inspection_state(
             record["id"], self.owner["id"], "failed",
             attempts=5, error_code="scanner_unavailable_after_retries",
