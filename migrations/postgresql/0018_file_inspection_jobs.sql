@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_file_extractions_owner
 -- needs to parse historical documents in request workers.
 INSERT INTO file_extractions(file_id,user_id,status)
 SELECT id,user_id,'pending' FROM files
-WHERE lower(filename) LIKE '%.pdf'
+WHERE right(lower(filename),4) = '.pdf'
 ON CONFLICT(file_id) DO NOTHING;
 
 INSERT INTO background_jobs(
