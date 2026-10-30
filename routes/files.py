@@ -52,7 +52,7 @@ async def upload_file(
         except ValueError as exc:
             raise HTTPException(status_code=415, detail=str(exc))
         return {
-            "id": record["id"],
+            "quarantine_id": record["id"],
             "filename": record["original_filename"],
             "size_bytes": record["byte_size"],
             "sha256": record["sha256"],
