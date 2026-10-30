@@ -47,8 +47,10 @@ Quarantine is private user data, not a public moderation queue. Enforce owner/wo
 
 ## Current implementation boundary
 
-The current branch implements bounded upload intake, private quarantine storage, metadata/checksum recording, owner-scoped status listing/deletion, basic type/signature checks, and request-body caps on both legacy and versioned upload routes.
+The branch implements bounded upload intake, private quarantine storage, metadata/checksum recording, owner-scoped status listing/deletion, basic type/signature checks, and request-body caps on both legacy and versioned upload routes. Quarantine metadata and the durable inspection job are committed together.
 
-It does not yet provide background antivirus scanning, automatic release, isolated archive extraction, or an isolated document parser. The API must therefore not describe current uploads as scanned/clean or make them available for extraction or execution. The next implementation slice must add a separately deployed scanner/inspection worker and durable retry/status handling before a user-facing "Ready" state is offered.
+The separate worker sends content to a private ClamAV daemon, verifies content integrity, inspects ZIP metadata and streams decompression to discard under entry/expanded-size/compression-ratio limits without writing archive members to disk. Only a clean result is atomically released into the ordinary file library. Missing/unavailable/indeterminate scanner results retry and ultimately remain failed in quarantine; malware and archive-policy violations are rejected. No user-controlled release operation exists.
+
+PDF parsing is moved to the durable worker. A migration queues legacy PDF files for background extraction, and new clean PDF releases enqueue extraction automatically. The API reads the worker-produced extraction result and exposes an extraction-status endpoint; it no longer invokes pypdf while serving a request.
 
 The ASGI body cap is per application process, not a global cross-replica quota. Production ingress must also enforce a request-body limit, and production load tests must account for the middleware's bounded in-memory buffering.
