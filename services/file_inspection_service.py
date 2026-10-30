@@ -82,7 +82,7 @@ def inspect_zip_structure(content):
             total_size = 0
             seen = set()
             for entry in entries:
-                name = entry.filename.replace("\\\\", "/")
+                name = entry.filename.replace("\\", "/")
                 parts = name.split("/")
                 mode = (entry.external_attr >> 16) & 0xFFFF
                 if (
@@ -90,8 +90,9 @@ def inspect_zip_structure(content):
                     or not name
                     or any(part in {"", ".", ".."} for part in parts[:-1])
                     or parts[-1] in {".", ".."}
-                    or (len(name) > 1 and name[1] == ":")
+                    or any(len(part) > 1 and part[1] == ":" for part in parts)
                     or stat.S_ISLNK(mode)
+                    or (stat.S_IFMT(mode) not in {0, stat.S_IFREG, stat.S_IFDIR})
                 ):
                     raise InspectionRejected("archive_unsafe_path")
                 normalized = name.casefold()
@@ -102,15 +103,28 @@ def inspect_zip_structure(content):
                     raise InspectionRejected("archive_encrypted_entry")
                 if entry.file_size < 0 or entry.compress_size < 0:
                     raise InspectionRejected("archive_invalid_size")
-                total_size += entry.file_size
-                if total_size > max_expanded:
-                    raise InspectionRejected("archive_expansion_limit")
-                if entry.file_size and entry.compress_size == 0:
-                    raise InspectionRejected("archive_suspicious_ratio")
-                if entry.compress_size and entry.file_size / entry.compress_size > max_ratio:
-                    raise InspectionRejected("archive_suspicious_ratio")
                 if os.path.splitext(name.lower())[1] in {".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"}:
                     raise InspectionRejected("archive_nested_archive_not_supported")
+                actual_size = 0
+                if not entry.is_dir():
+                    # Stream decompression to discard: never write archive paths
+                    # to disk, but enforce limits against actual output rather
+                    # than trusting only the ZIP central-directory metadata.
+                    with archive.open(entry, "r") as member:
+                        while True:
+                            chunk = member.read(64 * 1024)
+                            if not chunk:
+                                break
+                            actual_size += len(chunk)
+                            total_size += len(chunk)
+                            if actual_size > entry.file_size or total_size > max_expanded:
+                                raise InspectionRejected("archive_expansion_limit")
+                if actual_size != entry.file_size:
+                    raise InspectionRejected("archive_invalid_size")
+                if actual_size and entry.compress_size == 0:
+                    raise InspectionRejected("archive_suspicious_ratio")
+                if entry.compress_size and actual_size / entry.compress_size > max_ratio:
+                    raise InspectionRejected("archive_suspicious_ratio")
     except InspectionRejected:
         raise
     except (zipfile.BadZipFile, OSError, RuntimeError, ValueError) as exc:
