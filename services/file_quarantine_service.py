@@ -58,7 +58,7 @@ class FileQuarantineService:
                 content.decode("utf-8", errors="strict")
             except UnicodeDecodeError as exc:
                 raise ValueError("Text uploads must be valid UTF-8.") from exc
-            return "text/plain", "scanner_not_configured"
+            return "text/plain", "inspection_pending"
         if extension == ".pdf":
             if not content.startswith(b"%PDF-"):
                 raise ValueError("File content does not match its PDF extension.")
