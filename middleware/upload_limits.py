@@ -35,7 +35,7 @@ class UploadBodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
         path = scope.get("path", "").rstrip("/")
-        if scope.get("method") != "POST" or not path.endswith(self.route_suffix):
+        if scope.get("method") != "POST" or path not in {"/api/files", "/api/v1/files"}:
             await self.app(scope, receive, send)
             return
 
