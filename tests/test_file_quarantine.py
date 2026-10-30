@@ -94,6 +94,25 @@ class TestFileQuarantineService(SmartBethGTestCase):
         self.assertEqual(self.service.repository.get(record["id"], self.owner["id"])["status"], "released")
         self.assertEqual(FileService().list_files(self.other["id"]), [])
 
+
+    def test_failed_inspection_can_be_retried_without_reupload(self):
+        record = self.service.quarantine_upload(
+            self.owner["id"], "retry.txt", b"keep this upload"
+        )
+        self.service.repository.set_inspection_state(
+            record["id"], self.owner["id"], "failed",
+            attempts=5, error_code="scanner_unavailable_after_retries",
+        )
+        self.assertFalse(self.service.retry(self.other["id"], record["id"]))
+        self.assertTrue(self.service.retry(self.owner["id"], record["id"]))
+        refreshed = self.service.repository.get(record["id"], self.owner["id"])
+        self.assertEqual(refreshed["inspection_status"], "queued")
+        self.assertEqual(refreshed["inspection_attempts"], 0)
+        jobs = JobQueue().list_for_user(self.owner["id"])
+        self.assertEqual(
+            len([job for job in jobs if job["job_type"] == "file.inspect"]), 2
+        )
+
     def test_owner_can_delete_their_quarantined_upload(self):
         record = self.service.quarantine_upload(
             self.owner["id"], "remove.txt", b"remove me"
