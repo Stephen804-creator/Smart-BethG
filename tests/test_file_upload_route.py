@@ -79,8 +79,13 @@ class TestFileUploadRoute(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()["files"]), 1)
         self.assertEqual(response.json()["files"][0]["inspection_status"], "queued")
-        self.assertNotIn("object_locator", response.json()["files"][0])
-        self.assertNotIn("user_id", response.json()["files"][0])
+        public_record = response.json()["files"][0]
+        self.assertEqual(public_record["quarantine_id"], "q-123")
+        self.assertNotIn("id", public_record)
+        self.assertNotIn("object_locator", public_record)
+        self.assertNotIn("user_id", public_record)
+        self.assertNotIn("sha256", public_record)
+        self.assertNotIn("inspection_error_code", public_record)
 
 
 if __name__ == "__main__":
