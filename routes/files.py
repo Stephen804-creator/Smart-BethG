@@ -73,7 +73,15 @@ def list_quarantined_files(
     records = service.list_for_user(user["id"])
     # Never return filesystem paths or S3 locators through the public API.
     public_records = [
-        {key: value for key, value in record.items() if key not in {"object_locator", "user_id"}}
+        {
+            "quarantine_id": record["id"],
+            "filename": record["original_filename"],
+            "size_bytes": record["byte_size"],
+            "media_type": record["detected_media_type"],
+            "status": record["status"],
+            "inspection_status": record.get("inspection_status", "queued"),
+            "created_at": record.get("created_at"),
+        }
         for record in records
     ]
     return {"files": public_records}
