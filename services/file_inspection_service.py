@@ -189,6 +189,12 @@ class FileInspectionService:
             if record["detected_media_type"] == "application/zip":
                 archive_result = inspect_zip_structure(content)
             scan_result = self.scanner.scan(content)
+            if (
+                not isinstance(scan_result, dict)
+                or scan_result.get("engine") != "clamav"
+                or scan_result.get("status") != "clean"
+            ):
+                raise InspectionUnavailable("Scanner did not provide an explicit supported clean verdict.")
             released = self._release(record, content)
             return {"status": "released", "file_id": released["file_id"], "archive": archive_result}
         except InspectionRejected as exc:
