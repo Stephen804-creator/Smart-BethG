@@ -97,12 +97,22 @@ class TestFileService(SmartBethGTestCase):
         pdf_bytes = buf.getvalue()
 
         record = self.service.save_upload(self.user["id"], "doc.pdf", pdf_bytes, "application/pdf")
+        from services.job_queue import JobQueue
+        from services.file_extraction_service import FileExtractionService
+        job = JobQueue().claim()
+        self.assertEqual(job["job_type"], "file.extract_pdf")
+        FileExtractionService().extract_pdf_job(job)
         text, error = self.service.extract_text(self.user["id"], record["id"])
         self.assertIsNone(error)
         self.assertEqual(text.strip(), "")
 
     def test_extract_text_from_corrupt_pdf_fails_honestly(self):
         record = self.service.save_upload(self.user["id"], "broken.pdf", b"not a real pdf at all")
+        from services.job_queue import JobQueue
+        from services.file_extraction_service import FileExtractionService
+        job = JobQueue().claim()
+        self.assertEqual(job["job_type"], "file.extract_pdf")
+        FileExtractionService().extract_pdf_job(job)
         text, error = self.service.extract_text(self.user["id"], record["id"])
         self.assertIsNone(text)
         self.assertIsNotNone(error)
