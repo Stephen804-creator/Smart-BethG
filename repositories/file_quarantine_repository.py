@@ -204,6 +204,18 @@ class FileQuarantineRepository:
             raise RuntimeError("Quarantine record disappeared while retrying inspection.")
         return row["sha256"]
 
+    def get_released_file_id(self, quarantine_id, user_id):
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT released_file_id FROM file_quarantine_records "
+                "WHERE id=? AND user_id=? AND status='released' LIMIT 1",
+                (quarantine_id, user_id),
+            ).fetchone()
+            return row["released_file_id"] if row else None
+        finally:
+            conn.close()
+
     def delete(self, quarantine_id, user_id):
         conn = get_connection()
         try:
