@@ -21,6 +21,7 @@ API_PREFIX = "/api/v1"
 STORAGE_ROOT = os.getenv("SMART_BETHG_STORAGE_ROOT", "./storage")
 STORAGE_DIRS = {
     "uploads": os.path.join(STORAGE_ROOT, "uploads"),
+    "quarantine": os.path.join(STORAGE_ROOT, "quarantine"),
     "memory": os.path.join(STORAGE_ROOT, "memory"),
     "research": os.path.join(STORAGE_ROOT, "research"),
     "projects": os.path.join(STORAGE_ROOT, "projects"),
