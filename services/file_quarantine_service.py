@@ -12,6 +12,9 @@ import uuid
 import config
 from repositories.file_quarantine_repository import FileQuarantineRepository
 from storage.backend import get_storage_backend
+from logging_setup import get_logger
+
+logger = get_logger("task")
 
 
 _TEXT_EXTENSIONS = {
@@ -120,6 +123,6 @@ class FileQuarantineService:
             self.storage.delete("quarantine", user_id, locator)
         except Exception:
             # The row is removed first, so an orphaned opaque object cannot be
-            # fetched through the application API. A sweeper can clean it later.
-            return False
+            # fetched through the application API. Record it for operational cleanup.
+            logger.warning("Quarantine object cleanup failed after metadata deletion: user=%s id=%s", user_id, quarantine_id, exc_info=True)
         return True
