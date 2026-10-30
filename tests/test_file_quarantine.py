@@ -43,7 +43,8 @@ class TestFileQuarantineService(SmartBethGTestCase):
         record = self.service.quarantine_upload(
             self.owner["id"], "readme.md", b"hello"
         )
-        objects = os.listdir(self.root)
+        owner_root = os.path.join(self.root, str(self.owner["id"]))
+        objects = os.listdir(owner_root)
         self.assertEqual(len(objects), 1)
         self.assertTrue(objects[0].startswith(record["id"] + "_"))
 
