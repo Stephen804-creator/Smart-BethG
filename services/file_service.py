@@ -69,8 +69,8 @@ class FileService:
 
     def read_bytes(self, user_id, file_id):
         record = self.repo.get(file_id, user_id)
-        if not record:
-            return None, None
+        if not record or record.get("status") != "stored":
+            return None, record
         try:
             content = self.storage.get_bytes("uploads", user_id, record["path"])
             if len(content) > config.MAX_UPLOAD_SIZE_BYTES:
@@ -113,6 +113,8 @@ class FileService:
         record = self.repo.get(file_id, user_id)
         if not record:
             return None, "File not found."
+        if record.get("status") != "stored":
+            return None, "This file is not ready for use yet. Please wait for its security checks to finish."
         if record["filename"].lower().endswith(".pdf"):
             extraction = self.extraction_repo.get_for_user(file_id, user_id)
             if not extraction or extraction["status"] == "pending":
