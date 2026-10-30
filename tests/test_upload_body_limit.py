@@ -30,6 +30,7 @@ class TestUploadBodyLimitMiddleware(unittest.TestCase):
                 "body": first.get("body", b""),
             })
 
+        middleware.app = app
         asyncio.run(middleware(scope, receive, send))
         return sent, called
 
