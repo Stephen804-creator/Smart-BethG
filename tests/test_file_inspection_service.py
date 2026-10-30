@@ -93,6 +93,26 @@ class TestZipInspection(unittest.TestCase):
         with self.assertRaisesRegex(InspectionRejected, "archive_nested_archive_not_supported"):
             inspect_zip_structure(make_zip([("nested.zip", b"PK\x03\x04")]))
 
+    def test_rejects_symlink_entries(self):
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, "w") as archive:
+            entry = zipfile.ZipInfo("link")
+            entry.create_system = 3
+            entry.external_attr = (0o120777 << 16)
+            archive.writestr(entry, "target")
+        with self.assertRaisesRegex(InspectionRejected, "archive_unsafe_path"):
+            inspect_zip_structure(stream.getvalue())
+
+    def test_rejects_actual_expansion_limit(self):
+        import config
+        old_limit = config.FILE_ARCHIVE_MAX_EXPANDED_BYTES
+        config.FILE_ARCHIVE_MAX_EXPANDED_BYTES = 100
+        try:
+            with self.assertRaisesRegex(InspectionRejected, "archive_expansion_limit"):
+                inspect_zip_structure(make_zip([("large.txt", b"x" * 1000)]))
+        finally:
+            config.FILE_ARCHIVE_MAX_EXPANDED_BYTES = old_limit
+
     def test_rejects_entry_count_limit(self):
         from config import FILE_ARCHIVE_MAX_ENTRIES
         payload = make_zip([(f"{index}.txt", b"x") for index in range(FILE_ARCHIVE_MAX_ENTRIES + 1)])
