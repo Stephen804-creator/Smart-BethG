@@ -70,7 +70,13 @@ def list_quarantined_files(
     user=Depends(get_current_user),
     service: FileQuarantineService = Depends(get_file_quarantine_service),
 ):
-    return {"files": service.list_for_user(user["id"])}
+    records = service.list_for_user(user["id"])
+    # Never return filesystem paths or S3 locators through the public API.
+    public_records = [
+        {key: value for key, value in record.items() if key not in {"object_locator", "user_id"}}
+        for record in records
+    ]
+    return {"files": public_records}
 
 
 @router.post("/quarantine/{quarantine_id}/retry")
