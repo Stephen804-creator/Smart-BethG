@@ -10,6 +10,9 @@ import secrets
 import warnings
 
 ENVIRONMENT = os.getenv("SMART_BETHG_ENV", "development").strip().lower()
+PROCESS_ROLE = os.getenv("SMART_BETHG_PROCESS_ROLE", "web").strip().lower()
+if PROCESS_ROLE not in {"web", "agent-worker", "file-worker"}:
+    raise RuntimeError("SMART_BETHG_PROCESS_ROLE must be web, agent-worker, or file-worker.")
 if ENVIRONMENT not in {"development", "test", "production"}:
     raise RuntimeError(
         "SMART_BETHG_ENV must be one of: development, test, production. "
@@ -21,6 +24,7 @@ API_PREFIX = "/api/v1"
 STORAGE_ROOT = os.getenv("SMART_BETHG_STORAGE_ROOT", "./storage")
 STORAGE_DIRS = {
     "uploads": os.path.join(STORAGE_ROOT, "uploads"),
+    "quarantine": os.path.join(STORAGE_ROOT, "quarantine"),
     "memory": os.path.join(STORAGE_ROOT, "memory"),
     "research": os.path.join(STORAGE_ROOT, "research"),
     "projects": os.path.join(STORAGE_ROOT, "projects"),
@@ -47,16 +51,17 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 _SECRET_KEY = os.getenv("SMART_BETHG_SECRET_KEY", "")
 SECRET_KEY_IS_EPHEMERAL = not bool(_SECRET_KEY)
 if SECRET_KEY_IS_EPHEMERAL:
-    if IS_PRODUCTION:
+    if IS_PRODUCTION and PROCESS_ROLE != "file-worker":
         raise RuntimeError(
-            "SMART_BETHG_SECRET_KEY must be set when SMART_BETHG_ENV=production."
+            "SMART_BETHG_SECRET_KEY must be set for production web/agent workers."
         )
-    warnings.warn(
-        "SMART_BETHG_SECRET_KEY is not set; using a temporary random key for "
-        "this process only. Sessions will not survive a restart. Set "
-        "SMART_BETHG_SECRET_KEY before deploying.",
-        RuntimeWarning,
-    )
+    if not (IS_PRODUCTION and PROCESS_ROLE == "file-worker"):
+        warnings.warn(
+            "SMART_BETHG_SECRET_KEY is not set; using a temporary random key for "
+            "this process only. Sessions will not survive a restart. Set "
+            "SMART_BETHG_SECRET_KEY before deploying.",
+            RuntimeWarning,
+        )
     _SECRET_KEY = secrets.token_hex(32)
 SECRET_KEY = _SECRET_KEY
 
@@ -99,6 +104,17 @@ REGISTRATION_INVITE_CODE = ""
 # Database-backed rate limiting uses these limits across processes and replicas.
 AUTH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_MAX", "10"))
 AUTH_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_WINDOW", "300"))
+
+
+# File inspection is handled by a durable worker. Missing scanner configuration
+# leaves files quarantined; it never causes an automatic clean/release decision.
+FILE_SCANNER_HOST = os.getenv("SMART_BETHG_FILE_SCANNER_HOST", "").strip()
+FILE_SCANNER_PORT = int(os.getenv("SMART_BETHG_FILE_SCANNER_PORT", "3310"))
+FILE_SCANNER_TIMEOUT_SECONDS = float(os.getenv("SMART_BETHG_FILE_SCANNER_TIMEOUT_SECONDS", "30"))
+FILE_INSPECTION_JOB_TIMEOUT_SECONDS = int(os.getenv("SMART_BETHG_FILE_INSPECTION_JOB_TIMEOUT_SECONDS", "120"))
+FILE_ARCHIVE_MAX_ENTRIES = int(os.getenv("SMART_BETHG_FILE_ARCHIVE_MAX_ENTRIES", "1000"))
+FILE_ARCHIVE_MAX_EXPANDED_BYTES = int(os.getenv("SMART_BETHG_FILE_ARCHIVE_MAX_EXPANDED_BYTES", str(100 * 1024 * 1024)))
+FILE_ARCHIVE_MAX_COMPRESSION_RATIO = int(os.getenv("SMART_BETHG_FILE_ARCHIVE_MAX_COMPRESSION_RATIO", "100"))
 
 MAX_UPLOAD_SIZE_BYTES = int(
     os.getenv("SMART_BETHG_MAX_UPLOAD_BYTES", str(15 * 1024 * 1024))
@@ -166,6 +182,10 @@ def _validate_runtime_config() -> None:
         "AUTH_RATE_LIMIT_MAX_ATTEMPTS": AUTH_RATE_LIMIT_MAX_ATTEMPTS,
         "AUTH_RATE_LIMIT_WINDOW_SECONDS": AUTH_RATE_LIMIT_WINDOW_SECONDS,
         "MAX_UPLOAD_SIZE_BYTES": MAX_UPLOAD_SIZE_BYTES,
+        "FILE_ARCHIVE_MAX_ENTRIES": FILE_ARCHIVE_MAX_ENTRIES,
+        "FILE_ARCHIVE_MAX_EXPANDED_BYTES": FILE_ARCHIVE_MAX_EXPANDED_BYTES,
+        "FILE_ARCHIVE_MAX_COMPRESSION_RATIO": FILE_ARCHIVE_MAX_COMPRESSION_RATIO,
+        "FILE_INSPECTION_JOB_TIMEOUT_SECONDS": FILE_INSPECTION_JOB_TIMEOUT_SECONDS,
         "CHAT_RATE_LIMIT_MAX_ATTEMPTS": CHAT_RATE_LIMIT_MAX_ATTEMPTS,
         "CHAT_RATE_LIMIT_WINDOW_SECONDS": CHAT_RATE_LIMIT_WINDOW_SECONDS,
         "UPLOAD_RATE_LIMIT_MAX_ATTEMPTS": UPLOAD_RATE_LIMIT_MAX_ATTEMPTS,
@@ -206,6 +226,7 @@ def _validate_runtime_config() -> None:
         "GLOBAL_DAILY_SPEND_USD": GLOBAL_DAILY_SPEND_USD,
         "UNKNOWN_MODEL_INPUT_USD_PER_MILLION": UNKNOWN_MODEL_INPUT_USD_PER_MILLION,
         "UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION": UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION,
+        "FILE_SCANNER_TIMEOUT_SECONDS": FILE_SCANNER_TIMEOUT_SECONDS,
     }
     import math
 
@@ -215,6 +236,18 @@ def _validate_runtime_config() -> None:
         if not math.isfinite(value) or value <= 0
     )
     storage_backend = os.getenv("SMART_BETHG_OBJECT_STORAGE", "local").strip().lower()
+    if not 1 <= FILE_SCANNER_PORT <= 65535:
+        invalid.append("FILE_SCANNER_PORT must be between 1 and 65535")
+    if FILE_SCANNER_TIMEOUT_SECONDS <= 0 or FILE_SCANNER_TIMEOUT_SECONDS > 120:
+        invalid.append("FILE_SCANNER_TIMEOUT_SECONDS must be greater than 0 and at most 120")
+    if FILE_INSPECTION_JOB_TIMEOUT_SECONDS < 1 or FILE_INSPECTION_JOB_TIMEOUT_SECONDS > 600:
+        invalid.append("FILE_INSPECTION_JOB_TIMEOUT_SECONDS must be between 1 and 600")
+    if FILE_ARCHIVE_MAX_ENTRIES < 1 or FILE_ARCHIVE_MAX_ENTRIES > 10000:
+        invalid.append("FILE_ARCHIVE_MAX_ENTRIES must be between 1 and 10000")
+    if FILE_ARCHIVE_MAX_EXPANDED_BYTES < 1 or FILE_ARCHIVE_MAX_EXPANDED_BYTES > 1024 * 1024 * 1024:
+        invalid.append("FILE_ARCHIVE_MAX_EXPANDED_BYTES is outside the permitted range")
+    if FILE_ARCHIVE_MAX_COMPRESSION_RATIO < 1 or FILE_ARCHIVE_MAX_COMPRESSION_RATIO > 1000:
+        invalid.append("FILE_ARCHIVE_MAX_COMPRESSION_RATIO must be between 1 and 1000")
     if storage_backend not in {"local", "s3", "s3-compatible"}:
         invalid.append("SMART_BETHG_OBJECT_STORAGE must be local or s3")
     if storage_backend in {"s3", "s3-compatible"} and not os.getenv("SMART_BETHG_S3_BUCKET", "").strip():

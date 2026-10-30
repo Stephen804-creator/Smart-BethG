@@ -18,6 +18,7 @@ import config
 from database import initialize_database
 from logging_setup import setup_logging, get_logger
 from error_handlers import register_error_handlers
+from middleware.upload_limits import UploadBodyLimitMiddleware
 
 from routes import (
     health, auth, auth_google, tasks, agents, approvals, audit, tools,
@@ -66,6 +67,16 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     register_error_handlers(app)
+
+    # Bound upload bodies before Starlette parses multipart forms and spools files.
+    # The extra 1 MiB is reserved for multipart framing; the route independently
+    # enforces the exact per-file byte limit.
+    app.add_middleware(
+        UploadBodyLimitMiddleware,
+        max_body_bytes=config.MAX_UPLOAD_SIZE_BYTES + (1024 * 1024),
+        max_concurrent=2,
+        route_suffix=config.API_PREFIX + "/files",
+    )
 
     @app.middleware("http")
     async def enforce_csrf_for_cookie_authenticated_mutations(request: Request, call_next):

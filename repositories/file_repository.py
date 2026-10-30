@@ -10,8 +10,20 @@ class FileRepository:
                 "VALUES (?, ?, ?, ?, ?, 'stored')",
                 (user_id, filename, path, file_type, source),
             )
+            file_id = cur.lastrowid
+            if str(filename).lower().endswith(".pdf"):
+                conn.execute(
+                    "INSERT INTO file_extractions(file_id,user_id,status) VALUES (?,?, 'pending') "
+                    "ON CONFLICT(file_id) DO NOTHING",
+                    (file_id, user_id),
+                )
+                from services.job_queue import JobQueue
+                JobQueue().enqueue_in_transaction(
+                    conn, user_id, "file.extract_pdf", {"file_id": file_id},
+                    "file-pdf-extract:" + str(file_id), priority=1, max_attempts=3,
+                )
             conn.commit()
-            return cur.lastrowid
+            return file_id
         finally:
             conn.close()
 
@@ -39,7 +51,7 @@ class FileRepository:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT * FROM files WHERE user_id=? AND filename LIKE ? ORDER BY id DESC",
+                "SELECT * FROM files WHERE user_id=? AND status='stored' AND filename LIKE ? ORDER BY id DESC",
                 (user_id, f"%{query}%"),
             ).fetchall()
             return [dict(r) for r in rows]

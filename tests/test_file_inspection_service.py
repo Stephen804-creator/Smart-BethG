@@ -1,0 +1,231 @@
+import io
+import unittest
+import zipfile
+from unittest.mock import patch
+
+from services.file_inspection_service import (
+    ClamAVScanner,
+    InspectionRejected,
+    InspectionUnavailable,
+    inspect_zip_structure,
+)
+
+
+class FakeSocket:
+    def __init__(self, response):
+        self.response = response
+        self.sent = []
+        self.timeout = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def settimeout(self, value):
+        self.timeout = value
+
+    def sendall(self, value):
+        self.sent.append(value)
+
+    def recv(self, _size):
+        if self.response is None:
+            return b""
+        response, self.response = self.response, None
+        return response
+
+
+def make_zip(entries):
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, content in entries:
+            archive.writestr(name, content)
+    return stream.getvalue()
+
+
+class TestClamAVScanner(unittest.TestCase):
+    def test_clean_result_requires_explicit_clamav_ok(self):
+        fake = FakeSocket(b"stream: OK\0")
+        with patch("services.file_inspection_service.socket.create_connection", return_value=fake):
+            result = ClamAVScanner(host="scanner", port=3310).scan(b"hello")
+        self.assertEqual(result, {"engine": "clamav", "status": "clean"})
+        self.assertEqual(fake.sent[0], b"zINSTREAM\0")
+        self.assertEqual(fake.sent[-1], b"\0\0\0\0")
+
+    def test_malware_result_is_rejected(self):
+        fake = FakeSocket(b"stream: Eicar-Test-Signature FOUND\0")
+        with patch("services.file_inspection_service.socket.create_connection", return_value=fake):
+            with self.assertRaisesRegex(InspectionRejected, "malware_detected"):
+                ClamAVScanner(host="scanner").scan(b"malware")
+
+    def test_missing_scanner_never_returns_clean(self):
+        with self.assertRaises(InspectionUnavailable):
+            ClamAVScanner(host="").scan(b"file")
+
+    def test_scanner_timeout_is_indeterminate_not_clean(self):
+        with patch(
+            "services.file_inspection_service.socket.create_connection",
+            side_effect=TimeoutError("timeout"),
+        ):
+            with self.assertRaises(InspectionUnavailable):
+                ClamAVScanner(host="scanner").scan(b"file")
+
+
+class TestZipInspection(unittest.TestCase):
+    def test_accepts_small_archive_without_extracting(self):
+        result = inspect_zip_structure(make_zip([("src/main.py", b"print('hello')")]))
+        self.assertEqual(result["entries"], 1)
+
+    def test_rejects_parent_traversal(self):
+        with self.assertRaisesRegex(InspectionRejected, "archive_unsafe_path"):
+            inspect_zip_structure(make_zip([("../outside.txt", b"x")]))
+
+    def test_rejects_absolute_path(self):
+        with self.assertRaisesRegex(InspectionRejected, "archive_unsafe_path"):
+            inspect_zip_structure(make_zip([("/etc/passwd", b"x")]))
+
+    def test_rejects_duplicate_case_insensitive_paths(self):
+        with self.assertRaisesRegex(InspectionRejected, "archive_duplicate_path"):
+            inspect_zip_structure(make_zip([("Readme.txt", b"a"), ("README.TXT", b"b")]))
+
+    def test_rejects_nested_archives(self):
+        with self.assertRaisesRegex(InspectionRejected, "archive_nested_archive_not_supported"):
+            inspect_zip_structure(make_zip([("nested.zip", b"PK\x03\x04")]))
+
+    def test_rejects_symlink_entries(self):
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, "w") as archive:
+            entry = zipfile.ZipInfo("link")
+            entry.create_system = 3
+            entry.external_attr = (0o120777 << 16)
+            archive.writestr(entry, "target")
+        with self.assertRaisesRegex(InspectionRejected, "archive_unsafe_path"):
+            inspect_zip_structure(stream.getvalue())
+
+    def test_rejects_actual_expansion_limit(self):
+        import config
+        old_limit = config.FILE_ARCHIVE_MAX_EXPANDED_BYTES
+        config.FILE_ARCHIVE_MAX_EXPANDED_BYTES = 100
+        try:
+            with self.assertRaisesRegex(InspectionRejected, "archive_expansion_limit"):
+                inspect_zip_structure(make_zip([("large.txt", b"x" * 1000)]))
+        finally:
+            config.FILE_ARCHIVE_MAX_EXPANDED_BYTES = old_limit
+
+    def test_rejects_entry_count_limit(self):
+        from config import FILE_ARCHIVE_MAX_ENTRIES
+        payload = make_zip([(f"{index}.txt", b"x") for index in range(FILE_ARCHIVE_MAX_ENTRIES + 1)])
+        with self.assertRaisesRegex(InspectionRejected, "archive_entry_limit"):
+            inspect_zip_structure(payload)
+
+
+
+class TestInspectionFailClosed(unittest.TestCase):
+    def setUp(self):
+        self.record = {
+            "id": "q-1",
+            "user_id": 9,
+            "original_filename": "notes.txt",
+            "object_locator": "opaque",
+            "sha256": __import__("hashlib").sha256(b"safe bytes").hexdigest(),
+            "byte_size": 10,
+            "detected_media_type": "text/plain",
+            "status": "quarantined",
+        }
+
+        class Repository:
+            def __init__(inner):
+                inner.states = []
+                inner.releases = 0
+
+            def get_for_inspection(inner, _id, _owner):
+                return dict(self.record)
+
+            def set_inspection_state(inner, _id, _owner, state, **kwargs):
+                inner.states.append((state, kwargs))
+                return True
+
+            def release(inner, *_args):
+                inner.releases += 1
+                raise AssertionError("Unclean files must never be released.")
+
+        class Storage:
+            def get_bytes(inner, *_args):
+                return b"safe bytes"
+
+        class MissingScanner:
+            def scan(inner, _content):
+                raise InspectionUnavailable("scanner unavailable")
+
+        self.repository = Repository()
+        self.service = __import__(
+            "services.file_inspection_service",
+            fromlist=["FileInspectionService"],
+        ).FileInspectionService(
+            repository=self.repository,
+            storage=Storage(),
+            scanner=MissingScanner(),
+        )
+
+    def test_malware_rejection_never_releases(self):
+        class MalwareScanner:
+            def scan(inner, _content):
+                raise InspectionRejected("malware_detected")
+
+        self.service.scanner = MalwareScanner()
+        job = {
+            "user_id": 9,
+            "attempts": 1,
+            "max_attempts": 5,
+            "payload": {"quarantine_id": "q-1", "sha256": self.record["sha256"]},
+        }
+        result = self.service.inspect_job(job)
+        self.assertEqual(result["status"], "rejected")
+        self.assertEqual([state for state, _ in self.repository.states], ["checking", "rejected"])
+        self.assertEqual(self.repository.releases, 0)
+
+    def test_indeterminate_scanner_verdict_never_releases(self):
+        class IndeterminateScanner:
+            def scan(inner, _content):
+                return {"engine": "clamav", "status": "unknown"}
+
+        self.service.scanner = IndeterminateScanner()
+        job = {
+            "user_id": 9,
+            "attempts": 1,
+            "max_attempts": 5,
+            "payload": {"quarantine_id": "q-1", "sha256": self.record["sha256"]},
+        }
+        with self.assertRaises(InspectionUnavailable):
+            self.service.inspect_job(job)
+        self.assertEqual([state for state, _ in self.repository.states], ["checking", "queued"])
+        self.assertEqual(self.repository.releases, 0)
+
+    def test_scanner_unavailable_retries_without_release(self):
+        job = {
+            "user_id": 9,
+            "attempts": 1,
+            "max_attempts": 5,
+            "payload": {"quarantine_id": "q-1", "sha256": self.record["sha256"]},
+        }
+        with self.assertRaises(InspectionUnavailable):
+            self.service.inspect_job(job)
+        self.assertEqual([state for state, _ in self.repository.states], ["checking", "queued"])
+        self.assertEqual(self.repository.releases, 0)
+
+    def test_scanner_unavailable_after_final_attempt_marks_failed_without_release(self):
+        job = {
+            "user_id": 9,
+            "attempts": 5,
+            "max_attempts": 5,
+            "payload": {"quarantine_id": "q-1", "sha256": self.record["sha256"]},
+        }
+        with self.assertRaises(InspectionUnavailable):
+            self.service.inspect_job(job)
+        self.assertEqual([state for state, _ in self.repository.states], ["checking", "failed"])
+        self.assertEqual(self.repository.releases, 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -5,6 +5,8 @@ import config
 from api.dependencies import get_current_user
 from services.rate_limiter import check_rate_limit
 from services.file_service import FileService
+from services.file_quarantine_service import FileQuarantineService
+from repositories.file_extraction_repository import FileExtractionRepository
 
 router = APIRouter(prefix="/files", tags=["files"])
 
@@ -13,12 +15,17 @@ def get_file_service():
     return FileService()
 
 
+def get_file_quarantine_service():
+    return FileQuarantineService()
+
+
 @router.post("")
 async def upload_file(
     file: UploadFile = File(...),
     user=Depends(get_current_user),
-    service: FileService = Depends(get_file_service),
+    service: FileQuarantineService = Depends(get_file_quarantine_service),
 ):
+    """Accept an upload into quarantine; never expose it as a trusted file."""
     if not check_rate_limit(
         f"upload-user:{user['id']}",
         max_attempts=config.UPLOAD_RATE_LIMIT_MAX_ATTEMPTS,
@@ -26,19 +33,86 @@ async def upload_file(
     ):
         raise HTTPException(status_code=429, detail="Upload rate limit reached. Please wait before uploading again.")
 
-    # Bound the read itself, not only the later service call. Reading the
-    # entire upload first would let an oversized request consume unbounded
-    # memory before MAX_UPLOAD_SIZE_BYTES could reject it.
-    content = await file.read(config.MAX_UPLOAD_SIZE_BYTES + 1)
-    if len(content) > config.MAX_UPLOAD_SIZE_BYTES:
-        raise HTTPException(status_code=413, detail="Uploaded file exceeds the configured size limit.")
+    chunks = []
+    total = 0
     try:
-        record = service.save_upload(user["id"], file.filename, content, file.content_type)
-    except ValueError as exc:
-        raise HTTPException(status_code=413, detail=str(exc))
-    if record:
-        record.pop("path", None)
-    return record
+        while total <= config.MAX_UPLOAD_SIZE_BYTES:
+            chunk = await file.read(min(1024 * 1024, config.MAX_UPLOAD_SIZE_BYTES + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        if total > config.MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(status_code=413, detail="Uploaded file exceeds the configured size limit.")
+        content = b"".join(chunks)
+        try:
+            record = service.quarantine_upload(
+                user["id"], file.filename, content, file.content_type
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=415, detail=str(exc))
+        return {
+            "quarantine_id": record["id"],
+            "filename": record["original_filename"],
+            "size_bytes": record["byte_size"],
+            "sha256": record["sha256"],
+            "media_type": record["detected_media_type"],
+            "status": record["status"],
+            "inspection_status": record.get("inspection_status", "queued"),
+            "message": "Upload received. Smart BethG is checking it in the background; it will become available when checks pass.",
+        }
+    finally:
+        await file.close()
+
+
+@router.get("/quarantine")
+def list_quarantined_files(
+    user=Depends(get_current_user),
+    service: FileQuarantineService = Depends(get_file_quarantine_service),
+):
+    records = service.list_for_user(user["id"])
+    # Never return filesystem paths or S3 locators through the public API.
+    public_records = [
+        {
+            "quarantine_id": record["id"],
+            "filename": record["original_filename"],
+            "size_bytes": record["byte_size"],
+            "media_type": record["detected_media_type"],
+            "status": record["status"],
+            "inspection_status": record.get("inspection_status", "queued"),
+            "created_at": record.get("created_at"),
+        }
+        for record in records
+    ]
+    return {"files": public_records}
+
+
+@router.post("/quarantine/{quarantine_id}/retry")
+def retry_quarantined_file(
+    quarantine_id: str,
+    user=Depends(get_current_user),
+    service: FileQuarantineService = Depends(get_file_quarantine_service),
+):
+    if not check_rate_limit(
+        f"file-inspection-retry-user:{user['id']}",
+        max_attempts=3,
+        window_seconds=3600,
+    ):
+        raise HTTPException(status_code=429, detail="File inspection retry limit reached. Please try again later.")
+    if not service.retry(user["id"], quarantine_id):
+        raise HTTPException(status_code=409, detail="This file is not eligible for an inspection retry.")
+    return {"queued": True, "inspection_status": "queued"}
+
+
+@router.delete("/quarantine/{quarantine_id}")
+def delete_quarantined_file(
+    quarantine_id: str,
+    user=Depends(get_current_user),
+    service: FileQuarantineService = Depends(get_file_quarantine_service),
+):
+    if not service.delete(user["id"], quarantine_id):
+        raise HTTPException(status_code=404, detail="Quarantined file not found.")
+    return {"deleted": True}
 
 
 @router.get("")
@@ -61,6 +135,26 @@ def search_files(q: str = Query(min_length=1, max_length=1000), user=Depends(get
     for record in records:
         record.pop("path", None)
     return {"files": records}
+
+
+
+@router.get("/{file_id}/extraction-status")
+def file_extraction_status(
+    file_id: int,
+    user=Depends(get_current_user),
+    service: FileService = Depends(get_file_service),
+):
+    record = service.get_file(user["id"], file_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found.")
+    if not str(record["filename"]).lower().endswith(".pdf"):
+        return {"file_id": file_id, "status": "not_required"}
+    extraction = FileExtractionRepository().get_for_user(file_id, user["id"])
+    return {
+        "file_id": file_id,
+        "status": extraction["status"] if extraction else "pending",
+        "page_count": extraction.get("page_count") if extraction else None,
+    }
 
 
 @router.get("/{file_id}/download")
