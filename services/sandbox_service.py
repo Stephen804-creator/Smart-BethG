@@ -228,11 +228,12 @@ class SandboxService:
             inspect = subprocess.run(
                 [docker, "inspect", container_name],
                 shell=False, stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                timeout=3, check=False,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, timeout=3, check=False,
             )
             if inspect.returncode != 0:
-                return True
+                message = (inspect.stderr or "").lower()
+                return "no such object" in message or "not found" in message
             return cls._cleanup_container(docker, container_name)
         except (OSError, subprocess.TimeoutExpired):
             return False
@@ -244,7 +245,8 @@ class SandboxService:
     @staticmethod
     def _cleanup_container(docker, container_name):
         # Try kill and force-remove independently. A failed kill must never
-        # prevent the removal attempt.
+        # prevent the removal attempt. Only a clear "not found" response proves
+        # absence; a daemon/connection error is not treated as successful cleanup.
         for action in ("kill", "rm"):
             command = [docker, action]
             if action == "rm":
@@ -260,10 +262,13 @@ class SandboxService:
             inspect = subprocess.run(
                 [docker, "inspect", container_name],
                 shell=False, stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                timeout=3, check=False,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, timeout=3, check=False,
             )
-            return inspect.returncode != 0
+            if inspect.returncode == 0:
+                return False
+            message = (inspect.stderr or "").lower()
+            return "no such object" in message or "not found" in message
         except (subprocess.TimeoutExpired, OSError):
             return False
 
