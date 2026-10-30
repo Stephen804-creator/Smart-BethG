@@ -1,8 +1,8 @@
-"""Fail-closed intake for untrusted user uploads.
+"""Fail-closed intake for untrusted uploads and durable inspection scheduling.
 
-This service only quarantines bytes. It deliberately does not parse documents,
-extract archives, invoke a malware scanner, index content, or release files.
-Those actions require the isolated inspection/release workflow in later units.
+The upload request only stores bytes and atomically queues a separate worker.
+It never scans, parses documents, extracts archives, indexes content, or releases
+files in the API process.
 """
 import hashlib
 import os
