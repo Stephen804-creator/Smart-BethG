@@ -25,7 +25,7 @@ The architecture defines modular responsibilities, not seven required microservi
 - ZIP inspection validates absolute/drive/traversal paths, malformed path segments, symlinks and special files, duplicate normalized paths, encrypted entries, nested archive extensions, entry count, actual decompressed size and compression ratio. It streams decompression to discard and never writes archive paths to disk. The original ZIP can become a stored file but is not automatically extracted.
 - PDF parsing runs in the separate file worker, not the API request process. Extraction results are stored separately with owner-scoped access. Migration 0018 queues existing PDF files for worker extraction, and new clean PDF releases enqueue extraction in the release transaction. The API exposes `GET /api/v1/files/{file_id}/extraction-status`.
 - Normal file reads, downloads, summaries and indexing are blocked until a file has a trusted `stored` state. Quarantine status/list/delete operations are owner-scoped.
-- Added scanner protocol, failure-mode, archive-adversarial, multipart route, upload-limit, durable queue, PDF worker and PostgreSQL-backed quarantine/release tests.
+- Added scanner protocol, failure-mode, archive-adversarial, multipart route, upload-limit, durable queue, PDF worker, worker-crash reconciliation and PostgreSQL-backed quarantine/release tests.
 - Added `FILE_INSPECTION_OPERATIONS.md` with deployment variables, least-privilege worker configuration, isolation requirements and rollout checks.
 
 ## User experience and compatibility
