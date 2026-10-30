@@ -193,4 +193,11 @@ class FileInspectionService:
             except Exception:
                 logger.exception("Could not clean up copied file after release failure")
             raise
+        try:
+            self.storage.delete("quarantine", record["user_id"], record["object_locator"])
+        except Exception:
+            logger.warning(
+                "Released quarantine object cleanup failed: user=%s id=%s",
+                record["user_id"], record["id"], exc_info=True,
+            )
         return {"file_id": file_id}
