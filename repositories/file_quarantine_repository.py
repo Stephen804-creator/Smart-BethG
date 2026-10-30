@@ -64,11 +64,14 @@ class FileQuarantineRepository:
             ).fetchone()
             if not row:
                 return None
-            conn.execute(
+            deleted = conn.execute(
                 "DELETE FROM file_quarantine_records WHERE id=? AND user_id=? "
                 "AND status='quarantined'",
                 (quarantine_id, user_id),
             )
+            if deleted.rowcount != 1:
+                conn.rollback()
+                return None
             conn.commit()
             return row["object_locator"]
         except Exception:
