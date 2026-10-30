@@ -120,5 +120,78 @@ class TestZipInspection(unittest.TestCase):
             inspect_zip_structure(payload)
 
 
+
+class TestInspectionFailClosed(unittest.TestCase):
+    def setUp(self):
+        self.record = {
+            "id": "q-1",
+            "user_id": 9,
+            "original_filename": "notes.txt",
+            "object_locator": "opaque",
+            "sha256": __import__("hashlib").sha256(b"safe bytes").hexdigest(),
+            "byte_size": 10,
+            "detected_media_type": "text/plain",
+            "status": "quarantined",
+        }
+
+        class Repository:
+            def __init__(inner):
+                inner.states = []
+                inner.releases = 0
+
+            def get_for_inspection(inner, _id, _owner):
+                return dict(self.record)
+
+            def set_inspection_state(inner, _id, _owner, state, **kwargs):
+                inner.states.append((state, kwargs))
+                return True
+
+            def release(inner, *_args):
+                inner.releases += 1
+                raise AssertionError("Unclean files must never be released.")
+
+        class Storage:
+            def get_bytes(inner, *_args):
+                return b"safe bytes"
+
+        class MissingScanner:
+            def scan(inner, _content):
+                raise InspectionUnavailable("scanner unavailable")
+
+        self.repository = Repository()
+        self.service = __import__(
+            "services.file_inspection_service",
+            fromlist=["FileInspectionService"],
+        ).FileInspectionService(
+            repository=self.repository,
+            storage=Storage(),
+            scanner=MissingScanner(),
+        )
+
+    def test_scanner_unavailable_retries_without_release(self):
+        job = {
+            "user_id": 9,
+            "attempts": 1,
+            "max_attempts": 5,
+            "payload": {"quarantine_id": "q-1", "sha256": self.record["sha256"]},
+        }
+        with self.assertRaises(InspectionUnavailable):
+            self.service.inspect_job(job)
+        self.assertEqual([state for state, _ in self.repository.states], ["checking", "queued"])
+        self.assertEqual(self.repository.releases, 0)
+
+    def test_scanner_unavailable_after_final_attempt_marks_failed_without_release(self):
+        job = {
+            "user_id": 9,
+            "attempts": 5,
+            "max_attempts": 5,
+            "payload": {"quarantine_id": "q-1", "sha256": self.record["sha256"]},
+        }
+        with self.assertRaises(InspectionUnavailable):
+            self.service.inspect_job(job)
+        self.assertEqual([state for state, _ in self.repository.states], ["checking", "failed"])
+        self.assertEqual(self.repository.releases, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
