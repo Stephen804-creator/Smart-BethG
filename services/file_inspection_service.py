@@ -107,6 +107,8 @@ def inspect_zip_structure(content):
                     raise InspectionRejected("archive_suspicious_ratio")
                 if entry.compress_size and entry.file_size / entry.compress_size > max_ratio:
                     raise InspectionRejected("archive_suspicious_ratio")
+                if os.path.splitext(name.lower())[1] in {".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"}:
+                    raise InspectionRejected("archive_nested_archive_not_supported")
     except InspectionRejected:
         raise
     except (zipfile.BadZipFile, OSError, RuntimeError, ValueError) as exc:
