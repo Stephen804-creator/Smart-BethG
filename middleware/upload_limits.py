@@ -65,10 +65,11 @@ class UploadBodyLimitMiddleware:
                     return
                 if message["type"] != "http.request":
                     continue
-                body.extend(message.get("body", b""))
-                if len(body) > self.max_body_bytes:
+                chunk = message.get("body", b"")
+                if len(body) + len(chunk) > self.max_body_bytes:
                     await self._reject(send, 413, "Upload request exceeds the configured size limit.")
                     return
+                body.extend(chunk)
                 if not message.get("more_body", False):
                     break
 
