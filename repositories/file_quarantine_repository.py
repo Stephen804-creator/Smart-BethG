@@ -204,6 +204,34 @@ class FileQuarantineRepository:
             raise RuntimeError("Quarantine record disappeared while retrying inspection.")
         return row["sha256"]
 
+    def reconcile_abandoned_inspections(self):
+        """Mark jobs abandoned after worker death as failed and retryable by owner."""
+        conn = get_connection()
+        try:
+            cursor = conn.execute(
+                "UPDATE file_quarantine_records AS q SET inspection_status='failed',"
+                "inspection_error_code='worker_lease_exhausted',inspected_at=CURRENT_TIMESTAMP "
+                "WHERE q.status='quarantined' AND q.inspection_status='checking' "
+                "AND NOT EXISTS (SELECT 1 FROM background_jobs j "
+                "WHERE j.user_id=q.user_id AND j.job_type='file.inspect' "
+                "AND (j.idempotency_key='file-inspect:' || q.id "
+                "OR left(j.idempotency_key,length('file-inspect:' || q.id || ':retry:'))="
+                "('file-inspect:' || q.id || ':retry:')) "
+                "AND j.status IN ('queued','running')) "
+                "AND EXISTS (SELECT 1 FROM background_jobs j "
+                "WHERE j.user_id=q.user_id AND j.job_type='file.inspect' "
+                "AND (j.idempotency_key='file-inspect:' || q.id "
+                "OR left(j.idempotency_key,length('file-inspect:' || q.id || ':retry:'))="
+                "('file-inspect:' || q.id || ':retry:')) AND j.status='failed')"
+            )
+            conn.commit()
+            return cursor.rowcount
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def get_released_file_id(self, quarantine_id, user_id):
         conn = get_connection()
         try:
