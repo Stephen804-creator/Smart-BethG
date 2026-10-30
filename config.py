@@ -10,6 +10,7 @@ import secrets
 import warnings
 
 ENVIRONMENT = os.getenv("SMART_BETHG_ENV", "development").strip().lower()
+PROCESS_ROLE = os.getenv("SMART_BETHG_PROCESS_ROLE", "web").strip().lower()
 if ENVIRONMENT not in {"development", "test", "production"}:
     raise RuntimeError(
         "SMART_BETHG_ENV must be one of: development, test, production. "
@@ -48,9 +49,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 _SECRET_KEY = os.getenv("SMART_BETHG_SECRET_KEY", "")
 SECRET_KEY_IS_EPHEMERAL = not bool(_SECRET_KEY)
 if SECRET_KEY_IS_EPHEMERAL:
-    if IS_PRODUCTION:
+    if IS_PRODUCTION and PROCESS_ROLE != "file-worker":
         raise RuntimeError(
-            "SMART_BETHG_SECRET_KEY must be set when SMART_BETHG_ENV=production."
+            "SMART_BETHG_SECRET_KEY must be set for production web/agent workers."
         )
     warnings.warn(
         "SMART_BETHG_SECRET_KEY is not set; using a temporary random key for "
