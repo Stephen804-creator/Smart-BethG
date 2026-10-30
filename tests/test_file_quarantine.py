@@ -10,6 +10,8 @@ from services.file_quarantine_service import FileQuarantineService
 from services.file_service import FileService
 from services.job_queue import JobQueue
 from services.file_inspection_service import FileInspectionService
+from repositories.file_extraction_repository import FileExtractionRepository
+from database import get_connection
 
 
 class TestFileQuarantineService(SmartBethGTestCase):
@@ -103,8 +105,12 @@ class TestFileQuarantineService(SmartBethGTestCase):
         self.assertIsNotNone(initial_job)
         JobQueue().fail(initial_job, "scanner unavailable", retryable=False)
         self.service.repository.set_inspection_state(
-            record["id"], self.owner["id"], "failed",
-            attempts=5, error_code="scanner_unavailable_after_retries",
+            record["id"], self.owner["id"], "checking", attempts=5,
+        )
+        self.assertEqual(self.service.repository.reconcile_abandoned_inspections(), 1)
+        self.assertEqual(
+            self.service.repository.get(record["id"], self.owner["id"])["inspection_status"],
+            "failed",
         )
         self.assertFalse(self.service.retry(self.other["id"], record["id"]))
         self.assertTrue(self.service.retry(self.owner["id"], record["id"]))
@@ -115,6 +121,31 @@ class TestFileQuarantineService(SmartBethGTestCase):
         self.assertEqual(
             len([job for job in jobs if job["job_type"] == "file.inspect"]), 2
         )
+
+    def test_abandoned_pdf_extraction_is_marked_failed_after_job_exhaustion(self):
+        saved = FileService().save_upload(
+            self.owner["id"], "legacy.pdf", b"%PDF-1.7\\nlegacy"
+        )
+        conn = get_connection()
+        try:
+            conn.execute(
+                "INSERT INTO file_extractions(file_id,user_id,status) VALUES (?,?, 'pending')",
+                (saved["id"], self.owner["id"]),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        JobQueue().enqueue(
+            self.owner["id"], "file.extract_pdf", {"file_id": saved["id"]},
+            f"file-pdf-extract:{saved['id']}", max_attempts=3,
+        )
+        job = JobQueue().claim(job_types=("file.extract_pdf",))
+        self.assertIsNotNone(job)
+        JobQueue().fail(job, "worker process lost", retryable=False)
+        self.assertEqual(FileExtractionRepository().reconcile_abandoned(), 1)
+        extraction = FileExtractionRepository().get_for_user(saved["id"], self.owner["id"])
+        self.assertEqual(extraction["status"], "failed")
+        self.assertEqual(extraction["error_code"], "worker_lease_exhausted")
 
     def test_owner_can_delete_their_quarantined_upload(self):
         record = self.service.quarantine_upload(
