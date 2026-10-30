@@ -51,7 +51,7 @@ class FileRepository:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT * FROM files WHERE user_id=? AND filename LIKE ? ORDER BY id DESC",
+                "SELECT * FROM files WHERE user_id=? AND status='stored' AND filename LIKE ? ORDER BY id DESC",
                 (user_id, f"%{query}%"),
             ).fetchall()
             return [dict(r) for r in rows]
