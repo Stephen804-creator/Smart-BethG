@@ -103,12 +103,20 @@ class FileQuarantineService:
         try:
             saved = self.repository.create(record)
         except Exception:
+            # Repository failures can be ambiguous if the database committed
+            # but the connection failed while closing. Check before deleting
+            # the only stored copy of an upload.
+            try:
+                saved = self.repository.get(record["id"], user_id)
+            except Exception:
+                logger.exception("Upload persistence outcome is unknown; preserving quarantine object")
+                raise
+            if saved:
+                return saved
             try:
                 self.storage.delete("quarantine", user_id, locator)
             except Exception:
-                # Keep the original database exception; orphan cleanup is an
-                # operational concern and must not leak storage paths to users.
-                pass
+                logger.warning("Orphan quarantine object cleanup failed", exc_info=True)
             raise
         return saved
 
