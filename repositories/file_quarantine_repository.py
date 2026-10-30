@@ -125,6 +125,17 @@ class FileQuarantineRepository:
                 (user_id, filename, locator, file_type, "quarantine_release"),
             )
             file_id = created.lastrowid
+            if filename.lower().endswith(".pdf"):
+                conn.execute(
+                    "INSERT INTO file_extractions(file_id,user_id,status) VALUES (?,?, 'pending') "
+                    "ON CONFLICT(file_id) DO NOTHING",
+                    (file_id, user_id),
+                )
+                from services.job_queue import JobQueue
+                JobQueue().enqueue_in_transaction(
+                    conn, user_id, "file.extract_pdf", {"file_id": file_id},
+                    "file-pdf-extract:" + str(file_id), priority=1, max_attempts=3,
+                )
             updated = conn.execute(
                 "UPDATE file_quarantine_records SET status='released',"
                 "inspection_status='clean',inspection_engine='clamav',"
