@@ -40,7 +40,7 @@ The process alarm is a second line of defense, not a substitute for cgroups/cont
 ## State and recovery
 
 - Quarantine upload and inspection-job enqueue are one database transaction.
-- Jobs use the existing PostgreSQL lease/retry/idempotency queue. Each worker claims only the job types it has registered.
+- Jobs use the existing PostgreSQL lease/retry/idempotency queue. Each worker claims only the job types it has registered. The file worker periodically reconciles exhausted jobs left by a killed worker so inspection and PDF states do not remain stuck in checking/pending; owners can retry failed quarantine checks without reuploading.
 - Clean inspection copies the object to trusted uploads storage and commits the normal file row plus released quarantine state atomically. The quarantine copy is then deleted; cleanup failure is logged for operations follow-up.
 - Malware or archive-policy failures remain quarantined and show rejected status.
 - Temporary scanner/worker errors retry with bounded backoff; after the retry budget, the record remains quarantined with failed status. The owner can request another bounded inspection attempt after the service is restored; it is not automatically deleted or released.
