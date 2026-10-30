@@ -19,7 +19,9 @@ class FileQuarantineRepository:
                 ),
             )
             conn.commit()
-            return self.get(record["id"], record["user_id"])
+            saved = dict(record)
+            saved["status"] = "quarantined"
+            return saved
         except Exception:
             conn.rollback()
             raise
