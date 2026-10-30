@@ -115,6 +115,9 @@ class FileQuarantineService:
     def list_for_user(self, user_id):
         return self.repository.list_for_user(user_id)
 
+    def retry(self, user_id, quarantine_id):
+        return self.repository.retry_inspection(quarantine_id, user_id)
+
     def delete(self, user_id, quarantine_id):
         locator = self.repository.delete(quarantine_id, user_id)
         if not locator:
