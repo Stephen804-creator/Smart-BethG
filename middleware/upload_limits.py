@@ -13,7 +13,13 @@ class UploadBodyLimitMiddleware:
         self.app = app
         self.max_body_bytes = int(max_body_bytes)
         self.semaphore = asyncio.Semaphore(max(1, int(max_concurrent)))
-        self.route_suffix = route_suffix
+        self.route_suffix = str(route_suffix or "/files").rstrip("/")
+        if self.route_suffix.startswith("/api/v1/"):
+            self.upload_paths = {self.route_suffix, self.route_suffix.replace("/api/v1/", "/api/", 1)}
+        elif self.route_suffix.startswith("/"):
+            self.upload_paths = {"/api" + self.route_suffix, "/api/v1" + self.route_suffix}
+        else:
+            raise ValueError("Upload route suffix must be an absolute path.")
 
     @staticmethod
     async def _reject(send, status, message):
@@ -35,7 +41,7 @@ class UploadBodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
         path = scope.get("path", "").rstrip("/")
-        if scope.get("method") != "POST" or path not in {"/api/files", "/api/v1/files"}:
+        if scope.get("method") != "POST" or path not in self.upload_paths:
             await self.app(scope, receive, send)
             return
 
