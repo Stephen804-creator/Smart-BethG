@@ -48,16 +48,22 @@ class FileExtractionService:
         record = self.files.get(file_id, job["user_id"])
         if not record or not str(record.get("filename", "")).lower().endswith(".pdf"):
             return {"status": "skipped", "reason": "file_unavailable"}
+        final_attempt = int(job.get("attempts", 1)) >= int(job.get("max_attempts", 3))
         try:
             content = self.storage.get_bytes("uploads", job["user_id"], record["path"])
-            if len(content) > config.MAX_UPLOAD_SIZE_BYTES:
-                raise ValueError("pdf_size_limit")
+        except (OSError, TimeoutError):
+            if final_attempt:
+                try:
+                    self.extractions.fail(file_id, job["user_id"], "pdf_storage_unavailable")
+                except Exception:
+                    logger.exception("Could not persist final PDF storage failure state")
+            raise
+        if len(content) > config.MAX_UPLOAD_SIZE_BYTES:
+            self.extractions.fail(file_id, job["user_id"], "pdf_size_limit")
+            return {"status": "failed", "file_id": file_id}
+        try:
             extracted_text, page_count = extract_pdf_content(content)
-            if not self.extractions.complete(file_id, job["user_id"], extracted_text, page_count):
-                raise RuntimeError("PDF extraction state could not be committed.")
-            return {"status": "ready", "file_id": file_id, "page_count": page_count}
         except TimeoutError:
-            final_attempt = int(job.get("attempts", 1)) >= int(job.get("max_attempts", 3))
             if final_attempt:
                 self.extractions.fail(file_id, job["user_id"], "pdf_extraction_timeout")
             raise
@@ -68,3 +74,14 @@ class FileExtractionService:
             )
             self.extractions.fail(file_id, job["user_id"], "pdf_extraction_failed")
             return {"status": "failed", "file_id": file_id}
+        try:
+            if not self.extractions.complete(file_id, job["user_id"], extracted_text, page_count):
+                raise RuntimeError("PDF extraction state could not be committed.")
+        except Exception:
+            if final_attempt:
+                try:
+                    self.extractions.fail(file_id, job["user_id"], "pdf_result_persistence_failed")
+                except Exception:
+                    logger.exception("Could not persist final PDF result failure state")
+            raise
+        return {"status": "ready", "file_id": file_id, "page_count": page_count}
