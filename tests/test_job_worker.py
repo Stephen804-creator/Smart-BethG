@@ -5,7 +5,7 @@ class FakeQueue:
     def __init__(self):
         self.job={"id":"job-1","user_id":1,"job_type":"known","payload":{},"attempts":1,"max_attempts":3,"lease_token":"lease"}
         self.completed=None; self.failed=None
-    def claim(self):
+    def claim(self, job_types=None):
         job,self.job=self.job,None
         return job
     def complete(self,job,result): self.completed=result; return True
