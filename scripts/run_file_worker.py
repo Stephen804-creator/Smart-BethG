@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from logging_setup import get_logger, setup_logging
 from services.file_extraction_service import FileExtractionService
+from repositories.file_extraction_repository import FileExtractionRepository
 from services.file_inspection_service import FileInspectionService
 from services.job_queue import JobWorker
 import config
@@ -60,8 +61,15 @@ def main():
     })
 
     logger.info("File inspection worker started; registered job types=file.inspect,file.extract_pdf")
+    extraction_states = FileExtractionRepository()
+    last_reconcile = 0.0
     while not stopping.is_set():
         try:
+            now = time.monotonic()
+            if now - last_reconcile >= 30:
+                inspection.repository.reconcile_abandoned_inspections()
+                extraction_states.reconcile_abandoned()
+                last_reconcile = now
             worked = worker.run_once()
         except Exception:
             logger.exception("File worker poll failed")
