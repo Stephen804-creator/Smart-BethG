@@ -127,6 +127,10 @@ def inspect_zip_structure(content):
                     raise InspectionRejected("archive_suspicious_ratio")
     except InspectionRejected:
         raise
+    except TimeoutError:
+        # The worker's wall-clock guard must trigger a retry/failure state,
+        # not mislabel an interrupted inspection as a corrupt archive.
+        raise
     except (zipfile.BadZipFile, OSError, RuntimeError, ValueError) as exc:
         raise InspectionRejected("archive_invalid") from exc
     return {"entries": len(entries), "expanded_bytes": total_size}
