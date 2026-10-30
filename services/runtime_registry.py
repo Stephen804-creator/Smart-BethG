@@ -25,6 +25,7 @@ class RuntimeDefinition:
     executable: str
     arguments: tuple[str, ...]
     source_filename: str
+    command_name: str
     max_source_bytes: int = 64_000
     timeout_seconds: int = 15
     memory_limit: str = "256m"
@@ -57,6 +58,7 @@ RUNTIME_DEFINITIONS = {
         executable="python",
         arguments=("-I", "-B"),
         source_filename="main.py",
+        command_name="python_script",
     ),
 }
 
