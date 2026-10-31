@@ -27,7 +27,7 @@ class EngineeringCapability:
 
 
 # Status values are deliberately explicit:
-# - execution_available: an approved runtime is registered in Unit C.
+# - implemented: an approved runtime is registered in Unit C.
 # - catalog_only: known target, not yet integrated or executable.
 # - integration_candidate: external tool identified; no connector is implied.
 # - planned: roadmap item, not currently supported.
@@ -35,7 +35,7 @@ CAPABILITIES = (
     EngineeringCapability(
         "python", "language_runtime", "software", "Python",
         "General-purpose language; the only runtime enabled by the current C-D increment.",
-        "execution_available", "managed_sandbox",
+        "implemented", "managed_sandbox",
         ("edit", "execute"), ("python-project",),
     ),
     EngineeringCapability(
@@ -262,7 +262,7 @@ CAPABILITIES = (
     EngineeringCapability(
         "cloud-sandbox", "execution_profile", "cross_domain", "Managed cloud sandbox",
         "Restricted execution profile for approved runtimes; not a general-purpose host.",
-        "execution_available", "managed_sandbox", ("build", "run", "test"),
+        "implemented", "managed_sandbox", ("build", "run", "test"),
         ("python",),
     ),
     EngineeringCapability(
@@ -315,7 +315,7 @@ def list_engineering_capabilities(domain: str | None = None) -> dict:
         "workspace_types": [dict(item) for item in WORKSPACE_TYPES],
         "capabilities": capabilities,
         "status_legend": {
-            "execution_available": "An approved execution path exists in the current application scope.",
+            "implemented": "An approved execution path exists in the current application scope.",
             "foundation_available": "A general workspace foundation exists; the dedicated engineering interface is not implied.",
             "catalog_only": "The target is identified but no build, simulator or physical-device integration is enabled.",
             "integration_candidate": "An external tool has been identified; no account, connector or tool access is implied.",
