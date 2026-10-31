@@ -435,7 +435,7 @@ def list_engineering_capabilities(domain: str | None = None) -> dict:
         "workspace_types": [dict(item) for item in WORKSPACE_TYPES],
         "capabilities": capabilities,
         "status_legend": {
-            "implemented": "An approved execution path exists in the current application scope.",
+            "implemented": "The application contains this execution path; operator configuration may still disable it.",
             "foundation_available": "A general workspace foundation exists; the dedicated engineering interface is not implied.",
             "catalog_only": "The target is identified but no build, simulator or physical-device integration is enabled.",
             "integration_candidate": "An external tool has been identified; no account, connector or tool access is implied.",
