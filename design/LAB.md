@@ -6,11 +6,25 @@
 - The Lab has no competition rules. A future arena app opens the same workspace and adds rules.
 - "Runtimes & tools" stays a separate screen from Connectors. Do not merge them.
 
-## Desktop/tablet IDE layout (see smartbethg-lab-desktop.html)
-Top bar (Software/Hardware/Both, Export, Run) | icon bar | side panel | editor or canvas with tabs | bottom panel | AI chat on the right | status bar. Phone folds the side panel and bottom panel into drawers.
-- Software tabs: code files + Preview (app runs in a sandboxed frame, tested before export).
+## One engine, two layouts
+Phone and desktop use the same data, tools and AI. Only the layout changes with screen width.
+
+### Desktop/tablet (see smartbethg-lab-desktop.html)
+Top bar (Software/Hardware/Both, Export, Run) | icon bar | side panel | editor or canvas with tabs | bottom panel | AI chat on the right | status bar.
+
+### Phone (see smartbethg-mockup.html)
+One panel at a time with a bottom bar.
+- Hardware: Lab > Hardware > Choose tools > workspace. Bottom bar: Board, Simulate, AI, More. Board = same dense board file (layers, pinch to zoom, checks). Detailed manual editing (routing) is for tablet/desktop via Edit in KiCad; say this plainly in the app.
+- Software: Lab > Software > workspace. Bottom bar: Code, Preview, AI, More.
+- More holds Files, Tools, History, Export.
+
+## Tool picker (Hardware)
+User ticks tools (only license-approved ones are listed). The workspace builds from the choice: top chips, Simulate tabs and AI abilities follow the selected tools. Untick a tool and its tab disappears. If two tools do the same job, choose by language or show a Simulator dropdown. Limit how many heavy tools run at once; streamed KiCad costs credits per minute.
+
+## Software and hardware features
+- Software: code files + Preview (app runs in a sandboxed frame, tested before export).
 - Hardware tabs: Schematic, PCB, 3D, Simulation, Edit in KiCad.
-- Hardware View = KiCanvas dense board view (read-only). Edit in KiCad = real KiCad streamed from the sandbox (costs credits per minute). The AI edits project files; the view reloads.
+- Hardware View = KiCanvas dense board view (read-only). Edit in KiCad = real KiCad streamed from the sandbox. The AI edits project files; the view reloads.
 - Simulation = Renode (firmware) + ngspice (electrical). Always label: simulated, not a guarantee of real-world behavior.
 - Export: Project ZIP, Gerber ZIP, Parts CSV, Push to GitHub.
 
