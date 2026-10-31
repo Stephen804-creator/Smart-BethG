@@ -266,6 +266,30 @@ CAPABILITIES = (
         (),
     ),
     EngineeringCapability(
+        "python-project", "project_build_profile", "software", "Python project profile",
+        "Validated Python project profile; framework and dependency sets require separate approval.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("python",),
+    ),
+    EngineeringCapability(
+        "web-frontend", "project_build_profile", "software", "Web frontend project profile",
+        "Validated HTML/CSS/JavaScript/TypeScript frontend profile with a pinned package manager and build steps.",
+        "planned", "managed_sandbox", ("build", "test", "preview"),
+        ("html-css", "javascript", "typescript", "nodejs"),
+    ),
+    EngineeringCapability(
+        "embedded-toolchains", "project_build_profile", "embedded", "Embedded firmware project profile",
+        "Validated embedded project profile linking a selected board, toolchain, firmware format and runner capability.",
+        "planned", "capability_routed_runner", ("build", "test", "export"),
+        ("arduino-cli", "esp-idf", "platformio"),
+    ),
+    EngineeringCapability(
+        "composer", "package_manager", "software", "Composer",
+        "PHP dependency manager; packages and scripts require an approved dependency policy.",
+        "planned", "managed_sandbox", ("install", "build", "test"),
+        ("php", "laravel"),
+    ),
+    EngineeringCapability(
         "arduino-cli", "embedded_toolchain", "embedded", "Arduino CLI",
         "Compile and manage supported Arduino sketches and board packages.",
         "planned", "managed_sandbox", ("build", "test", "export"),
