@@ -14,7 +14,7 @@ from services.runtime_registry import (
     list_runtimes,
     resolve_runtime,
 )
-from services.sandbox_service import SandboxService
+from services.sandbox_service import SandboxService, SandboxUnavailableError
 
 
 class TestRuntimeRegistry(unittest.TestCase):
@@ -98,6 +98,20 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
             )
         self.assertEqual(command[-4:], ["python", "-I", "-B", "/workspace/main.py"])
         self.assertEqual(command[-5], "approved@sha256:" + ("c" * 64))
+
+    def test_execution_error_fails_closed_when_cleanup_cannot_be_verified(self):
+        runtime = resolve_runtime_for_test()
+        image = "approved@sha256:" + ("d" * 64)
+        with patch("services.sandbox_service.resolve_runtime", return_value=(runtime, image)), \
+             patch("services.sandbox_service.shutil.which", return_value="/usr/bin/docker"), \
+             patch("services.sandbox_service.subprocess.Popen", side_effect=OSError("docker run failed")), \
+             patch.object(SandboxService, "_cleanup_container", return_value=False), \
+             patch.object(SandboxService, "_record") as record, \
+             patch.object(config, "IS_PRODUCTION", False):
+            with self.assertRaisesRegex(SandboxUnavailableError, "could not be confirmed removed"):
+                SandboxService().execute_runtime(7, "python", "print('safe')")
+
+        self.assertEqual(record.call_args.args[-1], "sandbox_cleanup_unverified")
 
     def test_cleanup_attempts_force_remove_even_when_kill_fails(self):
         missing = SimpleNamespace(returncode=1, stdout="", stderr="Error: No such object: sbx-test")
