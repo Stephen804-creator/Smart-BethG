@@ -270,6 +270,7 @@ Smart BethG uses one **Engineering Capability Registry** across software and har
 The registry separates:
 - **Languages and formats:** Python, JavaScript, TypeScript, HTML/CSS, Java, C/C++, Go, Rust, PHP, C#, Dart.
 - **Software runtimes/toolchains/SDKs:** Node.js, JVM, GCC/Clang, Go, Rust, .NET, Flutter, Android SDK and Apple Xcode.
+- **Framework/build profiles:** React, Angular, Vue, Next.js, Vite, Express, NestJS, FastAPI, Django, Flask, Spring Boot, ASP.NET Core, Laravel, Flutter, React Native, Unity, Unreal and Godot. These are profiles layered over their base languages/toolchains, not separate languages.
 - **Embedded toolchains/runtimes:** Arduino CLI, ESP-IDF, PlatformIO, MicroPython and CircuitPython.
 - **Hardware-description languages:** Verilog, VHDL and SystemVerilog.
 - **Hardware targets:** Arduino Uno, ESP32, RP2040/Pico, STM32 and FPGA boards.
