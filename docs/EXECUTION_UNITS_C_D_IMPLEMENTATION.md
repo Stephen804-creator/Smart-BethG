@@ -27,6 +27,7 @@ The C-D branch also adds `services/engineering_capability_registry.py` and an au
 
 - Languages and language runtimes (Python, JavaScript, TypeScript, Java, C/C++, Go, Rust, PHP, C#, Dart).
 - Runtime/compiler/SDK toolchains (Node.js, JVM, GCC/Clang, Go, Rust, .NET, Flutter, Android and Apple toolchains).
+- Framework/build profiles (React, Angular, Vue, Next.js, Vite, Express, NestJS, FastAPI, Django, Flask, Spring Boot, ASP.NET Core, Laravel, Flutter, React Native, Unity, Unreal and Godot). Frameworks are not programming languages or independent runtimes.
 - Embedded toolchains and runtimes (Arduino CLI, ESP-IDF, PlatformIO, MicroPython and CircuitPython).
 - Hardware-description languages (Verilog, VHDL and SystemVerilog).
 - Hardware targets (Arduino Uno, ESP32, RP2040/Pico, STM32 and FPGA families).
@@ -35,7 +36,7 @@ The C-D branch also adds `services/engineering_capability_registry.py` and an au
 
 The catalog also defines three workspace modes: Software Engineering, Hardware Engineering, and Software + Hardware. The latter two are roadmap states, not existing working interfaces. Software + Hardware is intended to link related project context while retaining distinct hardware/software views and histories.
 
-**Important availability rule:** only Python is an implemented language runtime in this increment, and it is still disabled unless the operator enables the feature and supplies an exact digest-pinned allowlisted image. All other languages/toolchains remain planned. Wokwi, KiCad and EasyEDA are integration candidates, not connected tools. Hardware targets are catalog entries, not devices that Smart BethG can currently flash or control. The catalog endpoint never exposes private image references, secrets or host paths.
+**Important availability rule:** only Python is an implemented language runtime in this increment, and it is still disabled unless the operator enables the feature and supplies an exact digest-pinned allowlisted image. All other languages/toolchains remain planned. Wokwi, KiCad and EasyEDA are integration candidates, not connected tools. Hardware targets are catalog entries, not devices that Smart BethG can currently flash or control. The catalog endpoint never exposes private image references, secrets or host paths. Entries also reserve fields for supported file formats, host requirements and license-review status so a future connector/runtime cannot be treated as approved merely because its name is listed.
 
 This avoids confusing a language with its compiler, a framework with a runtime, a board with a language, or an external application with an installed integration. A future runtime can be selected only through its reviewed stable ID and operator-controlled profile. A future connector or local agent must separately declare permissions, supported actions, formats, target compatibility, execution location and license constraints.
 
