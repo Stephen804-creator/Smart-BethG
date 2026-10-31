@@ -124,6 +124,8 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
             "/api/v1/evidence",
             "/api/v1/memory",
             "/api/v1/knowledge/search?q=example",
+            "/api/v1/sandbox/runtimes",
+            "/api/v1/sandbox/capabilities",
         ]
         for path in paths:
             with self.subTest(path=path):

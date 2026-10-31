@@ -93,11 +93,17 @@ class TestUnits16To20(SmartBethGTestCase):
 
     def test_sandbox_cleanup_attempts_force_remove_even_if_kill_times_out(self):
         with patch("services.sandbox_service.subprocess.run",
-                   side_effect=[subprocess.TimeoutExpired(["docker", "kill"], 3), OSError("docker unavailable")]) as run:
-            SandboxService._cleanup_container("/usr/bin/docker", "sbx-test")
-        self.assertEqual(run.call_count, 2)
+                   side_effect=[
+                       subprocess.TimeoutExpired(["docker", "kill"], 3),
+                       OSError("docker unavailable"),
+                       type("Result", (), {"returncode": 1, "stderr": "Error: No such object: sbx-test"})(),
+                   ]) as run:
+            self.assertTrue(SandboxService._cleanup_container("/usr/bin/docker", "sbx-test"))
+        self.assertEqual(run.call_count, 3)
         self.assertEqual(run.call_args_list[1].args[0],
                          ["/usr/bin/docker", "rm", "--force", "sbx-test"])
+        self.assertEqual(run.call_args_list[2].args[0],
+                         ["/usr/bin/docker", "inspect", "sbx-test"])
 
     def test_cross_organization_workspace_access_is_denied(self):
         first = self.service.create_organization(self.owner["id"], "First Org", "first-org")
