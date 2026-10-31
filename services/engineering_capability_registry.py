@@ -18,11 +18,16 @@ class EngineeringCapability:
     integration: str
     actions: tuple[str, ...] = ()
     related_ids: tuple[str, ...] = ()
+    supported_formats: tuple[str, ...] = ()
+    host_requirements: tuple[str, ...] = ()
+    license_status: str = "review_required"
 
     def public_dict(self) -> dict:
         value = asdict(self)
         value["actions"] = list(self.actions)
         value["related_ids"] = list(self.related_ids)
+        value["supported_formats"] = list(self.supported_formats)
+        value["host_requirements"] = list(self.host_requirements)
         return value
 
 
@@ -151,6 +156,114 @@ CAPABILITIES = (
         "Apple-platform toolchain requiring a compatible macOS runner.",
         "planned", "capability_routed_runner", ("build", "test", "package"),
         ("flutter-sdk",),
+    ),
+    EngineeringCapability(
+        "react", "framework_profile", "software", "React",
+        "Frontend UI library; supported versions and build profiles require separate approval.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("javascript", "typescript", "nodejs"),
+    ),
+    EngineeringCapability(
+        "angular", "framework_profile", "software", "Angular",
+        "TypeScript frontend framework with a versioned CLI/build profile.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("typescript", "nodejs"),
+    ),
+    EngineeringCapability(
+        "vue", "framework_profile", "software", "Vue",
+        "Frontend framework with an approved package/build profile to be added.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("javascript", "typescript", "nodejs"),
+    ),
+    EngineeringCapability(
+        "nextjs", "framework_profile", "software", "Next.js",
+        "React-based full-stack framework; server and build capabilities require review.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("javascript", "typescript", "nodejs", "react"),
+    ),
+    EngineeringCapability(
+        "vite", "build_profile", "software", "Vite",
+        "Frontend development and production build tool.",
+        "planned", "managed_sandbox", ("build", "preview", "test"),
+        ("javascript", "typescript", "nodejs"),
+    ),
+    EngineeringCapability(
+        "express", "framework_profile", "software", "Express.js",
+        "Node.js web framework; not a language or standalone runtime.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("javascript", "typescript", "nodejs"),
+    ),
+    EngineeringCapability(
+        "nestjs", "framework_profile", "software", "NestJS",
+        "Node.js backend framework with a TypeScript-oriented project profile.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("typescript", "nodejs"),
+    ),
+    EngineeringCapability(
+        "fastapi", "framework_profile", "software", "FastAPI",
+        "Python API framework; requires a reviewed dependency and project profile.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("python",),
+    ),
+    EngineeringCapability(
+        "django", "framework_profile", "software", "Django",
+        "Python web framework with a reviewed dependency and project profile.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("python",),
+    ),
+    EngineeringCapability(
+        "flask", "framework_profile", "software", "Flask",
+        "Python web framework with a reviewed dependency and project profile.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("python",),
+    ),
+    EngineeringCapability(
+        "spring-boot", "framework_profile", "software", "Spring Boot",
+        "Java application framework requiring a compatible JVM and build profile.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("java", "jvm"),
+    ),
+    EngineeringCapability(
+        "aspnet-core", "framework_profile", "software", "ASP.NET Core",
+        ".NET web framework requiring a compatible .NET SDK profile.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("csharp", "dotnet-sdk"),
+    ),
+    EngineeringCapability(
+        "laravel", "framework_profile", "software", "Laravel",
+        "PHP web framework requiring a reviewed PHP and Composer profile.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("php", "composer"),
+    ),
+    EngineeringCapability(
+        "flutter", "framework_profile", "software", "Flutter",
+        "Cross-platform UI framework; actual target support depends on compatible runner hosts.",
+        "planned", "capability_routed_runner", ("build", "test"),
+        ("dart", "flutter-sdk", "android-sdk", "apple-xcode"),
+    ),
+    EngineeringCapability(
+        "react-native", "framework_profile", "software", "React Native",
+        "Cross-platform mobile framework with Android/iOS host-specific requirements.",
+        "planned", "capability_routed_runner", ("build", "test"),
+        ("javascript", "typescript", "nodejs", "android-sdk", "apple-xcode"),
+    ),
+    EngineeringCapability(
+        "unity", "framework_profile", "software", "Unity",
+        "Game engine project profile; licensing and compatible build hosts require review.",
+        "planned", "capability_routed_runner", ("build", "test", "package"),
+        (),
+    ),
+    EngineeringCapability(
+        "unreal", "framework_profile", "software", "Unreal Engine",
+        "Game engine project profile; licensing, resource and host requirements require review.",
+        "planned", "capability_routed_runner", ("build", "test", "package"),
+        (),
+    ),
+    EngineeringCapability(
+        "godot", "framework_profile", "software", "Godot",
+        "Game engine project profile with version-pinned export templates.",
+        "planned", "capability_routed_runner", ("build", "test", "package"),
+        (),
     ),
     EngineeringCapability(
         "arduino-cli", "embedded_toolchain", "embedded", "Arduino CLI",
@@ -305,10 +418,17 @@ def list_engineering_capabilities(domain: str | None = None) -> dict:
     valid_domains = {"", "software", "hardware", "embedded", "cross_domain"}
     if normalized not in valid_domains:
         raise ValueError("Unsupported engineering capability domain.")
+    included_domains = {
+        "": {"software", "hardware", "embedded", "cross_domain"},
+        "software": {"software", "embedded", "cross_domain"},
+        "hardware": {"hardware", "embedded", "cross_domain"},
+        "embedded": {"embedded", "cross_domain"},
+        "cross_domain": {"cross_domain"},
+    }[normalized]
     capabilities = [
         item.public_dict()
         for item in CAPABILITIES
-        if not normalized or item.domain in {normalized, "cross_domain"}
+        if item.domain in included_domains
     ]
     return {
         "registry_version": 1,
