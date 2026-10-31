@@ -20,6 +20,27 @@ The Docker invocation is fixed in application code and adds:
 - A production preflight that fails closed unless Docker reports rootless mode.
 - Container cleanup after timeout, output-limit termination, normal completion, or execution errors; the daemon is queried to verify the named container is absent. Failure to confirm removal fails the run.
 
+
+## Unified software and hardware engineering capability catalog
+
+The C-D branch also adds `services/engineering_capability_registry.py` and an authenticated `GET /api/v1/sandbox/capabilities` endpoint. This is the shared capability catalog for the future Engineering Lab. It deliberately separates:
+
+- Languages and language runtimes (Python, JavaScript, TypeScript, Java, C/C++, Go, Rust, PHP, C#, Dart).
+- Runtime/compiler/SDK toolchains (Node.js, JVM, GCC/Clang, Go, Rust, .NET, Flutter, Android and Apple toolchains).
+- Embedded toolchains and runtimes (Arduino CLI, ESP-IDF, PlatformIO, MicroPython and CircuitPython).
+- Hardware-description languages (Verilog, VHDL and SystemVerilog).
+- Hardware targets (Arduino Uno, ESP32, RP2040/Pico, STM32 and FPGA families).
+- Engineering tools (Wokwi, KiCad, EasyEDA, ngspice and Renode).
+- Execution profiles (managed cloud sandbox, external connector and a future local agent).
+
+The catalog also defines three workspace modes: Software Engineering, Hardware Engineering, and Software + Hardware. The latter two are roadmap states, not existing working interfaces. Software + Hardware is intended to link related project context while retaining distinct hardware/software views and histories.
+
+**Important availability rule:** only Python is an implemented language runtime in this increment, and it is still disabled unless the operator enables the feature and supplies an exact digest-pinned allowlisted image. All other languages/toolchains remain planned. Wokwi, KiCad and EasyEDA are integration candidates, not connected tools. Hardware targets are catalog entries, not devices that Smart BethG can currently flash or control. The catalog endpoint never exposes private image references, secrets or host paths.
+
+This avoids confusing a language with its compiler, a framework with a runtime, a board with a language, or an external application with an installed integration. A future runtime can be selected only through its reviewed stable ID and operator-controlled profile. A future connector or local agent must separately declare permissions, supported actions, formats, target compatibility, execution location and license constraints.
+
+Simulation results must always be labeled as simulated. They do not prove physical circuit safety, correct wiring, electrical ratings or reliable operation on a real board. Physical USB/serial/flash access requires an explicit, user-approved local agent with device-level permissions; it must never be inferred from a cloud runtime.
+
 ## Compatibility and operational boundaries
 
 - Existing Python endpoint and owner-scoped run history remain available.
