@@ -47,6 +47,13 @@ class TestEngineeringCapabilityRegistry(unittest.TestCase):
         self.assertIn("cloud-sandbox", ids)
         self.assertIn("esp-idf", ids)
 
+    def test_all_capability_relationships_resolve_to_registered_ids(self):
+        registered = {item.id for item in CAPABILITIES}
+        for capability in CAPABILITIES:
+            for related_id in capability.related_ids:
+                with self.subTest(capability=capability.id, related_id=related_id):
+                    self.assertIn(related_id, registered)
+
     def test_invalid_domain_is_rejected(self):
         with self.assertRaises(ValueError):
             list_engineering_capabilities("arbitrary")
