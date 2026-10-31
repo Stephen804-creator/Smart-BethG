@@ -173,10 +173,20 @@ class SandboxService:
             self._record(run_id, user_id, workspace_id, status, image, runtime.command_name,
                          return_code, payload, None if return_code == 0 else "nonzero_exit")
             return {"id": run_id, "status": status, "exit_code": return_code, **payload}
-        except Exception:
-            self._cleanup_container(docker, container_name)
+        except Exception as exc:
+            # An execution error is not proof that the container stopped. Only
+            # report ordinary failure after the daemon confirms its removal.
+            cleanup_verified = self._cleanup_container(docker, container_name)
+            error_code = (
+                "sandbox_runtime_error" if cleanup_verified
+                else "sandbox_cleanup_unverified"
+            )
             self._record(run_id, user_id, workspace_id, "failed", image, runtime.command_name,
-                         None, {}, "sandbox_runtime_error")
+                         None, {}, error_code)
+            if not cleanup_verified:
+                raise SandboxUnavailableError(
+                    "Execution failed and the isolated container could not be confirmed removed."
+                ) from exc
             raise
 
     @staticmethod
