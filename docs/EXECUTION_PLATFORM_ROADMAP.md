@@ -262,6 +262,30 @@ A candidate moves from experimental to extended/core only after evidence-based r
 - **Frameworks:** planned project/build profiles; not additional languages.
 - A runtime appearing in the registry is not by itself proof that its runner host, framework toolchain or complete application build workflow is production-ready.
 
+
+## Unified Engineering Lab capability model (C-D catalog addition)
+
+Smart BethG uses one **Engineering Capability Registry** across software and hardware. It is a catalog and compatibility model, not one giant executable runtime. Each entry has a stable ID, category, domain, description, status, integration type, supported actions and related capabilities.
+
+The registry separates:
+- **Languages and formats:** Python, JavaScript, TypeScript, HTML/CSS, Java, C/C++, Go, Rust, PHP, C#, Dart.
+- **Software runtimes/toolchains/SDKs:** Node.js, JVM, GCC/Clang, Go, Rust, .NET, Flutter, Android SDK and Apple Xcode.
+- **Embedded toolchains/runtimes:** Arduino CLI, ESP-IDF, PlatformIO, MicroPython and CircuitPython.
+- **Hardware-description languages:** Verilog, VHDL and SystemVerilog.
+- **Hardware targets:** Arduino Uno, ESP32, RP2040/Pico, STM32 and FPGA boards.
+- **Engineering tools:** Wokwi, KiCad, EasyEDA, ngspice and Renode.
+- **Execution profiles:** managed cloud sandbox, external tool connector and a future Smart BethG Local Agent.
+
+The authenticated catalog endpoint is `GET /api/v1/sandbox/capabilities`; it accepts an optional `domain` filter (`software`, `hardware`, `embedded`, or `cross_domain`). The existing `GET /api/v1/sandbox/runtimes` remains the authoritative list of executable language runtimes. Do not confuse the broader catalog with the executable runtime list.
+
+Workspace modes are planned as Software Engineering, Hardware Engineering, and Software + Hardware. A combined project will link the software and hardware subprojects, shared requirements and artifacts, while retaining appropriate separate views, build profiles and histories. This is one platform and project model, not two disconnected products.
+
+**Availability at this stage:** Python is the only implemented language runtime, and operator configuration can still disable it. Every other language/toolchain remains planned until its own pinned image, fixed invocation, dependency/provenance review, resource profile, adversarial tests and compatible runner verification are complete. Wokwi, KiCad and EasyEDA are integration candidates only. ESP32, Arduino Uno, Pico, STM32 and FPGA entries are hardware targets, not runtimes. No hardware board can currently be flashed or controlled by this catalog.
+
+External tools must be connected through typed, least-privilege connectors and must declare what they can actually do (inspect, create/edit, build, simulate, export), accepted formats, supported versions/targets, execution location, licensing constraints and required credentials. A connected badge alone is not proof that a requested action works.
+
+A future Local Agent is required for controlled access to a user's local files, USB devices, serial ports and physical boards. Cloud execution must never claim access to a user's attached hardware. Hardware simulation must be labeled simulated and must not be represented as proof of physical electrical safety or real-board behavior.
+
 ## Handoff checklist before E
 
 - [ ] PR #26 (A–B) reviewed and merged in the intended order, without collapsing its separate review history.
