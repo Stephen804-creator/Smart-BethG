@@ -21,6 +21,8 @@ class TestEngineeringCapabilityRegistry(unittest.TestCase):
         self.assertEqual(by_id["verilog"].category, "hardware_description_language")
         self.assertEqual(by_id["kicad"].category, "engineering_tool")
         self.assertEqual(by_id["python"].category, "language_runtime")
+        self.assertEqual(by_id["express"].category, "framework_profile")
+        self.assertEqual(by_id["esp32"].domain, "hardware")
 
     def test_only_python_is_described_as_implemented_execution_runtime(self):
         result = list_engineering_capabilities()
@@ -40,8 +42,10 @@ class TestEngineeringCapabilityRegistry(unittest.TestCase):
     def test_domain_filter_includes_cross_domain_execution_profiles(self):
         result = list_engineering_capabilities("hardware")
         domains = {item["domain"] for item in result["capabilities"]}
-        self.assertEqual(domains, {"hardware", "cross_domain"})
-        self.assertIn("cloud-sandbox", {item["id"] for item in result["capabilities"]})
+        self.assertEqual(domains, {"hardware", "embedded", "cross_domain"})
+        ids = {item["id"] for item in result["capabilities"]}
+        self.assertIn("cloud-sandbox", ids)
+        self.assertIn("esp-idf", ids)
 
     def test_invalid_domain_is_rejected(self):
         with self.assertRaises(ValueError):
