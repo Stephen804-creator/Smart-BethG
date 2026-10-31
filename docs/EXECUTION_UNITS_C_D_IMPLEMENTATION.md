@@ -18,7 +18,7 @@ The Docker invocation is fixed in application code and adds:
 - CPU, memory, memory-plus-swap, process, shared-memory, temporary-filesystem, file-size, open-file, wall-clock, and combined output limits.
 - No Docker log driver storage for user output; output is captured through the bounded attached streams.
 - A production preflight that fails closed unless Docker reports rootless mode.
-- Container cleanup after timeout, output-limit termination, normal completion, or execution errors; the daemon is queried to verify the named container is absent. Failure to confirm removal fails the run.
+- Container cleanup after timeout, output-limit termination, normal completion, or execution errors; the daemon is queried to verify the named container is absent. Failure to confirm removal fails the run. Execution-error cleanup uncertainty is recorded as `sandbox_cleanup_unverified` and returned as an unavailable condition rather than being reported as an ordinary completed failure.
 
 
 ## Unified software and hardware engineering capability catalog
