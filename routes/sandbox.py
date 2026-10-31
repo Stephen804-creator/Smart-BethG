@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user
 from services.runtime_registry import list_runtimes
+from services.engineering_capability_registry import list_engineering_capabilities
 from services.sandbox_service import SandboxService, SandboxUnavailableError
 
 router = APIRouter(prefix="/sandbox", tags=["sandbox"])
@@ -25,6 +26,15 @@ def get_runtimes(user=Depends(get_current_user)):
     # Only operator-registered runtimes are returned. Image references and
     # internal allowlist configuration are never exposed to clients.
     return {"runtimes": list_runtimes()}
+
+
+@router.get("/capabilities")
+def get_engineering_capabilities(domain: str | None = None, user=Depends(get_current_user)):
+    """Return the unified software/hardware capability catalog, not a claim of availability."""
+    try:
+        return list_engineering_capabilities(domain)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @router.post("/execute")
