@@ -36,7 +36,7 @@ The GitHub Actions workflow `.github/workflows/runtime-images.yml` builds each i
 
 The workflow runs on pushes and pull requests that change the runtime images or execution code. It does not publish images during ordinary CI.
 
-To publish, manually run **Smart BethG isolated runtime images** from the intended branch and explicitly set `publish_images=true`. Publishing is a separate job requiring `packages: write`; it rebuilds the tested images with BuildKit SBOM and provenance attestations, pushes commit-specific tags to GHCR, pulls each resulting digest, runs the same smoke test against that exact digest, and writes the digest references to the workflow summary.
+After this workflow is merged into the repository's default branch, manually run **Smart BethG isolated runtime images** from the intended branch and explicitly set `publish_images=true`. GitHub only accepts manual dispatch for workflows present on the default branch. Publishing is a separate job requiring `packages: write`; it rebuilds the tested images with BuildKit SBOM and provenance attestations, pushes commit-specific tags to GHCR, pulls each resulting digest, runs the same smoke test against that exact digest, and writes the digest references to the workflow summary.
 
 ## Enabling a runtime
 
