@@ -60,6 +60,10 @@ if not _SECRET_KEY:
 SECRET_KEY_IS_EPHEMERAL = not bool(_SECRET_KEY)
 SECRET_KEY = _SECRET_KEY
 
+TERMS_OF_SERVICE_VERSION = os.getenv("SMART_BETHG_TERMS_VERSION", "2026-10-10")
+PRIVACY_POLICY_VERSION = os.getenv("SMART_BETHG_PRIVACY_VERSION", "2026-10-10")
+MINIMUM_ACCOUNT_AGE = int(os.getenv("SMART_BETHG_MINIMUM_ACCOUNT_AGE", "15"))
+
 SESSION_COOKIE_NAME = os.getenv("SMART_BETHG_SESSION_COOKIE", "smart_bethg_session")
 SESSION_HTTPS_ONLY = os.getenv(
     "SMART_BETHG_SESSION_HTTPS_ONLY", "true" if IS_PRODUCTION else "false"
@@ -278,4 +282,3 @@ rotate or lower budgets without editing code in production.
 from the deployment environment and should be rotated if ever exposed outside of
 that configuration layer.
 """
-
