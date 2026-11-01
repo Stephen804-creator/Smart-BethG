@@ -206,7 +206,7 @@ RUNTIME_DEFINITIONS = {
         executable="Rscript", arguments=("--vanilla",),
         source_filename="main.R", command_name="r_script",
         environment=("HOME=/tmp", "R_LIBS_USER=/tmp/R-library"),
-        timeout_seconds=25, memory_limit="512m",
+        nofile_limit=1024, timeout_seconds=30, memory_limit="768m",
     ),
     "julia": RuntimeDefinition(
         runtime_id="julia", language="julia", display_name="Julia",
@@ -239,7 +239,7 @@ RUNTIME_DEFINITIONS = {
         arguments=("-NoLogo", "-NoProfile", "-NonInteractive", "-File"),
         source_filename="main.ps1", command_name="powershell_script",
         environment=("HOME=/tmp", "TMPDIR=/tmp"),
-        timeout_seconds=20, memory_limit="384m",
+        timeout_seconds=30, memory_limit="1g",
     ),
 }
 
