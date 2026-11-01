@@ -57,6 +57,7 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
         username = "csrf-boundary-test"
         user = create_user(username, "csrf-test-password")
         self.assertIsNotNone(user)
+        self._accept_current_policies(user["id"])
         client = TestClient(create_app())
 
         token = client.get("/auth/csrf").json()["csrf_token"]
@@ -138,7 +139,13 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
             response = client.post(
                 "/auth/register",
                 headers={"X-CSRF-Token": token},
-                json={"username": "open-registration-test", "password": "not-a-real-password"},
+                json={
+                    "username": "open-registration-test",
+                    "password": "not-a-real-password",
+                    "accepted_terms": True,
+                    "accepted_privacy": True,
+                    "age_verified": True,
+                },
             )
         self.assertEqual(response.status_code, 200, response.text)
         self.assertTrue(response.json().get("created"))

@@ -81,6 +81,19 @@ class SmartBethGTestCase(unittest.TestCase):
                 shutil.rmtree(self._tmp_dir, ignore_errors=True)
             raise
 
+    def _accept_current_policies(self, user_id):
+        """Give a test-created account the same explicit consent as a real registrant."""
+        from services.auth_service import record_policy_acceptance
+
+        return record_policy_acceptance(
+            user_id,
+            accepted_terms=True,
+            accepted_privacy=True,
+            age_verified=True,
+            terms_version=config.TERMS_OF_SERVICE_VERSION,
+            privacy_version=config.PRIVACY_POLICY_VERSION,
+        )
+
     def tearDown(self):
         config.DATABASE_URL = self._original_database_url
         try:
