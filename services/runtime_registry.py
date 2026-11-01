@@ -33,6 +33,7 @@ class RuntimeDefinition:
     memory_limit: str = "256m"
     cpu_limit: str = "0.50"
     pids_limit: int = 64
+    nofile_limit: int = 64
     tmpfs_size: str = "16m"
 
     def public_dict(self, enabled: bool) -> dict:
@@ -135,7 +136,7 @@ RUNTIME_DEFINITIONS = {
         executable="dotnet", arguments=("run", "--file"),
         source_filename="main.cs", command_name="csharp_file_app",
         environment=("DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner"),
-        executable_scratch=True, timeout_seconds=30, memory_limit="512m",
+        executable_scratch=True, nofile_limit=256, timeout_seconds=30, memory_limit="512m",
     ),
     "php": RuntimeDefinition(
         runtime_id="php", language="php", display_name="PHP",
