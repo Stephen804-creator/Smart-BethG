@@ -150,6 +150,18 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
         self.assertNotIn("--network=host", command)
         self.assertNotIn("/var/run/docker.sock", joined)
 
+    def test_dotnet_runtime_gets_a_bounded_higher_open_file_limit(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["csharp"]
+        with tempfile.TemporaryDirectory() as directory:
+            command = SandboxService._docker_run_command(
+                "/usr/bin/docker", "sbx-test", Path(directory),
+                "approved@sha256:" + ("8" * 64), runtime,
+            )
+        self.assertIn("nofile=256:256", command)
+        self.assertNotIn("nofile=unlimited", command)
+
     def test_compiler_profiles_receive_bounded_artifact_file_limits(self):
         from services.runtime_registry import RUNTIME_DEFINITIONS
 
