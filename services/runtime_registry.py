@@ -33,6 +33,7 @@ class RuntimeDefinition:
     memory_limit: str = "256m"
     cpu_limit: str = "0.50"
     pids_limit: int = 64
+    nofile_limit: int = 64
     tmpfs_size: str = "16m"
     file_size_limit_bytes: int = 1_048_576
 
@@ -136,7 +137,7 @@ RUNTIME_DEFINITIONS = {
         executable="dotnet", arguments=("run", "--file"),
         source_filename="main.cs", command_name="csharp_file_app",
         environment=("DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner"),
-        executable_scratch=True, tmpfs_size="128m", file_size_limit_bytes=16_777_216, timeout_seconds=40, memory_limit="768m",
+        executable_scratch=True, tmpfs_size="128m", file_size_limit_bytes=16_777_216, nofile_limit=256, timeout_seconds=40, memory_limit="768m",
     ),
     "php": RuntimeDefinition(
         runtime_id="php", language="php", display_name="PHP",
