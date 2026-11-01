@@ -35,6 +35,7 @@ class RuntimeDefinition:
     pids_limit: int = 64
     nofile_limit: int = 64
     tmpfs_size: str = "16m"
+    file_size_limit_bytes: int = 1_048_576
 
     def public_dict(self, enabled: bool) -> dict:
         return {
@@ -95,7 +96,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "cc -std=c17 -O2 -pipe -o /runner/smartbethg-program \"$1\" && /runner/smartbethg-program", "smartbethg-c"),
         source_filename="main.c", command_name="c_compile_and_run",
-        executable_scratch=True, timeout_seconds=20, memory_limit="384m",
+        executable_scratch=True, tmpfs_size="64m", file_size_limit_bytes=8_388_608, timeout_seconds=20, memory_limit="384m",
     ),
     "cpp": RuntimeDefinition(
         runtime_id="cpp", language="cpp", display_name="C++",
@@ -104,7 +105,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "c++ -std=c++20 -O2 -pipe -o /runner/smartbethg-program \"$1\" && /runner/smartbethg-program", "smartbethg-cpp"),
         source_filename="main.cpp", command_name="cpp_compile_and_run",
-        executable_scratch=True, timeout_seconds=20, memory_limit="384m",
+        executable_scratch=True, tmpfs_size="64m", file_size_limit_bytes=8_388_608, timeout_seconds=20, memory_limit="384m",
     ),
     "go": RuntimeDefinition(
         runtime_id="go", language="go", display_name="Go",
@@ -117,7 +118,7 @@ RUNTIME_DEFINITIONS = {
             "GOTMPDIR=/runner", "GOTOOLCHAIN=local",
             "GOPROXY=off", "GOSUMDB=off",
         ),
-        executable_scratch=True, timeout_seconds=25, memory_limit="512m",
+        executable_scratch=True, tmpfs_size="128m", file_size_limit_bytes=33_554_432, timeout_seconds=25, memory_limit="512m",
     ),
     "rust": RuntimeDefinition(
         runtime_id="rust", language="rust", display_name="Rust",
@@ -126,7 +127,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "rustc --edition=2024 -C debuginfo=0 -o /runner/smartbethg-program \"$1\" && /runner/smartbethg-program", "smartbethg-rust"),
         source_filename="main.rs", command_name="rust_compile_and_run",
-        executable_scratch=True, environment=("HOME=/tmp", "TMPDIR=/tmp"),
+        executable_scratch=True, tmpfs_size="64m", file_size_limit_bytes=33_554_432, environment=("HOME=/tmp", "TMPDIR=/tmp"),
         timeout_seconds=25, memory_limit="512m",
     ),
     "csharp": RuntimeDefinition(
@@ -136,7 +137,7 @@ RUNTIME_DEFINITIONS = {
         executable="dotnet", arguments=("run", "--file"),
         source_filename="main.cs", command_name="csharp_file_app",
         environment=("DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner", "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_NOLOGO=1"),
-        executable_scratch=True, nofile_limit=256, timeout_seconds=30, memory_limit="512m",
+        executable_scratch=True, tmpfs_size="128m", file_size_limit_bytes=16_777_216, nofile_limit=256, timeout_seconds=40, memory_limit="768m",
     ),
     "php": RuntimeDefinition(
         runtime_id="php", language="php", display_name="PHP",
@@ -162,7 +163,7 @@ RUNTIME_DEFINITIONS = {
         executable="kotlinc", arguments=("-script",),
         source_filename="main.kts", command_name="kotlin_script",
         environment=("HOME=/tmp", "TMPDIR=/tmp"),
-        timeout_seconds=25, memory_limit="512m",
+        timeout_seconds=35, memory_limit="768m", tmpfs_size="128m", file_size_limit_bytes=16_777_216,
     ),
     "swift": RuntimeDefinition(
         runtime_id="swift", language="swift", display_name="Swift",
@@ -171,8 +172,8 @@ RUNTIME_DEFINITIONS = {
         executable="swift", arguments=(),
         source_filename="main.swift", command_name="swift_script",
         environment=("HOME=/runner", "TMPDIR=/runner"),
-        executable_scratch=True, tmpfs_size="64m",
-        timeout_seconds=25, memory_limit="512m",
+        executable_scratch=True, tmpfs_size="128m", file_size_limit_bytes=33_554_432,
+        timeout_seconds=25, memory_limit="768m",
     ),
     "bash": RuntimeDefinition(
         runtime_id="bash", language="bash", display_name="Bash",
