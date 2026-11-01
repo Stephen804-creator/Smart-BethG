@@ -28,7 +28,7 @@ on:
         default: false
 
 concurrency:
-  group: smartbethg-runtime-images-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: smartbethg-runtime-images-${{ github.event.pull_request.head.ref || github.ref_name }}-${{ github.event_name }}
   cancel-in-progress: true
 
 permissions:
