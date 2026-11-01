@@ -161,6 +161,8 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
             )
         self.assertIn("nofile=256:256", command)
         self.assertNotIn("nofile=unlimited", command)
+        self.assertIn("DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", command)
+        self.assertIn("DOTNET_CLI_TELEMETRY_OPTOUT=1", command)
 
     def test_compiler_profiles_receive_bounded_artifact_file_limits(self):
         from services.runtime_registry import RUNTIME_DEFINITIONS
