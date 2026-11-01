@@ -177,12 +177,19 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
         self.assertTrue(any("--property:NuGetAudit=false" in arg for arg in command))
         self.assertIn("DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=1", command)
         self.assertIn("DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1", command)
-        self.assertEqual(runtime.memory_limit, "3g")
+        self.assertEqual(runtime.memory_limit, "4g")
         self.assertEqual(runtime.cpu_limit, "1.00")
         self.assertEqual(runtime.tmpfs_size, "256m")
         self.assertEqual(runtime.file_size_limit_bytes, 33_554_432)
         self.assertEqual(runtime.pids_limit, 128)
         self.assertEqual(command[-1], "/workspace/main.cs")
+
+    def test_powershell_runtime_has_a_bounded_memory_budget(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["powershell"]
+        self.assertEqual(runtime.memory_limit, "1g")
+        self.assertEqual(runtime.timeout_seconds, 30)
 
     def test_compiler_profiles_receive_bounded_artifact_file_limits(self):
         from services.runtime_registry import RUNTIME_DEFINITIONS
