@@ -64,7 +64,7 @@ class TestRuntimeRegistry(unittest.TestCase):
 
         expected = {
             "python", "javascript", "typescript", "java", "c", "cpp", "go",
-            "rust", "php", "dart", "kotlin", "swift", "bash", "powershell",
+            "rust", "php", "csharp", "dart", "kotlin", "swift", "bash", "powershell",
         }
         self.assertTrue(expected.issubset(RUNTIME_DEFINITIONS))
         env = {
