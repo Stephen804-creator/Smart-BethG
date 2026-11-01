@@ -23,7 +23,7 @@ This directory contains the application-owned image definitions for the runtime 
 | powershell | powershell/Dockerfile | PowerShell 7.6 bundled with .NET SDK 10 |
 | ruby | ruby/Dockerfile | Ruby 3.4 |
 | elixir | elixir/Dockerfile | Elixir 1.20.5 / OTP from official image |
-| r | r/Dockerfile | R 4.5.2 |
+| r | r/Dockerfile | R 4.6.1 |
 | julia | julia/Dockerfile | Julia 1.13.3 |
 | lua | lua/Dockerfile | Lua 5.4 |
 | perl | perl/Dockerfile | Perl 5.42 |
