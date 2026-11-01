@@ -164,6 +164,28 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
         self.assertIn("DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", command)
         self.assertIn("DOTNET_CLI_TELEMETRY_OPTOUT=1", command)
 
+    def test_compiler_profiles_receive_bounded_artifact_file_limits(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        expected_limits = {
+            "c": 8_388_608,
+            "cpp": 8_388_608,
+            "go": 33_554_432,
+            "rust": 33_554_432,
+            "csharp": 16_777_216,
+            "kotlin": 16_777_216,
+            "swift": 33_554_432,
+        }
+        for runtime_id, limit in expected_limits.items():
+            with self.subTest(runtime_id=runtime_id):
+                runtime = RUNTIME_DEFINITIONS[runtime_id]
+                with tempfile.TemporaryDirectory() as directory:
+                    command = SandboxService._docker_run_command(
+                        "/usr/bin/docker", "sbx-test", Path(directory),
+                        "approved@sha256:" + ("9" * 64), runtime,
+                    )
+                self.assertIn(f"fsize={limit}:{limit}", command)
+
     def test_docker_command_does_not_accept_caller_controlled_command_or_image(self):
         runtime = resolve_runtime_for_test()
         with tempfile.TemporaryDirectory() as directory:
