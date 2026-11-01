@@ -192,7 +192,7 @@ class SandboxService:
     @staticmethod
     def _docker_run_command(docker, container_name, root, image, runtime):
         """Build the fixed, deny-by-default Docker invocation."""
-        return [
+        command = [
             docker, "run", "--rm", "--pull=never", "--name", container_name,
             "--network=none", "--ipc=private", "--read-only",
             "--cap-drop=ALL", "--security-opt=no-new-privileges:true",
@@ -202,17 +202,33 @@ class SandboxService:
             "--memory-swap", runtime.memory_limit,
             "--cpus", runtime.cpu_limit,
             "--shm-size=16m",
-            "--ulimit", "nofile=64:64",
-            "--ulimit", "fsize=1048576:1048576",
+            "--ulimit", f"nofile={runtime.nofile_limit}:{runtime.nofile_limit}",
+            "--ulimit", f"fsize={runtime.file_size_limit_bytes}:{runtime.file_size_limit_bytes}",
             "--ulimit", "core=0:0",
             "--log-driver=none", "--stop-timeout=1",
             "--user=65534:65534",
             "--tmpfs", f"/tmp:rw,noexec,nosuid,nodev,size={runtime.tmpfs_size},mode=1777",
             "--workdir=/workspace",
             "--mount", f"type=bind,src={root},dst=/workspace,readonly",
+        ]
+        # Compiler profiles get a separate size-bounded executable scratch
+        # filesystem. The general /tmp mount remains noexec. This is needed
+        # only for compiling and running the submitted program inside the
+        # already isolated container; it grants no host filesystem access.
+        if runtime.executable_scratch:
+            command.extend([
+                "--tmpfs",
+                f"/runner:rw,exec,nosuid,nodev,size={runtime.tmpfs_size},mode=1777",
+            ])
+        # These values are static per-runtime settings authored in the
+        # application. User input can never add or override container env vars.
+        for setting in runtime.environment:
+            command.extend(["--env", setting])
+        command.extend([
             image, runtime.executable, *runtime.arguments,
             f"/workspace/{runtime.source_filename}",
-        ]
+        ])
+        return command
 
     @staticmethod
     def _docker_is_rootless(docker):

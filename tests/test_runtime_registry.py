@@ -30,9 +30,9 @@ class TestRuntimeRegistry(unittest.TestCase):
         self.assertEqual(runtime.runtime_id, "python")
         self.assertEqual(image, self.image)
         with self.assertRaises(RuntimeUnavailableError):
-            resolve_runtime("bash")
+            resolve_runtime("fortran")
         with self.assertRaises(RuntimeUnavailableError):
-            resolve_runtime("node")
+            resolve_runtime("javascript")
 
     def test_runtime_is_disabled_without_exact_digest_allowlist(self):
         with patch.dict(os.environ, {
@@ -50,13 +50,80 @@ class TestRuntimeRegistry(unittest.TestCase):
             with self.assertRaises(RuntimeUnavailableError):
                 resolve_runtime("python")
 
-    def test_registry_does_not_expose_image_reference(self):
+    def test_registry_does_not_expose_private_runtime_configuration(self):
         with patch.dict(os.environ, {"SMART_BETHG_SANDBOX_ENABLED": "false"}):
-            runtime = list_runtimes()[0]
-        self.assertEqual(runtime["id"], "python")
-        self.assertFalse(runtime["enabled"])
-        self.assertNotIn("image", runtime)
-        self.assertNotIn("image_env", runtime)
+            runtimes = list_runtimes()
+        self.assertEqual(runtimes[0]["id"], "python")
+        for runtime in runtimes:
+            with self.subTest(runtime_id=runtime["id"]):
+                self.assertFalse(runtime["enabled"])
+                for private_field in (
+                    "image", "image_env", "environment", "executable", "arguments"
+                ):
+                    self.assertNotIn(private_field, runtime)
+
+
+    def test_core_language_profiles_are_registered_but_disabled_without_approved_images(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        expected = {
+            "python", "javascript", "typescript", "java", "c", "cpp", "go",
+            "rust", "php", "csharp", "dart", "kotlin", "swift", "bash", "powershell",
+            "ruby", "elixir", "r", "julia", "lua", "perl",
+        }
+        self.assertTrue(expected.issubset(RUNTIME_DEFINITIONS))
+        env = {
+            "SMART_BETHG_SANDBOX_ENABLED": "true",
+            "SMART_BETHG_SANDBOX_PYTHON_IMAGE": self.image,
+        }
+        for runtime in RUNTIME_DEFINITIONS.values():
+            if runtime.runtime_id != "python":
+                env[runtime.image_env] = ""
+        with patch.dict(os.environ, env), patch.object(
+            config, "DOCKER_ALLOWED_IMAGES", {self.image}
+        ):
+            listed = {item["id"]: item for item in list_runtimes()}
+            for runtime_id in expected - {"python"}:
+                with self.subTest(runtime_id=runtime_id):
+                    self.assertFalse(listed[runtime_id]["enabled"])
+                    with self.assertRaises(RuntimeUnavailableError):
+                        resolve_runtime(runtime_id)
+
+    def test_compiled_runtime_uses_only_fixed_command_and_read_only_source_path(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["c"]
+        with tempfile.TemporaryDirectory() as directory:
+            command = SandboxService._docker_run_command(
+                "/usr/bin/docker", "sbx-test", Path(directory),
+                "approved@sha256:" + ("e" * 64), runtime,
+            )
+        self.assertIn('cc -std=c17 -O2 -pipe -o /runner/smartbethg-program "$1" && /runner/smartbethg-program', command)
+        self.assertEqual(command[-1], "/workspace/main.c")
+        self.assertEqual(command[command.index("approved@sha256:" + ("e" * 64)) + 1], "/bin/sh")
+        runner_mount = command[command.index("--tmpfs", command.index("--tmpfs") + 1) + 1]
+        self.assertTrue(runner_mount.startswith("/runner:rw,exec,nosuid,nodev,size="))
+        self.assertNotIn("noexec", runner_mount)
+        self.assertNotIn("--privileged", command)
+
+    def test_dotnet_runtime_profiles_have_sufficient_bounded_memory(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        self.assertEqual(RUNTIME_DEFINITIONS["csharp"].memory_limit, "4g")
+        self.assertEqual(RUNTIME_DEFINITIONS["powershell"].memory_limit, "1g")
+
+    def test_runtime_environment_is_application_controlled(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["go"]
+        with tempfile.TemporaryDirectory() as directory:
+            command = SandboxService._docker_run_command(
+                "/usr/bin/docker", "sbx-test", Path(directory),
+                "approved@sha256:" + ("f" * 64), runtime,
+            )
+        self.assertIn("GOTOOLCHAIN=local", command)
+        self.assertIn("GOPROXY=off", command)
+        self.assertIn("--network=none", command)
 
     def test_digest_validation_rejects_tags_and_malformed_digests(self):
         self.assertTrue(is_digest_pinned_image(self.image))
@@ -88,6 +155,76 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
         self.assertNotIn("--privileged", command)
         self.assertNotIn("--network=host", command)
         self.assertNotIn("/var/run/docker.sock", joined)
+
+    def test_dotnet_runtime_gets_a_bounded_higher_open_file_limit(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["csharp"]
+        with tempfile.TemporaryDirectory() as directory:
+            command = SandboxService._docker_run_command(
+                "/usr/bin/docker", "sbx-test", Path(directory),
+                "approved@sha256:" + ("8" * 64), runtime,
+            )
+        self.assertIn("nofile=512:512", command)
+        self.assertNotIn("nofile=unlimited", command)
+        self.assertIn("DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", command)
+        self.assertIn("DOTNET_CLI_TELEMETRY_OPTOUT=1", command)
+        self.assertIn("HOME=/runner/dotnet", command)
+        self.assertIn("TMPDIR=/runner/tmp", command)
+        self.assertIn("XDG_RUNTIME_DIR=/runner/xdg-runtime", command)
+        self.assertIn('mkdir -p /runner/xdg-runtime /runner/tmp /runner/dotnet /runner/nuget /runner/nuget-source && chmod 700 /runner/xdg-runtime /runner/tmp /runner/dotnet /runner/nuget /runner/nuget-source && exec dotnet run --property:RestoreSources=/runner/nuget-source --property:NuGetAudit=false --property:RestoreIgnoreFailedSources=true --file "$1"', command)
+        self.assertTrue(any("--property:RestoreSources=/runner/nuget-source" in arg for arg in command))
+        self.assertTrue(any("--property:NuGetAudit=false" in arg for arg in command))
+        self.assertIn("DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=1", command)
+        self.assertIn("DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1", command)
+        self.assertEqual(runtime.memory_limit, "4g")
+        self.assertEqual(runtime.cpu_limit, "1.00")
+        self.assertEqual(runtime.tmpfs_size, "256m")
+        self.assertEqual(runtime.file_size_limit_bytes, 33_554_432)
+        self.assertEqual(runtime.pids_limit, 128)
+        self.assertEqual(command[-1], "/workspace/main.cs")
+
+    def test_r_runtime_has_a_bounded_higher_open_file_limit(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["r"]
+        self.assertEqual(runtime.nofile_limit, 1024)
+        self.assertEqual(runtime.memory_limit, "768m")
+        with tempfile.TemporaryDirectory() as directory:
+            command = SandboxService._docker_run_command(
+                "/usr/bin/docker", "sbx-test", Path(directory),
+                "approved@sha256:" + ("a" * 64), runtime,
+            )
+        self.assertIn("nofile=1024:1024", command)
+
+    def test_powershell_runtime_has_a_bounded_memory_budget(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["powershell"]
+        self.assertEqual(runtime.memory_limit, "1g")
+        self.assertEqual(runtime.timeout_seconds, 30)
+
+    def test_compiler_profiles_receive_bounded_artifact_file_limits(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        expected_limits = {
+            "c": 8_388_608,
+            "cpp": 8_388_608,
+            "go": 33_554_432,
+            "rust": 33_554_432,
+            "csharp": 33_554_432,
+            "kotlin": 16_777_216,
+            "swift": 33_554_432,
+        }
+        for runtime_id, limit in expected_limits.items():
+            with self.subTest(runtime_id=runtime_id):
+                runtime = RUNTIME_DEFINITIONS[runtime_id]
+                with tempfile.TemporaryDirectory() as directory:
+                    command = SandboxService._docker_run_command(
+                        "/usr/bin/docker", "sbx-test", Path(directory),
+                        "approved@sha256:" + ("9" * 64), runtime,
+                    )
+                self.assertIn(f"fsize={limit}:{limit}", command)
 
     def test_docker_command_does_not_accept_caller_controlled_command_or_image(self):
         runtime = resolve_runtime_for_test()

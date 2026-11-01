@@ -54,6 +54,40 @@ class TestEngineeringCapabilityRegistry(unittest.TestCase):
                 with self.subTest(capability=capability.id, related_id=related_id):
                     self.assertIn(related_id, registered)
 
+    def test_expanded_arduino_boards_and_engineering_tools_remain_catalog_only(self):
+        result = list_engineering_capabilities()
+        by_id = {item["id"]: item for item in result["capabilities"]}
+        expected_boards = {
+            "arduino-mega2560", "arduino-nano", "arduino-uno-r4",
+            "esp32-c3", "esp32-s3", "pico-w", "stm32-nucleo",
+        }
+        expected_tools = {
+            "arduino-core", "avr-gcc", "avrdude", "esptool",
+            "openocd", "zephyr", "iverilog", "ghdl", "yosys",
+        }
+        self.assertTrue(expected_boards | expected_tools <= set(by_id))
+        for board_id in expected_boards:
+            with self.subTest(board_id=board_id):
+                self.assertEqual(by_id[board_id]["category"], "hardware_target")
+                self.assertEqual(by_id[board_id]["status"], "catalog_only")
+        for tool_id in expected_tools:
+            with self.subTest(tool_id=tool_id):
+                self.assertEqual(by_id[tool_id]["status"], "planned")
+
+    def test_remaining_language_families_are_catalogued_without_false_runtime_claims(self):
+        result = list_engineering_capabilities()
+        by_id = {item["id"]: item for item in result["capabilities"]}
+        expected = {
+            "kotlin", "swift", "bash", "powershell", "ruby", "elixir",
+            "r", "julia", "lua", "perl", "sql", "plpgsql", "tsql",
+            "plsql", "objective-c", "zig", "assembly", "gdscript",
+            "matlab", "mojo", "gleam", "rails",
+        }
+        self.assertTrue(expected <= set(by_id))
+        for language_id in expected:
+            with self.subTest(language_id=language_id):
+                self.assertEqual(by_id[language_id]["status"], "planned")
+
     def test_invalid_domain_is_rejected(self):
         with self.assertRaises(ValueError):
             list_engineering_capabilities("arbitrary")
