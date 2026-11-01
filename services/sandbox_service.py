@@ -202,7 +202,7 @@ class SandboxService:
             "--memory-swap", runtime.memory_limit,
             "--cpus", runtime.cpu_limit,
             "--shm-size=16m",
-            "--ulimit", "nofile=64:64",
+            "--ulimit", f"nofile={runtime.nofile_limit}:{runtime.nofile_limit}",
             "--ulimit", "fsize=1048576:1048576",
             "--ulimit", "core=0:0",
             "--log-driver=none", "--stop-timeout=1",
