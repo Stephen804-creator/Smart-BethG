@@ -136,7 +136,7 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_CSHARP_IMAGE",
         executable="dotnet", arguments=("run", "--file"),
         source_filename="main.cs", command_name="csharp_file_app",
-        environment=("DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner"),
+        environment=("DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner", "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_NOLOGO=1"),
         executable_scratch=True, tmpfs_size="128m", file_size_limit_bytes=16_777_216, nofile_limit=256, timeout_seconds=40, memory_limit="768m",
     ),
     "php": RuntimeDefinition(
