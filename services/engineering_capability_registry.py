@@ -645,6 +645,12 @@ CAPABILITIES = (
         ("powershell",),
     ),
     EngineeringCapability(
+        "rails", "framework_profile", "software", "Ruby on Rails",
+        "Ruby web application framework; dependency installation and project scripts require an approved project profile.",
+        "planned", "managed_sandbox", ("build", "test"),
+        ("ruby", "ruby-toolchain"),
+    ),
+    EngineeringCapability(
         "ruby-toolchain", "runtime_toolchain", "software", "Ruby toolchain",
         "Ruby interpreter profile; gem installation and package scripts require separate dependency policy.",
         "planned", "managed_sandbox", ("execute", "test"),
