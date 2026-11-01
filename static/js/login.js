@@ -7,6 +7,7 @@
   const inviteCodeGroup = document.getElementById("inviteCodeGroup");
   const consentGroup = document.getElementById("consentGroup");
   let mode = "login";
+  let policyUpdatePending = false;
 
   async function getCsrfToken() {
     const res = await fetch("/auth/csrf", { credentials: "same-origin", cache: "no-store" });
@@ -16,7 +17,20 @@
     return data.csrf_token;
   }
 
+  function showPolicyUpdate() {
+    policyUpdatePending = true;
+    mode = "policy-update";
+    title.textContent = "Review updated Smart BethG policies";
+    submitBtn.textContent = "Accept and continue";
+    modeToggle.hidden = true;
+    inviteCodeGroup.hidden = true;
+    consentGroup.hidden = false;
+    errorEl.textContent = "Our minimum account age is now 18. Review the current Terms and Privacy Policy and confirm that you are at least 18 to continue.";
+  }
+
   function setMode(next) {
+    policyUpdatePending = false;
+    modeToggle.hidden = false;
     mode = next;
     if (mode === "login") {
       title.textContent = "Log in to Smart BethG";
@@ -58,12 +72,40 @@
     const username = form.username.value.trim();
     const password = form.password.value;
 
+    if (policyUpdatePending) {
+      submitBtn.disabled = true;
+      try {
+        const csrfToken = await getCsrfToken();
+        const response = await fetch("/auth/accept-policies", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            accepted_terms: form.acceptedTerms.checked,
+            accepted_privacy: form.acceptedPrivacy.checked,
+            age_verified: form.ageVerified.checked,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.accepted) {
+          errorEl.textContent = data.detail || "Could not record your updated policy acceptance.";
+          return;
+        }
+        window.location.href = "/";
+      } catch (err) {
+        errorEl.textContent = "Could not reach Smart BethG. Please try again.";
+      } finally {
+        submitBtn.disabled = false;
+      }
+      return;
+    }
+
     if (mode === "register") {
       const acceptedTerms = form.acceptedTerms.checked;
       const acceptedPrivacy = form.acceptedPrivacy.checked;
       const ageVerified = form.ageVerified.checked;
       if (!acceptedTerms || !acceptedPrivacy || !ageVerified) {
-        errorEl.textContent = "You must accept the Terms, Privacy Policy, and confirm you are at least 15 years old.";
+        errorEl.textContent = "You must accept the Terms, Privacy Policy, and confirm you are at least 18 years old.";
         return;
       }
     }
@@ -100,6 +142,10 @@
         body: JSON.stringify({ username, password }),
       });
       const loginData = await loginRes.json();
+      if (loginData.policy_update_required) {
+        showPolicyUpdate();
+        return;
+      }
       if (!loginRes.ok || !loginData.authenticated) {
         errorEl.textContent = (loginData.error && loginData.error.message) || loginData.detail || loginData.error || "Invalid username or password.";
         return;
@@ -113,6 +159,9 @@
   });
 
   setMode("login");
+  if (new URLSearchParams(window.location.search).get("policy_update") === "1") {
+    showPolicyUpdate();
+  }
 
   fetch("/auth/config")
     .then((r) => r.json())
