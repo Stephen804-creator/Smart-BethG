@@ -2,7 +2,7 @@ import hmac
 
 from fastapi import Depends, HTTPException, Request, status
 from database import get_connection
-from services.auth_service import get_user_by_id
+from services.auth_service import get_user_by_id, user_policy_is_current
 from services.task_service import TaskService
 from services.agent_service import AgentService
 from services.approval_service import ApprovalService
@@ -56,6 +56,8 @@ def get_current_user(request: Request):
     if request.session.get("session_version") != user.get("session_version"):
         request.session.clear()
         raise HTTPException(status_code=401, detail="Session has expired or been revoked. Please sign in again.")
+    if not user_policy_is_current(user_id):
+        raise HTTPException(status_code=403, detail="Review and accept the current 18+ Terms and Privacy Policy to continue.")
     user.pop("session_version", None)
     if request.method.upper() not in {"GET", "HEAD", "OPTIONS", "TRACE"}:
         require_csrf(request)
@@ -70,6 +72,8 @@ def get_optional_user(request: Request):
     user = get_user_by_id(user_id)
     if not user or request.session.get("session_version") != user.get("session_version"):
         request.session.clear()
+        return None
+    if not user_policy_is_current(user_id):
         return None
     user.pop("session_version", None)
     return user

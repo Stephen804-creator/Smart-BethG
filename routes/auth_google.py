@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 import config
-from services.auth_service import find_or_create_oauth_user, get_user_by_id
+from services.auth_service import find_or_create_oauth_user, get_user_by_id, user_policy_is_current
 from services.rate_limiter import check_rate_limit
 from logging_setup import get_logger
 
@@ -86,4 +86,6 @@ async def google_callback(request: Request):
     request.session["user_id"] = current_user["id"]
     request.session["session_version"] = current_user["session_version"]
     request.session["csrf_token"] = secrets.token_urlsafe(32)
+    if not user_policy_is_current(current_user["id"]):
+        return RedirectResponse("/login?policy_update=1", status_code=302)
     return RedirectResponse("/", status_code=302)

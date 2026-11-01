@@ -3,7 +3,7 @@
 **Status:** Active development — not yet cleared for unrestricted public launch.  
 **Last updated:** 2026-10-10 UTC. See [the decision log](docs/DECISION_LOG.md) and [architecture decisions](architecture.md) for dated records.
 
-Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration is kept open for continuous testing. Public launch is still blocked by unfinished account/privacy controls, legal review, production connector validation, and operational recovery gates; do not expose a production deployment to the public until those gates are completed.
+Smart BethG is an AI-assisted agent workspace with chat, provider routing, memory, and knowledge features. Self-registration is kept open for continuous testing. Public launch is still blocked by unfinished account/privacy controls, independent age-assurance integration for the initial 18+ policy, legal review, production connector validation, and operational recovery gates; do not expose a production deployment to the public until those gates are completed.
 
 ## Architecture decisions
 
@@ -137,6 +137,10 @@ DATABASE_URL="postgresql://..." python scripts/migrate_sqlite_to_postgres.py /pa
 ```
 
 First take a backup and test against a fresh PostgreSQL database. The script refuses to merge into non-empty target tables and leaves the SQLite source unchanged. It migrates database rows, not uploaded files or workspace directories; copy those files separately. Use the storage-root options when the destination path differs so recognized file paths can be remapped. Follow the full [migration runbook](docs/DATABASE_MIGRATION_2026-10-10.md) and verify every migrated feature before moving real user data. Do not run this against your only production database without a verified backup.
+
+## Account age eligibility
+
+Smart BethG's initial release is restricted to adults aged 18 and older. The application requires an age declaration and renewed acceptance of current Terms and Privacy Policy versions, including for existing accounts. The declaration is not independent age verification; integrate and validate an appropriate age-assurance method before unrestricted public launch. See [the age eligibility policy](docs/AGE_ELIGIBILITY_POLICY.md).
 
 ## Legal and privacy preparation
 
