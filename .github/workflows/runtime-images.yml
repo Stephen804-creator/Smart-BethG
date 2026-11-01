@@ -2,6 +2,8 @@ name: Smart BethG isolated runtime images
 
 on:
   push:
+    branches:
+      - feature/execution-runtime-images-2026-11-01
     paths:
       - "execution-images/**"
       - "services/runtime_registry.py"
@@ -9,6 +11,8 @@ on:
       - "scripts/verify_runtime_image.py"
       - ".github/workflows/runtime-images.yml"
   pull_request:
+    branches:
+      - feature/execution-runtime-expansion-2026-11-01
     paths:
       - "execution-images/**"
       - "services/runtime_registry.py"
