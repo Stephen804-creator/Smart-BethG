@@ -30,9 +30,9 @@ class TestRuntimeRegistry(unittest.TestCase):
         self.assertEqual(runtime.runtime_id, "python")
         self.assertEqual(image, self.image)
         with self.assertRaises(RuntimeUnavailableError):
-            resolve_runtime("bash")
+            resolve_runtime("fortran")
         with self.assertRaises(RuntimeUnavailableError):
-            resolve_runtime("node")
+            resolve_runtime("javascript")
 
     def test_runtime_is_disabled_without_exact_digest_allowlist(self):
         with patch.dict(os.environ, {
@@ -57,6 +57,59 @@ class TestRuntimeRegistry(unittest.TestCase):
         self.assertFalse(runtime["enabled"])
         self.assertNotIn("image", runtime)
         self.assertNotIn("image_env", runtime)
+
+
+    def test_core_language_profiles_are_registered_but_disabled_without_approved_images(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        expected = {
+            "python", "javascript", "typescript", "java", "c", "cpp", "go",
+            "rust", "php", "dart", "kotlin", "swift", "bash", "powershell",
+        }
+        self.assertTrue(expected.issubset(RUNTIME_DEFINITIONS))
+        env = {
+            "SMART_BETHG_SANDBOX_ENABLED": "true",
+            "SMART_BETHG_SANDBOX_PYTHON_IMAGE": self.image,
+        }
+        for runtime in RUNTIME_DEFINITIONS.values():
+            if runtime.runtime_id != "python":
+                env[runtime.image_env] = ""
+        with patch.dict(os.environ, env), patch.object(
+            config, "DOCKER_ALLOWED_IMAGES", {self.image}
+        ):
+            listed = {item["id"]: item for item in list_runtimes()}
+            for runtime_id in expected - {"python"}:
+                with self.subTest(runtime_id=runtime_id):
+                    self.assertFalse(listed[runtime_id]["enabled"])
+                    with self.assertRaises(RuntimeUnavailableError):
+                        resolve_runtime(runtime_id)
+
+    def test_compiled_runtime_uses_only_fixed_command_and_read_only_source_path(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["c"]
+        with tempfile.TemporaryDirectory() as directory:
+            command = SandboxService._docker_run_command(
+                "/usr/bin/docker", "sbx-test", Path(directory),
+                "approved@sha256:" + ("e" * 64), runtime,
+            )
+        self.assertIn('cc -std=c17 -O2 -pipe -o /dev/shm/smartbethg-program "$1" && /dev/shm/smartbethg-program', command)
+        self.assertEqual(command[-1], "/workspace/main.c")
+        self.assertEqual(command[-3], "/bin/sh")
+        self.assertNotIn("--privileged", command)
+
+    def test_runtime_environment_is_application_controlled(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["go"]
+        with tempfile.TemporaryDirectory() as directory:
+            command = SandboxService._docker_run_command(
+                "/usr/bin/docker", "sbx-test", Path(directory),
+                "approved@sha256:" + ("f" * 64), runtime,
+            )
+        self.assertIn("GOTOOLCHAIN=local", command)
+        self.assertIn("GOPROXY=off", command)
+        self.assertIn("--network=none", command)
 
     def test_digest_validation_rejects_tags_and_malformed_digests(self):
         self.assertTrue(is_digest_pinned_image(self.image))
