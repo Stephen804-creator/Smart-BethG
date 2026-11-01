@@ -161,6 +161,8 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
             )
         self.assertIn("nofile=256:256", command)
         self.assertNotIn("nofile=unlimited", command)
+        self.assertIn("DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", command)
+        self.assertIn("DOTNET_CLI_TELEMETRY_OPTOUT=1", command)
 
     def test_docker_command_does_not_accept_caller_controlled_command_or_image(self):
         runtime = resolve_runtime_for_test()
