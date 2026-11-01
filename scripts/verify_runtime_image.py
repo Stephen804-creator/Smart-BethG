@@ -3,12 +3,14 @@
 import argparse
 import os
 import subprocess
+import sys
 import tempfile
 import uuid
 from pathlib import Path
 
 os.environ.setdefault("SMART_BETHG_ENV", "test")
 os.environ.setdefault("SMART_BETHG_SECRET_KEY", "runtime-image-ci-only")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from services.runtime_registry import RUNTIME_DEFINITIONS  # noqa: E402
 from services.sandbox_service import SandboxService  # noqa: E402
@@ -48,6 +50,19 @@ def main():
     args = parser.parse_args()
 
     runtime = RUNTIME_DEFINITIONS[args.runtime]
+    inspect = subprocess.run(
+        [args.docker, "image", "inspect", args.image, "--format", "{{.Config.User}}|{{json .Config.Entrypoint}}"],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, timeout=10, check=False,
+    )
+    if inspect.returncode != 0:
+        raise SystemExit(f"{args.runtime}: unable to inspect built image: {inspect.stderr[-2000:]}")
+    image_user, entrypoint = inspect.stdout.strip().split("|", 1)
+    if image_user != "65534:65534":
+        raise SystemExit(f"{args.runtime}: image must default to UID/GID 65534:65534, got {image_user!r}")
+    if entrypoint not in {"null", "[]"}:
+        raise SystemExit(f"{args.runtime}: image must not define an entrypoint, got {entrypoint!r}")
+
     run_id = uuid.uuid4().hex[:24]
     container_name = f"sbx-smoke-{run_id}"
     with tempfile.TemporaryDirectory(prefix="smartbethg-runtime-smoke-") as temp:
