@@ -1,4 +1,6 @@
-# Local development database only. Never reuse these credentials in production.
+# Smart BethG monolith-first deployment profile
+# Use this for local development and early scaling without Kubernetes.
+
 services:
   postgres:
     image: postgres:16
@@ -16,6 +18,56 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SMART_BETHG_ENV: development
+      SMART_BETHG_RUNTIME: api
+      DATABASE_URL: postgresql://smartbethg:local_dev_only_change_me@postgres:5432/smartbethg_dev
+      SMART_BETHG_SECRET_KEY: local-dev-secret-change-me
+      SMART_BETHG_STORAGE_ROOT: /app/storage
+      SMART_BETHG_OBJECT_STORAGE: local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./storage:/app/storage
+    command: uvicorn main_fastapi:app --host 0.0.0.0 --port 8000
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SMART_BETHG_ENV: development
+      SMART_BETHG_RUNTIME: worker
+      DATABASE_URL: postgresql://smartbethg:local_dev_only_change_me@postgres:5432/smartbethg_dev
+      SMART_BETHG_SECRET_KEY: local-dev-secret-change-me
+      SMART_BETHG_STORAGE_ROOT: /app/storage
+      SMART_BETHG_OBJECT_STORAGE: local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - .:/app
+      - ./storage:/app/storage
+    command: python scripts/run_worker.py
 
 volumes:
   smart_bethg_postgres_data:
