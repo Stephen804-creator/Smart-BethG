@@ -167,6 +167,13 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
         self.assertIn("TMPDIR=/runner/tmp", command)
         self.assertIn("XDG_RUNTIME_DIR=/runner/xdg-runtime", command)
         self.assertIn('mkdir -p /runner/xdg-runtime /runner/tmp /runner/dotnet /runner/nuget && chmod 700 /runner/xdg-runtime /runner/tmp /runner/dotnet /runner/nuget && exec dotnet run --file "$1"', command)
+        self.assertIn("DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=1", command)
+        self.assertIn("DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1", command)
+        self.assertEqual(runtime.memory_limit, "1536m")
+        self.assertEqual(runtime.cpu_limit, "1.00")
+        self.assertEqual(runtime.tmpfs_size, "256m")
+        self.assertEqual(runtime.file_size_limit_bytes, 33_554_432)
+        self.assertEqual(runtime.pids_limit, 128)
         self.assertEqual(command[-1], "/workspace/main.cs")
 
     def test_compiler_profiles_receive_bounded_artifact_file_limits(self):
