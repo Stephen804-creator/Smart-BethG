@@ -127,6 +127,15 @@ RUNTIME_DEFINITIONS = {
         environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
         timeout_seconds=25, memory_limit="512m",
     ),
+    "csharp": RuntimeDefinition(
+        runtime_id="csharp", language="csharp", display_name="C#",
+        version_label="operator-pinned .NET 10 SDK file-based runner",
+        image_env="SMART_BETHG_SANDBOX_CSHARP_IMAGE",
+        executable="dotnet", arguments=("run", "--file"),
+        source_filename="main.cs", command_name="csharp_file_app",
+        environment=("DOTNET_CLI_HOME=/dev/shm/dotnet", "NUGET_PACKAGES=/dev/shm/nuget"),
+        timeout_seconds=30, memory_limit="512m",
+    ),
     "php": RuntimeDefinition(
         runtime_id="php", language="php", display_name="PHP",
         version_label="operator-pinned PHP CLI image",
