@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   verify:
-    name: Build and execute \${{ matrix.runtime }}
+    name: Build and execute ${{ matrix.runtime }}
     runs-on: ubuntu-latest
     timeout-minutes: 50
     strategy:
@@ -93,19 +93,19 @@ jobs:
 
       - name: Build runtime image
         env:
-          RUNTIME: \${{ matrix.runtime }}
-          DOCKERFILE: \${{ matrix.dockerfile }}
+          RUNTIME: ${{ matrix.runtime }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
         run: docker build --pull --file "$DOCKERFILE" --tag "smartbethg/runtime:$RUNTIME" .
 
       - name: Execute the registered runtime command inside its restricted container
         env:
           SMART_BETHG_ENV: test
           SMART_BETHG_SECRET_KEY: runtime-image-ci-only
-          RUNTIME: \${{ matrix.runtime }}
+          RUNTIME: ${{ matrix.runtime }}
         run: python scripts/verify_runtime_image.py --runtime "$RUNTIME" --image "smartbethg/runtime:$RUNTIME"
 
   publish:
-    name: Publish verified \${{ matrix.runtime }} image
+    name: Publish verified ${{ matrix.runtime }} image
     if: github.event_name == 'workflow_dispatch' && inputs.publish_images == true
     needs: verify
     runs-on: ubuntu-latest
@@ -180,25 +180,39 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: \${{ github.actor }}
-          password: \${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build, attach SBOM/provenance, and publish immutable commit tag
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: \${{ matrix.dockerfile }}
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
           provenance: true
           sbom: true
-          tags: ghcr.io/\${{ github.repository }}/runtime-\${{ matrix.runtime }}:\${{ github.sha }}
+          tags: ghcr.io/${{ github.repository }}/runtime-${{ matrix.runtime }}:${{ github.sha }}
+
+      - name: Pull the published image by immutable digest
+        env:
+          RUNTIME: ${{ matrix.runtime }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: docker pull "ghcr.io/$GITHUB_REPOSITORY/runtime-$RUNTIME@$IMAGE_DIGEST"
+
+      - name: Smoke-test the exact published digest
+        env:
+          SMART_BETHG_ENV: test
+          SMART_BETHG_SECRET_KEY: runtime-image-ci-only
+          RUNTIME: ${{ matrix.runtime }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: python scripts/verify_runtime_image.py --runtime "$RUNTIME" --image "ghcr.io/$GITHUB_REPOSITORY/runtime-$RUNTIME@$IMAGE_DIGEST"
 
       - name: Record immutable image digest
         env:
-          RUNTIME: \${{ matrix.runtime }}
-          IMAGE_DIGEST: \${{ steps.build.outputs.digest }}
+          RUNTIME: ${{ matrix.runtime }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           echo "### $RUNTIME" >> "$GITHUB_STEP_SUMMARY"
           echo "ghcr.io/$GITHUB_REPOSITORY/runtime-$RUNTIME@$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"
