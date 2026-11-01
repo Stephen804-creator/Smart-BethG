@@ -134,9 +134,9 @@ RUNTIME_DEFINITIONS = {
         runtime_id="csharp", language="csharp", display_name="C#",
         version_label="operator-pinned .NET 10 SDK file-based runner",
         image_env="SMART_BETHG_SANDBOX_CSHARP_IMAGE",
-        executable="/bin/sh", arguments=("-c", 'mkdir -p /runner/xdg-runtime && chmod 700 /runner/xdg-runtime && exec dotnet run --file "$1"', "smartbethg-csharp"),
+        executable="/bin/sh", arguments=("-c", 'mkdir -p /runner/xdg-runtime /runner/tmp /runner/dotnet /runner/nuget && chmod 700 /runner/xdg-runtime /runner/tmp /runner/dotnet /runner/nuget && exec dotnet run --file "$1"', "smartbethg-csharp"),
         source_filename="main.cs", command_name="csharp_file_app",
-        environment=("DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner", "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_NOLOGO=1", "XDG_RUNTIME_DIR=/runner/xdg-runtime"),
+        environment=("HOME=/runner/dotnet", "DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner/tmp", "TMP=/runner/tmp", "TEMP=/runner/tmp", "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_NOLOGO=1", "XDG_RUNTIME_DIR=/runner/xdg-runtime"),
         executable_scratch=True, tmpfs_size="128m", file_size_limit_bytes=16_777_216, nofile_limit=256, timeout_seconds=40, memory_limit="768m",
     ),
     "php": RuntimeDefinition(
