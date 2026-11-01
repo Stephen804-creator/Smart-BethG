@@ -203,7 +203,7 @@ class SandboxService:
             "--cpus", runtime.cpu_limit,
             "--shm-size=16m",
             "--ulimit", f"nofile={runtime.nofile_limit}:{runtime.nofile_limit}",
-            "--ulimit", "fsize=1048576:1048576",
+            "--ulimit", f"fsize={runtime.file_size_limit_bytes}:{runtime.file_size_limit_bytes}",
             "--ulimit", "core=0:0",
             "--log-driver=none", "--stop-timeout=1",
             "--user=65534:65534",
