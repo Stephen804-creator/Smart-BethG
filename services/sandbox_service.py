@@ -192,7 +192,7 @@ class SandboxService:
     @staticmethod
     def _docker_run_command(docker, container_name, root, image, runtime):
         """Build the fixed, deny-by-default Docker invocation."""
-        return [
+        command = [
             docker, "run", "--rm", "--pull=never", "--name", container_name,
             "--network=none", "--ipc=private", "--read-only",
             "--cap-drop=ALL", "--security-opt=no-new-privileges:true",
@@ -210,9 +210,16 @@ class SandboxService:
             "--tmpfs", f"/tmp:rw,noexec,nosuid,nodev,size={runtime.tmpfs_size},mode=1777",
             "--workdir=/workspace",
             "--mount", f"type=bind,src={root},dst=/workspace,readonly",
+        ]
+        # These values are static per-runtime settings authored in the
+        # application. User input can never add or override container env vars.
+        for setting in runtime.environment:
+            command.extend(["--env", setting])
+        command.extend([
             image, runtime.executable, *runtime.arguments,
             f"/workspace/{runtime.source_filename}",
-        ]
+        ])
+        return command
 
     @staticmethod
     def _docker_is_rootless(docker):
