@@ -193,13 +193,13 @@ jobs:
           push: true
           provenance: true
           sbom: true
-          tags: ghcr.io/${{ github.repository }}/runtime-${{ matrix.runtime }}:${{ github.sha }}
+          tags: ghcr.io/stephen804-creator/smart-bethg/runtime-${{ matrix.runtime }}:${{ github.sha }}
 
       - name: Pull the published image by immutable digest
         env:
           RUNTIME: ${{ matrix.runtime }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
-        run: docker pull "ghcr.io/$GITHUB_REPOSITORY/runtime-$RUNTIME@$IMAGE_DIGEST"
+        run: docker pull "ghcr.io/stephen804-creator/smart-bethg/runtime-$RUNTIME@$IMAGE_DIGEST"
 
       - name: Smoke-test the exact published digest
         env:
@@ -207,7 +207,7 @@ jobs:
           SMART_BETHG_SECRET_KEY: runtime-image-ci-only
           RUNTIME: ${{ matrix.runtime }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
-        run: python scripts/verify_runtime_image.py --runtime "$RUNTIME" --image "ghcr.io/$GITHUB_REPOSITORY/runtime-$RUNTIME@$IMAGE_DIGEST"
+        run: python scripts/verify_runtime_image.py --runtime "$RUNTIME" --image "ghcr.io/stephen804-creator/smart-bethg/runtime-$RUNTIME@$IMAGE_DIGEST"
 
       - name: Record immutable image digest
         env:
@@ -215,4 +215,4 @@ jobs:
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           echo "### $RUNTIME" >> "$GITHUB_STEP_SUMMARY"
-          echo "ghcr.io/$GITHUB_REPOSITORY/runtime-$RUNTIME@$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"
+          echo "ghcr.io/stephen804-creator/smart-bethg/runtime-$RUNTIME@$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"
