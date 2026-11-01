@@ -27,6 +27,7 @@ class RuntimeDefinition:
     source_filename: str
     command_name: str
     environment: tuple[str, ...] = ()
+    executable_scratch: bool = False
     max_source_bytes: int = 64_000
     timeout_seconds: int = 15
     memory_limit: str = "256m"
@@ -93,7 +94,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "cc -std=c17 -O2 -pipe -o /dev/shm/smartbethg-program \"$1\" && /dev/shm/smartbethg-program", "smartbethg-c"),
         source_filename="main.c", command_name="c_compile_and_run",
-        timeout_seconds=20, memory_limit="384m",
+        executable_scratch=True, timeout_seconds=20, memory_limit="384m",
     ),
     "cpp": RuntimeDefinition(
         runtime_id="cpp", language="cpp", display_name="C++",
@@ -102,7 +103,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "c++ -std=c++20 -O2 -pipe -o /dev/shm/smartbethg-program \"$1\" && /dev/shm/smartbethg-program", "smartbethg-cpp"),
         source_filename="main.cpp", command_name="cpp_compile_and_run",
-        timeout_seconds=20, memory_limit="384m",
+        executable_scratch=True, timeout_seconds=20, memory_limit="384m",
     ),
     "go": RuntimeDefinition(
         runtime_id="go", language="go", display_name="Go",
@@ -111,11 +112,11 @@ RUNTIME_DEFINITIONS = {
         executable="go", arguments=("run",),
         source_filename="main.go", command_name="go_run",
         environment=(
-            "HOME=/dev/shm", "GOCACHE=/dev/shm/go-cache",
-            "GOTMPDIR=/dev/shm", "GOTOOLCHAIN=local",
+            "HOME=/runner", "GOCACHE=/runner/go-cache",
+            "GOTMPDIR=/runner", "GOTOOLCHAIN=local",
             "GOPROXY=off", "GOSUMDB=off",
         ),
-        timeout_seconds=25, memory_limit="512m",
+        executable_scratch=True, timeout_seconds=25, memory_limit="512m",
     ),
     "rust": RuntimeDefinition(
         runtime_id="rust", language="rust", display_name="Rust",
@@ -124,7 +125,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "rustc --edition=2024 -C debuginfo=0 -o /dev/shm/smartbethg-program \"$1\" && /dev/shm/smartbethg-program", "smartbethg-rust"),
         source_filename="main.rs", command_name="rust_compile_and_run",
-        environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
+        executable_scratch=True, environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
         timeout_seconds=25, memory_limit="512m",
     ),
     "csharp": RuntimeDefinition(
@@ -168,7 +169,8 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_SWIFT_IMAGE",
         executable="swift", arguments=(),
         source_filename="main.swift", command_name="swift_script",
-        environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
+        environment=("HOME=/runner", "TMPDIR=/runner"),
+        executable_scratch=True,
         timeout_seconds=25, memory_limit="512m",
     ),
     "bash": RuntimeDefinition(
