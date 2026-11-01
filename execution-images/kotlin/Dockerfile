@@ -10,7 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && unzip -q /tmp/kotlin-compiler.zip -d /opt/kotlin \
     && rm -f /tmp/kotlin-compiler.zip
 LABEL org.opencontainers.image.title="Smart BethG Kotlin script runtime"
-LABEL org.opencontainers.image.licenses="Apache-2.0"
 ENV PATH="/opt/kotlin/kotlinc/bin:${PATH}" HOME=/tmp TMPDIR=/tmp
 WORKDIR /workspace
 USER 65534:65534
