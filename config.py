@@ -139,6 +139,31 @@ GLOBAL_DAILY_REQUEST_BUDGET = int(os.getenv("SMART_BETHG_GLOBAL_DAILY_REQUEST_BU
 UNKNOWN_MODEL_INPUT_USD_PER_MILLION = float(os.getenv("SMART_BETHG_UNKNOWN_MODEL_INPUT_USD_PER_MILLION", "20.0"))
 UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION = float(os.getenv("SMART_BETHG_UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION", "100.0"))
 
+# Per-provider daily spend ceilings. These are hard caps enforced before a
+# provider request is sent, so operator-controlled spending does not silently
+# exceed the contracted per-provider budget.
+ANTHROPIC_DAILY_SPEND_USD = float(os.getenv("SMART_BETHG_ANTHROPIC_DAILY_SPEND_USD", "5.0"))
+OPENAI_DAILY_SPEND_USD = float(os.getenv("SMART_BETHG_OPENAI_DAILY_SPEND_USD", "5.0"))
+GOOGLE_DAILY_SPEND_USD = float(os.getenv("SMART_BETHG_GOOGLE_DAILY_SPEND_USD", "5.0"))
+GROQ_DAILY_SPEND_USD = float(os.getenv("SMART_BETHG_GROQ_DAILY_SPEND_USD", "2.0"))
+OPENROUTER_DAILY_SPEND_USD = float(os.getenv("SMART_BETHG_OPENROUTER_DAILY_SPEND_USD", "2.0"))
+
+_PROVIDER_DAILY_SPEND_CAPS = {
+    "anthropic": ANTHROPIC_DAILY_SPEND_USD,
+    "openai": OPENAI_DAILY_SPEND_USD,
+    "google": GOOGLE_DAILY_SPEND_USD,
+    "groq": GROQ_DAILY_SPEND_USD,
+    "openrouter": OPENROUTER_DAILY_SPEND_USD,
+}
+
+
+def provider_daily_spend_cap_usd(provider_name: str | None):
+    """Return the configured daily cap for a provider, or None if not tracked."""
+    if not provider_name:
+        return None
+    return _PROVIDER_DAILY_SPEND_CAPS.get(provider_name.lower())
+
+
 SESSION_MAX_AGE_SECONDS = int(os.getenv("SMART_BETHG_SESSION_MAX_AGE_SECONDS", "43200"))
 
 KNOWLEDGE_SEARCH_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv("SMART_BETHG_KNOWLEDGE_SEARCH_RATE_LIMIT_MAX", "20"))
@@ -205,6 +230,11 @@ def _validate_runtime_config() -> None:
         "GLOBAL_DAILY_SPEND_USD": GLOBAL_DAILY_SPEND_USD,
         "UNKNOWN_MODEL_INPUT_USD_PER_MILLION": UNKNOWN_MODEL_INPUT_USD_PER_MILLION,
         "UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION": UNKNOWN_MODEL_OUTPUT_USD_PER_MILLION,
+        "ANTHROPIC_DAILY_SPEND_USD": ANTHROPIC_DAILY_SPEND_USD,
+        "OPENAI_DAILY_SPEND_USD": OPENAI_DAILY_SPEND_USD,
+        "GOOGLE_DAILY_SPEND_USD": GOOGLE_DAILY_SPEND_USD,
+        "GROQ_DAILY_SPEND_USD": GROQ_DAILY_SPEND_USD,
+        "OPENROUTER_DAILY_SPEND_USD": OPENROUTER_DAILY_SPEND_USD,
     }
     import math
 
@@ -237,3 +267,15 @@ def _validate_runtime_config() -> None:
 
 
 _validate_runtime_config()
+
+
+"""We intentionally keep these provider caps environment-driven so operators can
+rotate or lower budgets without editing code in production.
+"""
+
+
+"""The application does not store user secrets in Git; live API keys are loaded
+from the deployment environment and should be rotated if ever exposed outside of
+that configuration layer.
+"""
+

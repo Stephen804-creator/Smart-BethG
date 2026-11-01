@@ -32,12 +32,18 @@ class UsageBudgetService:
         global_token_limit = config.GLOBAL_DAILY_TOKEN_BUDGET
         user_cost_limit = int(config.USER_DAILY_SPEND_USD * 1_000_000)
         global_cost_limit = int(config.GLOBAL_DAILY_SPEND_USD * 1_000_000)
+        provider_cost_limit = config.provider_daily_spend_cap_usd(provider)
+        if provider_cost_limit is not None:
+            provider_cost_limit_micros = int(provider_cost_limit * 1_000_000)
+        else:
+            provider_cost_limit_micros = None
 
         if (
             input_tokens + output_tokens > user_token_limit
             or input_tokens + output_tokens > global_token_limit
             or estimated_cost > user_cost_limit
             or estimated_cost > global_cost_limit
+            or (provider_cost_limit_micros is not None and estimated_cost > provider_cost_limit_micros)
             or config.USER_DAILY_REQUEST_BUDGET < 1
             or config.GLOBAL_DAILY_REQUEST_BUDGET < 1
         ):
@@ -211,3 +217,4 @@ class UsageBudgetService:
         return max(0, math.ceil(
             input_tokens * float(pricing["input"]) + output_tokens * float(pricing["output"])
         ))
+

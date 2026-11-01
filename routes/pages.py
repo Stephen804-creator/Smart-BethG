@@ -1,5 +1,3 @@
-import os
-
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse, FileResponse
 
@@ -99,6 +97,16 @@ def chat_page(request: Request):
     return _render(request, "chat.html")
 
 
+@router.get("/terms", name="main.terms")
+def terms_page(request: Request):
+    return _render(request, "terms.html")
+
+
+@router.get("/privacy", name="main.privacy")
+def privacy_page(request: Request):
+    return _render(request, "privacy.html")
+
+
 @router.get("/favicon.ico", include_in_schema=False)
 def favicon():
     """Avoids noisy 404s in logs for the browser's automatic favicon request."""
@@ -123,3 +131,4 @@ def login_page(request: Request):
     if _require_user(request):
         return RedirectResponse("/", status_code=302)
     return _render(request, "login.html")
+

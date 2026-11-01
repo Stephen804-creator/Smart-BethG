@@ -5,6 +5,7 @@
   const submitBtn = document.getElementById("authSubmit");
   const title = document.getElementById("authTitle");
   const inviteCodeGroup = document.getElementById("inviteCodeGroup");
+  const consentGroup = document.getElementById("consentGroup");
   let mode = "login";
 
   async function getCsrfToken() {
@@ -22,11 +23,13 @@
       submitBtn.textContent = "Log in";
       modeToggle.textContent = "Need an account? Create one";
       inviteCodeGroup.hidden = true;
+      consentGroup.hidden = true;
     } else {
       title.textContent = "Create your Smart BethG account";
       submitBtn.textContent = "Create account";
       modeToggle.textContent = "Already have an account? Log in";
-      inviteCodeGroup.hidden = false;
+      inviteCodeGroup.hidden = true;
+      consentGroup.hidden = false;
     }
     errorEl.textContent = "";
   }
@@ -55,16 +58,33 @@
     const username = form.username.value.trim();
     const password = form.password.value;
 
+    if (mode === "register") {
+      const acceptedTerms = form.acceptedTerms.checked;
+      const acceptedPrivacy = form.acceptedPrivacy.checked;
+      const ageVerified = form.ageVerified.checked;
+      if (!acceptedTerms || !acceptedPrivacy || !ageVerified) {
+        errorEl.textContent = "You must accept the Terms, Privacy Policy, and confirm you are at least 15 years old.";
+        return;
+      }
+    }
+
     submitBtn.disabled = true;
     try {
       const csrfToken = await getCsrfToken();
       if (mode === "register") {
-        const inviteCode = form.inviteCode.value.trim();
+        const inviteCode = form.inviteCode ? form.inviteCode.value.trim() : "";
         const res = await fetch("/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
           credentials: "same-origin",
-          body: JSON.stringify({ username, password, invite_code: inviteCode || null }),
+          body: JSON.stringify({
+            username,
+            password,
+            invite_code: inviteCode || null,
+            accepted_terms: form.acceptedTerms.checked,
+            accepted_privacy: form.acceptedPrivacy.checked,
+            age_verified: form.ageVerified.checked,
+          }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -104,3 +124,4 @@
     })
     .catch(() => {});
 })();
+

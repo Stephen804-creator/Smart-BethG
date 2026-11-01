@@ -5,6 +5,8 @@ from services.auth_service import (
     get_user_by_id,
     find_or_create_oauth_user,
 )
+from routes.auth import RegisterRequest
+import config
 
 
 class TestAuthService(SmartBethGTestCase):
@@ -60,7 +62,6 @@ class TestAuthService(SmartBethGTestCase):
         pw_user = create_user("person@gmail.com", "password123")
         oauth_user = find_or_create_oauth_user("person@gmail.com", "google", "sub-2", allow_create=True)
         self.assertEqual(pw_user["id"], oauth_user["id"])
-        # Password login must still work after linking.
         self.assertIsNotNone(authenticate_user("person@gmail.com", "password123"))
 
     def test_oauth_creation_is_blocked_when_registration_is_closed(self):
@@ -70,3 +71,34 @@ class TestAuthService(SmartBethGTestCase):
     def test_oauth_missing_email_raises(self):
         with self.assertRaises(ValueError):
             find_or_create_oauth_user("", "google", "sub-3", allow_create=True)
+
+    def test_registration_requires_terms_privacy_and_age(self):
+        with self.assertRaises(ValueError):
+            RegisterRequest(
+                username="newuser",
+                password="password123",
+                accepted_terms=False,
+                accepted_privacy=True,
+                age_verified=True,
+            )
+        with self.assertRaises(ValueError):
+            RegisterRequest(
+                username="newuser",
+                password="password123",
+                accepted_terms=True,
+                accepted_privacy=False,
+                age_verified=True,
+            )
+        with self.assertRaises(ValueError):
+            RegisterRequest(
+                username="newuser",
+                password="password123",
+                accepted_terms=True,
+                accepted_privacy=True,
+                age_verified=False,
+            )
+
+    def test_provider_cap_helper_exists_for_known_provider(self):
+        self.assertIsNotNone(config.provider_daily_spend_cap_usd("openai"))
+        self.assertIsNotNone(config.provider_daily_spend_cap_usd("anthropic"))
+

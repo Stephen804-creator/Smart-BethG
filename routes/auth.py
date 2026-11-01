@@ -1,5 +1,3 @@
-import secrets
-
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
@@ -21,6 +19,9 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=1, max_length=254)
     password: str = Field(min_length=8, max_length=1024)
+    accepted_terms: bool = Field(default=False)
+    accepted_privacy: bool = Field(default=False)
+    age_verified: bool = Field(default=False)
 
     @field_validator("username")
     @classmethod
@@ -28,6 +29,14 @@ class RegisterRequest(BaseModel):
         if not v or not v.strip():
             raise ValueError("Username is required.")
         return v.strip()
+
+    @field_validator("accepted_terms", "accepted_privacy", "age_verified")
+    @classmethod
+    def consent_required(cls, value, info):
+        if value is not True:
+            field_name = info.field_name.replace("_", " ")
+            raise ValueError(f"You must accept the {field_name} requirement to continue.")
+        return value
 
 
 def _client_ip(request: Request) -> str:
@@ -80,11 +89,16 @@ def register(payload: RegisterRequest, request: Request, _csrf=Depends(require_c
     """
     Public self-registration remains open for continuous testing.
     Rate limiting, password validation, and duplicate-account checks remain active.
-    No deployment flag or invite code can silently disable registration.
+    A user must explicitly accept the current terms, privacy policy, and age check.
     """
     if not check_rate_limit(f"register:{_client_ip(request)}"):
         logger.warning("Registration rate-limited for %s", _client_ip(request))
         raise HTTPException(status_code=429, detail="Too many attempts. Please wait and try again.")
+    if not payload.accepted_terms or not payload.accepted_privacy or not payload.age_verified:
+        raise HTTPException(
+            status_code=400,
+            detail="You must accept the Terms, Privacy Policy, and confirm that you are at least 15 years old.",
+        )
 
     try:
         user = create_user(payload.username, payload.password)
@@ -105,3 +119,4 @@ def auth_config():
 @router.get("/me")
 def me(user=Depends(get_current_user)):
     return user
+
