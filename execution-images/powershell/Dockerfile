@@ -1,6 +1,5 @@
 FROM mcr.microsoft.com/powershell:7.5-debian-12
 LABEL org.opencontainers.image.title="Smart BethG PowerShell Core runtime"
-LABEL org.opencontainers.image.licenses="MIT"
 ENV HOME=/tmp TMPDIR=/tmp
 WORKDIR /workspace
 USER 65534:65534
