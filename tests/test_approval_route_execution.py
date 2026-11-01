@@ -19,6 +19,7 @@ class TestApprovalRouteExecution(SmartBethGTestCase):
         self._old_projects_root = config.STORAGE_DIRS["projects"]
         config.STORAGE_DIRS["projects"] = self._projects_root
         self.user = create_user("approval-route-admin", "password123")
+        self._accept_current_policies(self.user["id"])
         conn = get_connection()
         try:
             conn.execute("UPDATE users SET role='admin' WHERE id=?", (self.user["id"],))
