@@ -71,7 +71,8 @@ class TestSessionRevocation(SmartBethGTestCase):
         self.assertEqual(result["id"], created["id"])
 
     def test_logout_invalidates_a_copied_browser_cookie(self):
-        create_user("logout-revocation-owner", "password123")
+        created = create_user("logout-revocation-owner", "password123")
+        self._accept_current_policies(created["id"])
         browser = TestClient(create_app())
         csrf = browser.get("/auth/csrf").json()["csrf_token"]
         login = browser.post(
