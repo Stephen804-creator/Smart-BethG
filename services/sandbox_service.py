@@ -211,6 +211,15 @@ class SandboxService:
             "--workdir=/workspace",
             "--mount", f"type=bind,src={root},dst=/workspace,readonly",
         ]
+        # Compiler profiles get a separate size-bounded executable scratch
+        # filesystem. The general /tmp mount remains noexec. This is needed
+        # only for compiling and running the submitted program inside the
+        # already isolated container; it grants no host filesystem access.
+        if runtime.executable_scratch:
+            command.extend([
+                "--tmpfs",
+                f"/runner:rw,nosuid,nodev,size={runtime.tmpfs_size},mode=1777",
+            ])
         # These values are static per-runtime settings authored in the
         # application. User input can never add or override container env vars.
         for setting in runtime.environment:
