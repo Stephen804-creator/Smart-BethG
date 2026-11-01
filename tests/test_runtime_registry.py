@@ -109,7 +109,7 @@ class TestRuntimeRegistry(unittest.TestCase):
     def test_dotnet_runtime_profiles_have_sufficient_bounded_memory(self):
         from services.runtime_registry import RUNTIME_DEFINITIONS
 
-        self.assertEqual(RUNTIME_DEFINITIONS["csharp"].memory_limit, "3g")
+        self.assertEqual(RUNTIME_DEFINITIONS["csharp"].memory_limit, "4g")
         self.assertEqual(RUNTIME_DEFINITIONS["powershell"].memory_limit, "1g")
 
     def test_runtime_environment_is_application_controlled(self):
@@ -183,6 +183,19 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
         self.assertEqual(runtime.file_size_limit_bytes, 33_554_432)
         self.assertEqual(runtime.pids_limit, 128)
         self.assertEqual(command[-1], "/workspace/main.cs")
+
+    def test_r_runtime_has_a_bounded_higher_open_file_limit(self):
+        from services.runtime_registry import RUNTIME_DEFINITIONS
+
+        runtime = RUNTIME_DEFINITIONS["r"]
+        self.assertEqual(runtime.nofile_limit, 1024)
+        self.assertEqual(runtime.memory_limit, "768m")
+        with tempfile.TemporaryDirectory() as directory:
+            command = SandboxService._docker_run_command(
+                "/usr/bin/docker", "sbx-test", Path(directory),
+                "approved@sha256:" + ("a" * 64), runtime,
+            )
+        self.assertIn("nofile=1024:1024", command)
 
     def test_powershell_runtime_has_a_bounded_memory_budget(self):
         from services.runtime_registry import RUNTIME_DEFINITIONS
