@@ -102,7 +102,7 @@ class TestRuntimeRegistry(unittest.TestCase):
         self.assertEqual(command[-1], "/workspace/main.c")
         self.assertEqual(command[command.index("approved@sha256:" + ("e" * 64)) + 1], "/bin/sh")
         runner_mount = command[command.index("--tmpfs", command.index("--tmpfs") + 1) + 1]
-        self.assertTrue(runner_mount.startswith("/runner:rw,nosuid,nodev,size="))
+        self.assertTrue(runner_mount.startswith("/runner:rw,exec,nosuid,nodev,size="))
         self.assertNotIn("noexec", runner_mount)
         self.assertNotIn("--privileged", command)
 
