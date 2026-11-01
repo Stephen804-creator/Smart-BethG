@@ -12,7 +12,7 @@ This directory contains the application-owned image definitions for the runtime 
 | java | java/Dockerfile | Eclipse Temurin JDK 21 source launcher |
 | c | c/Dockerfile | GCC 14 / C17 |
 | cpp | cpp/Dockerfile | GCC 14 / C++20 |
-| go | go/Dockerfile | Go 1.25 |
+| go | go/Dockerfile | Go 1.27.3 |
 | rust | rust/Dockerfile | Rust stable toolchain |
 | csharp | csharp/Dockerfile | .NET 10 SDK file-based app |
 | php | php/Dockerfile | PHP CLI 8.4 |
@@ -20,7 +20,7 @@ This directory contains the application-owned image definitions for the runtime 
 | kotlin | kotlin/Dockerfile | Kotlin compiler 2.4.21, SHA-256 verified at build |
 | swift | swift/Dockerfile | Swift 6.4 |
 | bash | bash/Dockerfile | Debian Bash 5.2 package |
-| powershell | powershell/Dockerfile | PowerShell 7.5 |
+| powershell | powershell/Dockerfile | PowerShell 7.6 bundled with .NET SDK 10 |
 | ruby | ruby/Dockerfile | Ruby 3.4 |
 | elixir | elixir/Dockerfile | Elixir 1.20.5 / OTP from official image |
 | r | r/Dockerfile | R 4.5.2 |
