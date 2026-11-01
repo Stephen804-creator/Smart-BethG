@@ -17,7 +17,7 @@ The runtime registry now contains fixed application-owned profiles for:
 
 The new definitions are not automatically enabled. Each runtime has its own operator image environment variable. A runtime resolves only when the global sandbox switch is enabled, the configured image has a complete lowercase SHA-256 digest, and that exact image reference is in the operator allowlist. The registry API continues to hide image references and internal environment variable names.
 
-The runtime command, source filename, resource profile and static environment are application-owned. Client requests still provide only a stable runtime ID and source text. Compiler profiles use fixed commands; no caller-provided shell command or Docker image is accepted. C/C++, Go, Rust and Swift use a separate size-bounded executable scratch tmpfs; the general `/tmp` mount remains `noexec`. Go is configured to use local toolchain/cache paths and offline module resolution.
+The runtime command, source filename, resource profile and static environment are application-owned. Client requests still provide only a stable runtime ID and source text. Compiler profiles use fixed commands; no caller-provided shell command or Docker image is accepted. C/C++, Go, Rust, C#, and Swift use a separate size-bounded executable scratch tmpfs; the general `/tmp` mount remains `noexec`. Go is configured to use local toolchain/cache paths and offline module resolution.
 
 ### Important limits
 
