@@ -10,6 +10,7 @@ from services.auth_service import (
     record_policy_acceptance,
     revoke_user_sessions,
     user_policy_is_current,
+    get_user_by_id,
 )
 from services.rate_limiter import check_rate_limit
 from api.dependencies import get_current_user, require_csrf
@@ -74,11 +75,13 @@ def login(payload: LoginRequest, request: Request, _csrf=Depends(require_csrf)):
 
     if not user_policy_is_current(user["id"]):
         logger.warning("User %s logged in without current policy acceptance", user["id"])
+        # Keep the session restricted while the user reviews the updated 18+ policy.
         request.session.clear()
-        raise HTTPException(
-            status_code=403,
-            detail="You must accept the current Terms and Privacy Policy and confirm you are at least 15 years old.",
-        )
+        request.session["user_id"] = user["id"]
+        request.session["session_version"] = user["session_version"]
+        csrf = secrets.token_urlsafe(32)
+        request.session["csrf_token"] = csrf
+        return {"authenticated": False, "policy_update_required": True, "csrf_token": csrf}
 
     request.session.clear()
     request.session["user_id"] = user["id"]
@@ -127,6 +130,45 @@ def register(payload: RegisterRequest, request: Request, _csrf=Depends(require_c
 
     logger.info("New user registered: %s", user["id"])
     return {"created": True, "user": user}
+
+
+class PolicyAcceptanceRequest(BaseModel):
+    accepted_terms: bool = Field(default=False)
+    accepted_privacy: bool = Field(default=False)
+    age_verified: bool = Field(default=False)
+
+    @field_validator("accepted_terms", "accepted_privacy", "age_verified")
+    @classmethod
+    def consent_required(cls, value, info):
+        if value is not True:
+            raise ValueError(f"You must confirm {info.field_name.replace('_', ' ')} to continue.")
+        return value
+
+
+@router.post("/accept-policies")
+def accept_updated_policies(
+    payload: PolicyAcceptanceRequest,
+    request: Request,
+    _csrf=Depends(require_csrf),
+):
+    """Record renewed legal acceptance for an authenticated, policy-pending session."""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Sign in before accepting updated policies.")
+    user = get_user_by_id(user_id)
+    if not user or request.session.get("session_version") != user.get("session_version"):
+        request.session.clear()
+        raise HTTPException(status_code=401, detail="Your session has expired. Please sign in again.")
+    record_policy_acceptance(
+        user_id,
+        accepted_terms=payload.accepted_terms,
+        accepted_privacy=payload.accepted_privacy,
+        age_verified=payload.age_verified,
+        terms_version=config.TERMS_OF_SERVICE_VERSION,
+        privacy_version=config.PRIVACY_POLICY_VERSION,
+    )
+    logger.info("User %s accepted current 18+ policies", user_id)
+    return {"accepted": True}
 
 
 @router.get("/config")
