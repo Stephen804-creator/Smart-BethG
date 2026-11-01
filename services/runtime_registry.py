@@ -135,7 +135,7 @@ RUNTIME_DEFINITIONS = {
         executable="dotnet", arguments=("run", "--file"),
         source_filename="main.cs", command_name="csharp_file_app",
         environment=("DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner"),
-        executable_scratch=True, tmpfs_size="128m", timeout_seconds=30, memory_limit="768m",
+        executable_scratch=True, tmpfs_size="128m", timeout_seconds=40, memory_limit="768m",
     ),
     "php": RuntimeDefinition(
         runtime_id="php", language="php", display_name="PHP",
@@ -161,7 +161,7 @@ RUNTIME_DEFINITIONS = {
         executable="kotlinc", arguments=("-script",),
         source_filename="main.kts", command_name="kotlin_script",
         environment=("HOME=/tmp", "TMPDIR=/tmp"),
-        timeout_seconds=25, memory_limit="512m",
+        timeout_seconds=35, memory_limit="768m", tmpfs_size="128m",
     ),
     "swift": RuntimeDefinition(
         runtime_id="swift", language="swift", display_name="Swift",
