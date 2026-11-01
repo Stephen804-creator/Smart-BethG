@@ -12,6 +12,8 @@ class TestWorkspaceDashboardHttp(SmartBethGTestCase):
         suffix = str(self._tmp_dir).replace("/", "").replace("\\", "")[-8:]
         self.user_one = create_user("dashboard-a-" + suffix, "dashboard-password")
         self.user_two = create_user("dashboard-b-" + suffix, "dashboard-password")
+        self._accept_current_policies(self.user_one["id"])
+        self._accept_current_policies(self.user_two["id"])
         self.client_one = TestClient(create_app())
         self.client_two = TestClient(create_app())
         self.csrf_one = self._login(self.client_one, "dashboard-a-" + suffix)
