@@ -84,7 +84,7 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_JAVA_IMAGE",
         executable="java", arguments=(),
         source_filename="Main.java", command_name="java_source",
-        environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
+        environment=("HOME=/tmp", "TMPDIR=/tmp"),
         timeout_seconds=20, memory_limit="384m",
     ),
     "c": RuntimeDefinition(
@@ -125,7 +125,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "rustc --edition=2024 -C debuginfo=0 -o /runner/smartbethg-program \"$1\" && /runner/smartbethg-program", "smartbethg-rust"),
         source_filename="main.rs", command_name="rust_compile_and_run",
-        executable_scratch=True, environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
+        executable_scratch=True, environment=("HOME=/tmp", "TMPDIR=/tmp"),
         timeout_seconds=25, memory_limit="512m",
     ),
     "csharp": RuntimeDefinition(
@@ -134,8 +134,8 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_CSHARP_IMAGE",
         executable="dotnet", arguments=("run", "--file"),
         source_filename="main.cs", command_name="csharp_file_app",
-        environment=("DOTNET_CLI_HOME=/dev/shm/dotnet", "NUGET_PACKAGES=/dev/shm/nuget"),
-        timeout_seconds=30, memory_limit="512m",
+        environment=("DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner"),
+        executable_scratch=True, timeout_seconds=30, memory_limit="512m",
     ),
     "php": RuntimeDefinition(
         runtime_id="php", language="php", display_name="PHP",
@@ -151,7 +151,7 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_DART_IMAGE",
         executable="dart", arguments=(),
         source_filename="main.dart", command_name="dart_script",
-        environment=("HOME=/dev/shm", "PUB_CACHE=/dev/shm/pub-cache"),
+        environment=("HOME=/tmp", "PUB_CACHE=/tmp/pub-cache"),
         timeout_seconds=25, memory_limit="384m",
     ),
     "kotlin": RuntimeDefinition(
@@ -160,7 +160,7 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_KOTLIN_IMAGE",
         executable="kotlinc", arguments=("-script",),
         source_filename="main.kts", command_name="kotlin_script",
-        environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
+        environment=("HOME=/tmp", "TMPDIR=/tmp"),
         timeout_seconds=25, memory_limit="512m",
     ),
     "swift": RuntimeDefinition(
@@ -186,7 +186,7 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_RUBY_IMAGE",
         executable="ruby", arguments=("--disable-gems",),
         source_filename="main.rb", command_name="ruby_script",
-        environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
+        environment=("HOME=/tmp", "TMPDIR=/tmp"),
     ),
     "elixir": RuntimeDefinition(
         runtime_id="elixir", language="elixir", display_name="Elixir",
@@ -203,7 +203,7 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_R_IMAGE",
         executable="Rscript", arguments=("--vanilla",),
         source_filename="main.R", command_name="r_script",
-        environment=("HOME=/dev/shm", "R_LIBS_USER=/dev/shm/R-library"),
+        environment=("HOME=/tmp", "R_LIBS_USER=/tmp/R-library"),
         timeout_seconds=25, memory_limit="512m",
     ),
     "julia": RuntimeDefinition(
@@ -212,7 +212,7 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_JULIA_IMAGE",
         executable="julia", arguments=("--startup-file=no", "--history-file=no"),
         source_filename="main.jl", command_name="julia_script",
-        environment=("HOME=/dev/shm", "JULIA_DEPOT_PATH=/dev/shm/julia-depot"),
+        environment=("HOME=/tmp", "JULIA_DEPOT_PATH=/tmp/julia-depot"),
         timeout_seconds=30, memory_limit="512m",
     ),
     "lua": RuntimeDefinition(
@@ -236,7 +236,7 @@ RUNTIME_DEFINITIONS = {
         executable="pwsh",
         arguments=("-NoLogo", "-NoProfile", "-NonInteractive", "-File"),
         source_filename="main.ps1", command_name="powershell_script",
-        environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
+        environment=("HOME=/tmp", "TMPDIR=/tmp"),
         timeout_seconds=20, memory_limit="384m",
     ),
 }
