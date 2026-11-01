@@ -159,7 +159,7 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
                 "/usr/bin/docker", "sbx-test", Path(directory),
                 "approved@sha256:" + ("8" * 64), runtime,
             )
-        self.assertIn("nofile=256:256", command)
+        self.assertIn("nofile=512:512", command)
         self.assertNotIn("nofile=unlimited", command)
         self.assertIn("DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", command)
         self.assertIn("DOTNET_CLI_TELEMETRY_OPTOUT=1", command)
@@ -184,7 +184,7 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
             "cpp": 8_388_608,
             "go": 33_554_432,
             "rust": 33_554_432,
-            "csharp": 16_777_216,
+            "csharp": 33_554_432,
             "kotlin": 16_777_216,
             "swift": 33_554_432,
         }
