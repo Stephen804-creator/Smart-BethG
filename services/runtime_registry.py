@@ -94,7 +94,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "cc -std=c17 -O2 -pipe -o /runner/smartbethg-program \"$1\" && /runner/smartbethg-program", "smartbethg-c"),
         source_filename="main.c", command_name="c_compile_and_run",
-        executable_scratch=True, timeout_seconds=20, memory_limit="384m",
+        executable_scratch=True, tmpfs_size="64m", timeout_seconds=20, memory_limit="384m",
     ),
     "cpp": RuntimeDefinition(
         runtime_id="cpp", language="cpp", display_name="C++",
@@ -116,7 +116,7 @@ RUNTIME_DEFINITIONS = {
             "GOTMPDIR=/runner", "GOTOOLCHAIN=local",
             "GOPROXY=off", "GOSUMDB=off",
         ),
-        executable_scratch=True, timeout_seconds=25, memory_limit="512m",
+        executable_scratch=True, tmpfs_size="128m", timeout_seconds=25, memory_limit="512m",
     ),
     "rust": RuntimeDefinition(
         runtime_id="rust", language="rust", display_name="Rust",
@@ -125,7 +125,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "rustc --edition=2024 -C debuginfo=0 -o /runner/smartbethg-program \"$1\" && /runner/smartbethg-program", "smartbethg-rust"),
         source_filename="main.rs", command_name="rust_compile_and_run",
-        executable_scratch=True, environment=("HOME=/tmp", "TMPDIR=/tmp"),
+        executable_scratch=True, tmpfs_size="64m", environment=("HOME=/tmp", "TMPDIR=/tmp"),
         timeout_seconds=25, memory_limit="512m",
     ),
     "csharp": RuntimeDefinition(
@@ -135,7 +135,7 @@ RUNTIME_DEFINITIONS = {
         executable="dotnet", arguments=("run", "--file"),
         source_filename="main.cs", command_name="csharp_file_app",
         environment=("DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner"),
-        executable_scratch=True, timeout_seconds=30, memory_limit="512m",
+        executable_scratch=True, tmpfs_size="128m", timeout_seconds=30, memory_limit="768m",
     ),
     "php": RuntimeDefinition(
         runtime_id="php", language="php", display_name="PHP",
@@ -170,8 +170,8 @@ RUNTIME_DEFINITIONS = {
         executable="swift", arguments=(),
         source_filename="main.swift", command_name="swift_script",
         environment=("HOME=/runner", "TMPDIR=/runner"),
-        executable_scratch=True, tmpfs_size="64m",
-        timeout_seconds=25, memory_limit="512m",
+        executable_scratch=True, tmpfs_size="128m",
+        timeout_seconds=25, memory_limit="768m",
     ),
     "bash": RuntimeDefinition(
         runtime_id="bash", language="bash", display_name="Bash",
