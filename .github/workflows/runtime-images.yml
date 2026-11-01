@@ -95,7 +95,17 @@ jobs:
         env:
           RUNTIME: ${{ matrix.runtime }}
           DOCKERFILE: ${{ matrix.dockerfile }}
-        run: docker build --pull --file "$DOCKERFILE" --tag "smartbethg/runtime:$RUNTIME" .
+        run: docker build --pull --file "$DOCKERFILE" --tag "smartbethg/runtime:$RUNTIME" "execution-images/$RUNTIME"
+
+      - name: Scan runtime image for known critical and high vulnerabilities
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: smartbethg/runtime:${{ matrix.runtime }}
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
 
       - name: Execute the registered runtime command inside its restricted container
         env:
@@ -187,8 +197,8 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ${{ matrix.dockerfile }}
+          context: execution-images/${{ matrix.runtime }}
+          file: Dockerfile
           platforms: linux/amd64
           push: true
           provenance: true
