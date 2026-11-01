@@ -26,7 +26,7 @@ SAMPLES = {
     "cpp": '#include <iostream>\nint main() { std::cout << "SMARTBETHG_RUNTIME_OK\\n"; }\n',
     "go": 'package main\nimport "fmt"\nfunc main() { fmt.Println("SMARTBETHG_RUNTIME_OK") }\n',
     "rust": 'fn main() { println!("SMARTBETHG_RUNTIME_OK"); }\n',
-    "csharp": 'Console.WriteLine("SMARTBETHG_RUNTIME_OK");\n',
+    "csharp": '#:property PublishAot=false\n#:property SelfContained=false\nConsole.WriteLine("SMARTBETHG_RUNTIME_OK");\n',
     "php": '<?php echo "SMARTBETHG_RUNTIME_OK\\n";\n',
     "dart": 'void main() { print("SMARTBETHG_RUNTIME_OK"); }\n',
     "kotlin": 'println("SMARTBETHG_RUNTIME_OK")\n',
