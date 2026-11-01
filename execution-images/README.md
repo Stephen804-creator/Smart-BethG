@@ -32,7 +32,7 @@ The upstream base-image tags are versioned but may move as publishers refresh th
 
 ## Build and verification
 
-The GitHub Actions workflow `.github/workflows/runtime-images.yml` builds each image independently and executes a smoke program through the same `SandboxService._docker_run_command` used by the application. The check exercises the fixed runtime invocation, non-root UID, network isolation, read-only root filesystem, bounded resources, and container cleanup.
+The GitHub Actions workflow `.github/workflows/runtime-images.yml` builds each image independently, reports CRITICAL/HIGH findings through Trivy (report-only; review is still required), and executes a smoke program through the same `SandboxService._docker_run_command` used by the application. The check exercises the fixed runtime invocation, non-root UID, network isolation, read-only root filesystem, bounded resources, and container cleanup.
 
 The workflow runs on pushes and pull requests that change the runtime images or execution code. It does not publish images during ordinary CI.
 
