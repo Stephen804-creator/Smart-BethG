@@ -170,7 +170,7 @@ RUNTIME_DEFINITIONS = {
         executable="swift", arguments=(),
         source_filename="main.swift", command_name="swift_script",
         environment=("HOME=/runner", "TMPDIR=/runner"),
-        executable_scratch=True,
+        executable_scratch=True, tmpfs_size="64m",
         timeout_seconds=25, memory_limit="512m",
     ),
     "bash": RuntimeDefinition(
@@ -194,7 +194,7 @@ RUNTIME_DEFINITIONS = {
         image_env="SMART_BETHG_SANDBOX_ELIXIR_IMAGE",
         executable="elixir", arguments=(),
         source_filename="main.exs", command_name="elixir_script",
-        environment=("HOME=/dev/shm", "TMPDIR=/dev/shm"),
+        environment=("HOME=/tmp", "TMPDIR=/tmp"),
         timeout_seconds=25, memory_limit="512m",
     ),
     "r": RuntimeDefinition(
