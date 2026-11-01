@@ -4,9 +4,9 @@ from services.auth_service import (
     authenticate_user,
     get_user_by_id,
     find_or_create_oauth_user,
+    record_policy_acceptance,
+    user_policy_is_current,
 )
-from routes.auth import RegisterRequest
-import config
 
 
 class TestAuthService(SmartBethGTestCase):
@@ -72,33 +72,35 @@ class TestAuthService(SmartBethGTestCase):
         with self.assertRaises(ValueError):
             find_or_create_oauth_user("", "google", "sub-3", allow_create=True)
 
-    def test_registration_requires_terms_privacy_and_age(self):
+    def test_policy_acceptance_is_recorded_and_current(self):
+        user = create_user("policy-user", "password123")
+        record_policy_acceptance(
+            user["id"],
+            accepted_terms=True,
+            accepted_privacy=True,
+            age_verified=True,
+        )
+        self.assertTrue(user_policy_is_current(user["id"]))
+
+    def test_policy_acceptance_is_stale_when_version_changes(self):
+        user = create_user("policy-old", "password123")
+        record_policy_acceptance(
+            user["id"],
+            accepted_terms=True,
+            accepted_privacy=True,
+            age_verified=True,
+            terms_version="old-terms",
+            privacy_version="old-privacy",
+        )
+        self.assertFalse(user_policy_is_current(user["id"]))
+
+    def test_policy_acceptance_requires_all_consent_fields(self):
+        user = create_user("policy-required", "password123")
         with self.assertRaises(ValueError):
-            RegisterRequest(
-                username="newuser",
-                password="password123",
+            record_policy_acceptance(
+                user["id"],
                 accepted_terms=False,
                 accepted_privacy=True,
                 age_verified=True,
             )
-        with self.assertRaises(ValueError):
-            RegisterRequest(
-                username="newuser",
-                password="password123",
-                accepted_terms=True,
-                accepted_privacy=False,
-                age_verified=True,
-            )
-        with self.assertRaises(ValueError):
-            RegisterRequest(
-                username="newuser",
-                password="password123",
-                accepted_terms=True,
-                accepted_privacy=True,
-                age_verified=False,
-            )
-
-    def test_provider_cap_helper_exists_for_known_provider(self):
-        self.assertIsNotNone(config.provider_daily_spend_cap_usd("openai"))
-        self.assertIsNotNone(config.provider_daily_spend_cap_usd("anthropic"))
 

@@ -1,6 +1,7 @@
 from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
 
+import config
 from database import get_connection
 
 
@@ -42,6 +43,87 @@ def revoke_user_sessions(user_id):
     except Exception:
         conn.rollback()
         raise
+    finally:
+        conn.close()
+
+
+def record_policy_acceptance(
+    user_id,
+    *,
+    accepted_terms,
+    accepted_privacy,
+    age_verified,
+    terms_version=None,
+    privacy_version=None,
+):
+    """Persist the current accepted policy versions and age confirmation for a user."""
+    if user_id is None:
+        raise ValueError("A user id is required.")
+    if not accepted_terms or not accepted_privacy or not age_verified:
+        raise ValueError("All required consent options must be accepted.")
+
+    terms_version = (terms_version or config.TERMS_OF_SERVICE_VERSION).strip()
+    privacy_version = (privacy_version or config.PRIVACY_POLICY_VERSION).strip()
+    conn = get_connection()
+    try:
+        conn.execute(
+            """
+            INSERT INTO user_policy_acceptance(
+                user_id,
+                accepted_terms_version,
+                accepted_privacy_version,
+                age_verified,
+                accepted_at
+            ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id) DO UPDATE SET
+                accepted_terms_version = EXCLUDED.accepted_terms_version,
+                accepted_privacy_version = EXCLUDED.accepted_privacy_version,
+                age_verified = EXCLUDED.age_verified,
+                accepted_at = CURRENT_TIMESTAMP
+            """,
+            (user_id, terms_version, privacy_version, bool(age_verified)),
+        )
+        conn.commit()
+        return {
+            "user_id": user_id,
+            "accepted_terms_version": terms_version,
+            "accepted_privacy_version": privacy_version,
+            "age_verified": bool(age_verified),
+        }
+    finally:
+        conn.close()
+
+
+def user_policy_is_current(
+    user_id,
+    *,
+    terms_version=None,
+    privacy_version=None,
+    minimum_age=None,
+):
+    """Return True only when the user has accepted the current policy versions and age check."""
+    if user_id is None:
+        return False
+
+    terms_version = (terms_version or config.TERMS_OF_SERVICE_VERSION).strip()
+    privacy_version = (privacy_version or config.PRIVACY_POLICY_VERSION).strip()
+    minimum_age = config.MINIMUM_ACCOUNT_AGE if minimum_age is None else int(minimum_age)
+
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT accepted_terms_version, accepted_privacy_version, age_verified FROM user_policy_acceptance WHERE user_id=? LIMIT 1",
+            (user_id,),
+        ).fetchone()
+        if not row:
+            return False
+        if row["accepted_terms_version"] != terms_version:
+            return False
+        if row["accepted_privacy_version"] != privacy_version:
+            return False
+        if not bool(row["age_verified"]):
+            return False
+        return minimum_age <= config.MINIMUM_ACCOUNT_AGE
     finally:
         conn.close()
 
@@ -121,7 +203,6 @@ def find_or_create_oauth_user(email, provider, subject, allow_create=False):
                     conn.commit()
                     return {"id": row["id"], "username": row["username"], "role": row["role"]}
                 conn.rollback()
-                # Another callback may have linked this account concurrently.
                 refreshed = conn.execute(
                     "SELECT id, username, status, role, oauth_provider, oauth_subject "
                     "FROM users WHERE id=? LIMIT 1",
@@ -151,7 +232,6 @@ def find_or_create_oauth_user(email, provider, subject, allow_create=False):
             conn.commit()
             return {"id": created["id"], "username": email, "role": "user"}
         conn.rollback()
-        # A concurrent callback may have created or linked this identity.
         row = conn.execute(
             "SELECT id, username, status, role FROM users "
             "WHERE oauth_provider=? AND oauth_subject=? AND status='active' LIMIT 1",
@@ -162,3 +242,15 @@ def find_or_create_oauth_user(email, provider, subject, allow_create=False):
         raise PermissionError("An account with this email already exists. Sign in and link the account first.")
     finally:
         conn.close()
+
+
+__all__ = [
+    "authenticate_user",
+    "get_user_by_id",
+    "revoke_user_sessions",
+    "create_user",
+    "find_or_create_oauth_user",
+    "record_policy_acceptance",
+    "user_policy_is_current",
+]
+
