@@ -20,6 +20,12 @@ class TestRuntimeImageAssets(unittest.TestCase):
                 self.assertIn("ENTRYPOINT []", content)
                 self.assertNotIn("USER root", content)
 
+    def test_csharp_smoke_disables_native_aot_for_offline_shared_runtime(self):
+        source = (ROOT / "scripts" / "verify_runtime_image.py").read_text(encoding="utf-8")
+        sample = source.split('"csharp": ', 1)[1].split(",", 1)[0]
+        self.assertIn("PublishAot=false", sample)
+        self.assertIn("SelfContained=false", sample)
+
     def test_every_registered_runtime_has_a_smoke_program(self):
         source = (ROOT / "scripts" / "verify_runtime_image.py").read_text(encoding="utf-8")
         sample_block = source.split("SAMPLES = {", 1)[1].split("\n}", 1)[0]
