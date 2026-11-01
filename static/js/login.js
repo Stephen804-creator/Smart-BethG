@@ -25,12 +25,20 @@
     modeToggle.hidden = true;
     inviteCodeGroup.hidden = true;
     consentGroup.hidden = false;
+    form.username.disabled = true;
+    form.username.required = false;
+    form.password.disabled = true;
+    form.password.required = false;
     errorEl.textContent = "Our minimum account age is now 18. Review the current Terms and Privacy Policy and confirm that you are at least 18 to continue.";
   }
 
   function setMode(next) {
     policyUpdatePending = false;
     modeToggle.hidden = false;
+    form.username.disabled = false;
+    form.username.required = true;
+    form.password.disabled = false;
+    form.password.required = true;
     mode = next;
     if (mode === "login") {
       title.textContent = "Log in to Smart BethG";
