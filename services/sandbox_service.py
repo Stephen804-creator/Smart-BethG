@@ -218,7 +218,7 @@ class SandboxService:
         if runtime.executable_scratch:
             command.extend([
                 "--tmpfs",
-                f"/runner:rw,nosuid,nodev,size={runtime.tmpfs_size},mode=1777",
+                f"/runner:rw,exec,nosuid,nodev,size={runtime.tmpfs_size},mode=1777",
             ])
         # These values are static per-runtime settings authored in the
         # application. User input can never add or override container env vars.
