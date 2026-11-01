@@ -29,6 +29,19 @@ The runtime command, source filename, resource profile and static environment ar
 - SQL is intentionally not connected to any Smart BethG database. It needs a disposable, isolated database capability with explicit schema/data seeding and no production credentials.
 - MATLAB remains excluded from bundled runtime plans until its licensing and redistribution rights are explicitly cleared. Apple-platform builds require a compatible macOS runner and licensing review.
 
+## Additional catalog-only language families
+
+The catalog also records the remaining roadmap candidates without claiming that they have runnable images: SQL, PL/pgSQL, T-SQL, PL/SQL, Objective-C, Zig, Assembly, GDScript, MATLAB, Mojo and Gleam. Their execution models are different:
+
+- SQL dialects require disposable database instances and must never receive production Smart BethG credentials or tenant data.
+- Objective-C Apple-platform builds require compatible Apple SDK hosts.
+- Assembly requires an architecture-specific constrained emulator.
+- GDScript requires a Godot project and engine profile.
+- MATLAB remains subject to license and redistribution review.
+- Zig, Mojo and Gleam require separately pinned compiler/runtime images and compatibility tests.
+
+HTML/CSS remain web preview/build formats rather than general-purpose runtimes. Frameworks such as Rails remain project/build profiles, not additional programming languages. These entries are planned catalog metadata only.
+
 ## Embedded and Arduino engineering catalog expansion
 
 The shared engineering catalog now includes additional hardware targets and toolchain/tool entries:
