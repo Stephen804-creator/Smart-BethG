@@ -95,7 +95,7 @@ class TestRuntimeRegistry(unittest.TestCase):
             )
         self.assertIn('cc -std=c17 -O2 -pipe -o /dev/shm/smartbethg-program "$1" && /dev/shm/smartbethg-program', command)
         self.assertEqual(command[-1], "/workspace/main.c")
-        self.assertEqual(command[-3], "/bin/sh")
+        self.assertEqual(command[command.index("approved@sha256:" + ("e" * 64)) + 1], "/bin/sh")
         self.assertNotIn("--privileged", command)
 
     def test_runtime_environment_is_application_controlled(self):
