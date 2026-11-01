@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk
+FROM debian:bookworm-slim AS kotlin-download
 ARG KOTLIN_VERSION=2.4.21
 ARG KOTLIN_SHA256=7cc140e76daf416a0424a5557f99afd7ca89ebd463ea1101261e3e01c33e75cd
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip \
@@ -9,7 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && mkdir -p /opt/kotlin \
     && unzip -q /tmp/kotlin-compiler.zip -d /opt/kotlin \
     && rm -f /tmp/kotlin-compiler.zip
-LABEL org.opencontainers.image.title="Smart BethG Kotlin script runtime"
+
+FROM eclipse-temurin:21-jdk
+COPY --from=kotlin-download /opt/kotlin/kotlinc /opt/kotlin/kotlinc
 ENV PATH="/opt/kotlin/kotlinc/bin:${PATH}" HOME=/tmp TMPDIR=/tmp
 WORKDIR /workspace
 USER 65534:65534
