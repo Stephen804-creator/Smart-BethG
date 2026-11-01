@@ -163,6 +163,9 @@ class TestSandboxIsolationPolicy(unittest.TestCase):
         self.assertNotIn("nofile=unlimited", command)
         self.assertIn("DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", command)
         self.assertIn("DOTNET_CLI_TELEMETRY_OPTOUT=1", command)
+        self.assertIn("XDG_RUNTIME_DIR=/runner/xdg-runtime", command)
+        self.assertIn('mkdir -p /runner/xdg-runtime && chmod 700 /runner/xdg-runtime && exec dotnet run --file "$1"', command)
+        self.assertEqual(command[-1], "/workspace/main.cs")
 
     def test_compiler_profiles_receive_bounded_artifact_file_limits(self):
         from services.runtime_registry import RUNTIME_DEFINITIONS
