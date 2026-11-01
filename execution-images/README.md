@@ -42,7 +42,7 @@ To publish, manually run **Smart BethG isolated runtime images** from the intend
 
 A runtime remains disabled until its exact published digest is configured by an operator. For each runtime:
 
-1. Copy the immutable `ghcr.io/stephen804-creator/smart-bethg/runtime-<id>@sha256:<digest>` reference from the successful workflow summary.
+1. Copy the immutable `ghcr.io/stephen804-creator/smart-bethg-runtime-<id>@sha256:<digest>` reference from the successful workflow summary.
 2. Add that exact reference to `SMART_BETHG_DOCKER_ALLOWED_IMAGES`.
 3. Set the corresponding `SMART_BETHG_SANDBOX_<RUNTIME>_IMAGE` environment variable to the same reference.
 4. Confirm that the production runner is rootless and run the execution and cleanup regression suite against that host.
