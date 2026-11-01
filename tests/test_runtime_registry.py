@@ -50,13 +50,17 @@ class TestRuntimeRegistry(unittest.TestCase):
             with self.assertRaises(RuntimeUnavailableError):
                 resolve_runtime("python")
 
-    def test_registry_does_not_expose_image_reference(self):
+    def test_registry_does_not_expose_private_runtime_configuration(self):
         with patch.dict(os.environ, {"SMART_BETHG_SANDBOX_ENABLED": "false"}):
-            runtime = list_runtimes()[0]
-        self.assertEqual(runtime["id"], "python")
-        self.assertFalse(runtime["enabled"])
-        self.assertNotIn("image", runtime)
-        self.assertNotIn("image_env", runtime)
+            runtimes = list_runtimes()
+        self.assertEqual(runtimes[0]["id"], "python")
+        for runtime in runtimes:
+            with self.subTest(runtime_id=runtime["id"]):
+                self.assertFalse(runtime["enabled"])
+                for private_field in (
+                    "image", "image_env", "environment", "executable", "arguments"
+                ):
+                    self.assertNotIn(private_field, runtime)
 
 
     def test_core_language_profiles_are_registered_but_disabled_without_approved_images(self):
