@@ -130,6 +130,47 @@ class TestHttpSecurityBoundaries(SmartBethGTestCase):
                 response = client.get(path)
                 self.assertEqual(response.status_code, 401)
 
+    def test_existing_account_must_accept_updated_18_plus_policy_before_access(self):
+        from services.auth_service import create_user, record_policy_acceptance
+
+        user = create_user("policy-refresh-test", "policy-refresh-password")
+        self.assertIsNotNone(user)
+        record_policy_acceptance(
+            user["id"],
+            accepted_terms=True,
+            accepted_privacy=True,
+            age_verified=True,
+            terms_version="outdated-terms",
+            privacy_version="outdated-privacy",
+        )
+
+        client = TestClient(create_app())
+        csrf = client.get("/auth/csrf").json()["csrf_token"]
+        login = client.post(
+            "/auth/login",
+            headers={"X-CSRF-Token": csrf},
+            json={"username": "policy-refresh-test", "password": "policy-refresh-password"},
+        )
+        self.assertEqual(login.status_code, 200, login.text)
+        self.assertTrue(login.json().get("policy_update_required"))
+
+        blocked = client.get("/auth/me")
+        self.assertEqual(blocked.status_code, 403)
+
+        fresh_csrf = client.get("/auth/csrf").json()["csrf_token"]
+        accepted = client.post(
+            "/auth/accept-policies",
+            headers={"X-CSRF-Token": fresh_csrf},
+            json={
+                "accepted_terms": True,
+                "accepted_privacy": True,
+                "age_verified": True,
+            },
+        )
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.assertTrue(accepted.json().get("accepted"))
+        self.assertEqual(client.get("/auth/me").status_code, 200)
+
     def test_registration_stays_open_even_if_legacy_close_flag_is_false(self):
         # Registration must not silently close when a deployment variable is
         # missing or an old flag remains configured.
