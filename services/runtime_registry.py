@@ -96,7 +96,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh",
         arguments=("-c", "cc -std=c17 -O2 -pipe -o /runner/smartbethg-program \"$1\" && /runner/smartbethg-program", "smartbethg-c"),
         source_filename="main.c", command_name="c_compile_and_run",
-        executable_scratch=True, tmpfs_size="64m", file_size_limit_bytes=8_388_608, timeout_seconds=20, memory_limit="384m",
+        executable_scratch=True, tmpfs_size="64m", file_size_limit_bytes=8_388_608, timeout_seconds=30, memory_limit="1g",
     ),
     "cpp": RuntimeDefinition(
         runtime_id="cpp", language="cpp", display_name="C++",
@@ -137,7 +137,7 @@ RUNTIME_DEFINITIONS = {
         executable="/bin/sh", arguments=("-c", 'mkdir -p /runner/xdg-runtime /runner/tmp /runner/dotnet /runner/nuget /runner/nuget-source && chmod 700 /runner/xdg-runtime /runner/tmp /runner/dotnet /runner/nuget /runner/nuget-source && exec dotnet run --property:RestoreSources=/runner/nuget-source --property:NuGetAudit=false --property:RestoreIgnoreFailedSources=true --file "$1"', "smartbethg-csharp"),
         source_filename="main.cs", command_name="csharp_file_app",
         environment=("HOME=/runner/dotnet", "DOTNET_CLI_HOME=/runner/dotnet", "NUGET_PACKAGES=/runner/nuget", "TMPDIR=/runner/tmp", "TMP=/runner/tmp", "TEMP=/runner/tmp", "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_NOLOGO=1", "DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1", "DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK=1", "DOTNET_SDK_VULNERABILITY_CHECK_DISABLE=1", "XDG_RUNTIME_DIR=/runner/xdg-runtime"),
-        executable_scratch=True, tmpfs_size="256m", file_size_limit_bytes=33_554_432, nofile_limit=512, pids_limit=128, cpu_limit="1.00", timeout_seconds=60, memory_limit="3g",
+        executable_scratch=True, tmpfs_size="256m", file_size_limit_bytes=33_554_432, nofile_limit=512, pids_limit=128, cpu_limit="1.00", timeout_seconds=90, memory_limit="4g",
     ),
     "php": RuntimeDefinition(
         runtime_id="php", language="php", display_name="PHP",
