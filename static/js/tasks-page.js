@@ -17,10 +17,15 @@
     progress.setAttribute("aria-label", "Mission status progress");
     progress.setAttribute("aria-valuemin", "0");
     progress.setAttribute("aria-valuemax", "100");
-    const value = mission.status === "completed" ? 100 : mission.status === "awaiting_approval" ? 60 : mission.status === "running" ? 30 : 0;
-    progress.setAttribute("aria-valuenow", String(value));
+    const value = mission.status === "completed" ? 100 : 0;
+    if (["running", "awaiting_approval"].includes(mission.status)) {
+      progress.setAttribute("aria-label", "Mission is active; detailed progress is not available.");
+    } else {
+      progress.setAttribute("aria-valuenow", String(value));
+    }
     const fill = document.createElement("span");
-    fill.style.width = value + "%";
+    if (["running", "awaiting_approval"].includes(mission.status)) fill.className = "is-indeterminate";
+    else fill.style.width = value + "%";
     progress.appendChild(fill);
     item.append(title, meta, progress);
     return item;
