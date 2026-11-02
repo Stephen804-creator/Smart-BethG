@@ -68,7 +68,10 @@ class AgentExecutor:
                     agent_request.user["id"], agent_request.text,
                     agent_request.conversation_id, agent_request.selection,
                     agent_request.workspace,
-                    extra_context="\n\n".join(context_parts) if context_parts else None,
+                    extra_context="\n\n".join(
+                        (["User's custom instructions for this response:\\n" + agent_request.user_instructions]
+                         if agent_request.user_instructions else []) + context_parts
+                    ) if (agent_request.user_instructions or context_parts) else None,
                 )
                 # A configured provider is not proof that generation succeeded.
                 # ChatService marks exhausted provider attempts with error=True;
