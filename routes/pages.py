@@ -118,6 +118,13 @@ def service_worker():
     return FileResponse(os.path.join(static_dir, "service-worker.js"), media_type="application/javascript")
 
 
+@router.get("/onboarding", name="main.onboarding")
+def onboarding_page(request: Request):
+    if _require_user(request):
+        return RedirectResponse("/", status_code=302)
+    return _render(request, "onboarding.html")
+
+
 @router.get("/login", name="main.login")
 def login_page(request: Request):
     if _require_user(request):
