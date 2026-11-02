@@ -16,10 +16,10 @@
   <div class="home-shell">
     <header class="home-topbar">
       <button class="home-icon-button" id="menuButton" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="homeDrawer"><i class="fa-solid fa-bars"></i></button>
-      <a class="home-brand" href="/" aria-label="Smart BethG home"><span class="home-brand-mark"><i class="fa-solid fa-brain"></i></span><span>Smart BethG</span></a>
+      <a class="home-brand" href="/" aria-label="Smart BethG home"><span class="home-brand-mark"><i class="fa-solid fa-brain"></i></span><span class="home-brand-copy"><span>Smart BethG</span><small>Learn as you build</small></span></a>
       <span class="home-topbar-spacer"></span>
       <button class="home-icon-button" id="temporaryChatButton" type="button" aria-label="Start temporary chat" title="Temporary chat"><i class="fa-regular fa-clock"></i></button>
-      <button class="home-avatar" id="avatarButton" type="button" aria-label="Profile menu" aria-expanded="false" aria-controls="avatarPopover">SB</button>
+      <button class="home-avatar" id="avatarButton" type="button" aria-label="Profile menu" aria-expanded="false" aria-controls="avatarPopover">{{ avatar_initials|default("SB") }}</button>
       <div class="home-popover" id="avatarPopover" hidden>
         <a href="/settings"><i class="fa-regular fa-user"></i> Profile</a>
         <a href="/settings"><i class="fa-solid fa-gear"></i> Settings</a>
@@ -62,8 +62,8 @@
       <section class="home-welcome" id="welcomePanel" aria-labelledby="welcomeTitle">
         <div class="home-greeting">
           <p class="home-eyebrow">Your AI workspace</p>
-          <h1 id="welcomeTitle">What are we building today?</h1>
-          <p class="home-subtitle">Learn as you build. Start with a task or tell Smart BethG what you have in mind.</p>
+          <h1 id="welcomeTitle">Welcome back, {{ display_name|default("there") }}.</h1>
+          <p class="home-subtitle">What should we work on?</p>
         </div>
         <button class="credits-chip" id="creditsButton" type="button"><i class="fa-solid fa-bolt"></i><span id="creditsLabel">Credits</span><i class="fa-solid fa-chevron-right"></i></button>
         <div class="home-task-grid" id="taskGrid" aria-label="Start a task">
