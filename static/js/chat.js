@@ -323,6 +323,11 @@
     }
   }
 
+  function getUserInstructions() {
+    try { return window.localStorage.getItem("sbg:systemInstructions") || ""; }
+    catch (_) { return ""; }
+  }
+
   async function sendMessage(text) {
     renderMessage("user", text);
     sendBtn.disabled = true;
@@ -340,6 +345,7 @@
           message: text,
           conversation_id: conversationId,
           selection: providerSelect && providerSelect.value ? providerSelect.value : "auto",
+          user_instructions: getUserInstructions(),
         }),
       });
 
