@@ -163,6 +163,13 @@ def artifacts_page(request: Request):
     return _render(request, "artifacts_page.html")
 
 
+@router.get("/workspace/files", name="main.files_page")
+def files_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "files_page.html")
+
+
 @router.get("/workspace/privacy", name="main.privacy_settings_page")
 def privacy_settings_page(request: Request):
     if not _require_user(request):
