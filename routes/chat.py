@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Annotated, Literal
 
 import config
 from services.rate_limiter import check_rate_limit
@@ -28,7 +28,7 @@ class ChatMessage(BaseModel):
     user_instructions: str | None = Field(default=None, max_length=4000)
     mode: Literal["Plan", "Balanced", "Build"] = "Balanced"
     mentor: bool = True
-    file_ids: list[int] = Field(default_factory=list, max_length=10)
+    file_ids: list[Annotated[int, Field(ge=1)]] = Field(default_factory=list, max_length=10)
 
 
 class TemporaryMessage(BaseModel):
