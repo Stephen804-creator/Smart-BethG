@@ -225,6 +225,7 @@
   if (newChatBtn) {
     newChatBtn.addEventListener("click", () => {
       if (isSending) return;
+      document.dispatchEvent(new CustomEvent("sbg:files-clear"));
       if (temporaryMode) {
         temporaryMessages = [];
         messagesEl.replaceChildren();
