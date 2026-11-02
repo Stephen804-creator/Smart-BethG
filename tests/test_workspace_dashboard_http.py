@@ -43,6 +43,20 @@ class TestWorkspaceDashboardHttp(SmartBethGTestCase):
         self.assertNotIn('id="projectCreateForm"', response.text)
         self.assertNotIn("Projects and missions", response.text)
 
+    def test_approved_workspace_pages_render_for_authenticated_user(self):
+        for path in (
+            "/settings",
+            "/workspace/projects",
+            "/workspace/tasks",
+            "/workspace/artifacts",
+            "/workspace/connectors",
+            "/workspace/credits",
+            "/workspace/instructions",
+        ):
+            with self.subTest(path=path):
+                response = self.client_one.get(path)
+                self.assertEqual(response.status_code, 200, response.text)
+
     def test_project_and_mission_api_flow_is_owner_scoped(self):
         project_response = self.client_one.post(
             "/api/v1/projects",
