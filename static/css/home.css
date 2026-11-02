@@ -177,3 +177,7 @@
 .theme-light .home-drawer,.theme-light .home-popover,.theme-light .home-menu-popover,.theme-light .home-bottom-sheet { background:#fff; color:#0b1626; }
 .theme-light .home-popover a,.theme-light .home-popover button,.theme-light .home-menu-popover button,.theme-light .drawer-link,.theme-light .mode-option { color:#0b1626; }
 .theme-light .home-composer-wrap { background:linear-gradient(180deg,rgb(246 248 252 / 0%),#f6f8fc 22%); }
+
+.home-brand-copy { display:flex; flex-direction:column; gap:1px; line-height:1.1; }
+.home-brand-copy small { color:var(--home-muted); font-size:11px; font-weight:500; letter-spacing:0; }
+.home-greeting h1 { overflow-wrap:anywhere; }
