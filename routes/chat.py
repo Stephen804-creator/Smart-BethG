@@ -24,6 +24,7 @@ class ChatMessage(BaseModel):
     conversation_id: int | None = Field(default=None, ge=1)
     # "auto" (default), "<provider>", or "<provider>:<model_id>"
     selection: str | None = Field(default=None, max_length=256)
+    user_instructions: str | None = Field(default=None, max_length=4000)
 
 
 @router.post("")
@@ -49,6 +50,7 @@ def send_message(payload: ChatMessage, user=Depends(get_current_user)):
         user=user,
         conversation_id=payload.conversation_id,
         selection=payload.selection,
+        user_instructions=payload.user_instructions,
     )
     outcome = _executor.run(agent_request)
     return {**outcome["result"], "intent": outcome["intent"]}
