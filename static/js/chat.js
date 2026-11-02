@@ -15,6 +15,22 @@
   const SELECTION_KEY = "sbg:selection";
   let conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
   let isSending = false;
+  let temporaryMode = Boolean(window.sbgTemporaryChat);
+  let temporaryMessages = [];
+
+  document.addEventListener("sbg:temporary-chat", (event) => {
+    temporaryMode = Boolean(event.detail && event.detail.active);
+    temporaryMessages = [];
+    messagesEl.replaceChildren();
+    if (conversationListEl) conversationListEl.querySelectorAll("button").forEach((item) => { item.disabled = temporaryMode; });
+    if (temporaryMode) {
+      conversationId = null;
+      return;
+    }
+    conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
+    loadHistory();
+    loadConversationList();
+  });
 
   function setConversationControlsBusy(busy) {
     isSending = busy;
@@ -152,7 +168,7 @@
   }
 
   async function loadConversationList() {
-    if (!conversationListEl) return;
+    if (!conversationListEl || temporaryMode) return;
     const status = document.getElementById("conversationStatus");
     if (status) status.replaceChildren();
     try {
@@ -193,7 +209,7 @@
   }
 
   function switchConversation(id) {
-    if (isSending) return;
+    if (isSending || temporaryMode) return;
     conversationId = id;
     window.localStorage.setItem(STORAGE_KEY, conversationId);
     messagesEl.innerHTML = "";
@@ -204,6 +220,12 @@
   if (newChatBtn) {
     newChatBtn.addEventListener("click", () => {
       if (isSending) return;
+      if (temporaryMode) {
+        temporaryMessages = [];
+        messagesEl.replaceChildren();
+        promptEl.focus();
+        return;
+      }
       conversationId = null;
       window.localStorage.removeItem(STORAGE_KEY);
       messagesEl.innerHTML = "";
