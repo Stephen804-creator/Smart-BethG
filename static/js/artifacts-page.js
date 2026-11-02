@@ -70,7 +70,7 @@
     const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;
     const safeName=(selected.name||"artifact").replace(/[^a-z0-9._-]/gi,"_");
     const extension=contentType.includes("html")?"html":contentType.includes("json")?"json":contentType.includes("css")?"css":contentType.includes("javascript")?"js":"txt";
-    a.download=/\\.[a-z0-9]{1,8}$/i.test(safeName)?safeName:safeName+"."+extension;
+    a.download=/\.[a-z0-9]{1,8}$/i.test(safeName)?safeName:safeName+"."+extension;
     a.click();URL.revokeObjectURL(url);menu.hidden=true;
   });
   document.getElementById("artifactCopyLink").addEventListener("click",async()=>{
