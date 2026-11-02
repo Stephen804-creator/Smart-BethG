@@ -331,7 +331,7 @@ class ChatService:
         return usage
 
 
-    def send_temporary(self, user_id, messages, selection=None, user_instructions=None):
+    def send_temporary(self, user_id, messages, selection=None, user_instructions=None, mode="Balanced"):
         """Generate a chat-only reply without creating or touching a conversation record."""
         clean = self._bound_context(messages, config.MAX_CHAT_MESSAGE_CHARS * 8)
         if not clean or clean[-1].get("role") != "user":
@@ -358,8 +358,18 @@ class ChatService:
                 "provider_configured": False,
                 "temporary": True,
             }
+        if mode not in {"Plan", "Balanced", "Build"}:
+            raise ValueError("Temporary chat mode must be Plan, Balanced, or Build.")
+        context_parts = []
         if user_instructions:
-            clean = [{"role": "user", "content": "User's custom instructions for this response:\\n" + user_instructions}] + clean
+            context_parts.append("User's custom instructions for this response:\\n" + user_instructions)
+        if mode == "Plan":
+            context_parts.append("Interaction mode: Plan. This is temporary chat-only mode; do not execute tools or make changes. Explain a plan and ask before acting.")
+        elif mode == "Build":
+            context_parts.append("Interaction mode: Build. This temporary conversation is chat-only and cannot execute tools; focus on producing the requested draft or explanation while respecting safety rules.")
+        else:
+            context_parts.append("Interaction mode: Balanced. Be helpful and deliberate; this temporary conversation is chat-only and does not execute tools.")
+        clean = [{"role": "user", "content": part} for part in context_parts] + clean
         result, used_provider, used_model, attempted, last_error = self._generate_with_fallback(
             provider, provider_name, model_id, clean, user_id,
         )
