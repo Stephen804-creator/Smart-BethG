@@ -74,19 +74,10 @@ def home(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=302)
 
-    return _render(
-        request,
-        "index.html",
-        {
-            "app_version": "1.0.0",
-            "quick_actions": None,
-            "capabilities": _real_capabilities(),
-            "missions": None,
-            "artifacts": None,
-            "system_status": _real_system_status(),
-            "error_message": None,
-        },
-    )
+    # The approved product mockup defines Home as chat-first, with no dashboard
+    # sections. The old index template remains available for future workspace
+    # screens, but is no longer the app's landing page.
+    return _render(request, "home_chat.html")
 
 
 @router.get("/chat", name="main.chat_page")
@@ -94,7 +85,8 @@ def chat_page(request: Request):
     user = _require_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
-    return _render(request, "chat.html")
+    # Keep the legacy /chat URL aligned with the single approved chat Home.
+    return _render(request, "home_chat.html")
 
 
 @router.get("/terms", name="main.terms")
