@@ -16,7 +16,7 @@
   <div class="home-shell">
     <header class="home-topbar">
       <button class="home-icon-button" id="menuButton" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="homeDrawer"><i class="fa-solid fa-bars"></i></button>
-      <a class="home-brand" href="/" aria-label="Smart BethG home"><span class="home-brand-mark">SB</span><span class="home-brand-copy"><span>Smart BethG</span><small>Learn as you build</small></span></a>
+      <a class="home-brand" href="/" aria-label="Smart BethG home"><span class="home-brand-mark"><img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt=""></span><span class="home-brand-copy"><span>Smart BethG</span><small>Learn as you build</small></span></a>
       <span class="home-topbar-spacer"></span>
       <button class="home-icon-button" id="temporaryChatButton" type="button" aria-label="Start temporary chat" title="Temporary chat"><i class="fa-regular fa-clock"></i></button>
       <button class="home-avatar" id="avatarButton" type="button" aria-label="Profile menu" aria-expanded="false" aria-controls="avatarPopover">{{ avatar_initials|default("SB") }}</button>
