@@ -18,6 +18,7 @@ class AgentRequest:
     workspace: str = "default"
     conversation_id: Optional[int] = None
     selection: Optional[str] = None  # AI provider/model choice, passed through to chat when intent is "chat"
+    user_instructions: Optional[str] = None  # User-authored context for AI chat responses
 
     def __post_init__(self):
         if not isinstance(self.text, str) or not self.text.strip():
