@@ -58,6 +58,26 @@ class AgentExecutor:
             agent_request.user["id"], intent, agent_request.workspace, len(plan.steps),
         )
 
+        mode_context = self._mode_context(agent_request.mode)
+        if agent_request.mode == "Plan" and intent != "chat":
+            # Plan mode must not execute a classified action or write memory.
+            context = []
+            if agent_request.user_instructions:
+                context.append("User's custom instructions for this response:\n" + agent_request.user_instructions)
+            context.append(mode_context)
+            chat_result = self.chat_service.send(
+                agent_request.user["id"], agent_request.text,
+                agent_request.conversation_id, agent_request.selection,
+                agent_request.workspace, extra_context="\n\n".join(context),
+            )
+            if chat_result.get("error"):
+                outcome_status = "failed"
+            elif not chat_result.get("provider_configured"):
+                outcome_status = "no_provider"
+            else:
+                outcome_status = "completed"
+            return {"intent": "plan", "status": outcome_status, "result": chat_result}
+
         context_parts = []  # accumulated from earlier non-terminal steps (search results, file contents, ...)
 
         for index, step in enumerate(plan.steps):
@@ -70,8 +90,8 @@ class AgentExecutor:
                     agent_request.workspace,
                     extra_context="\n\n".join(
                         (["User's custom instructions for this response:\n" + agent_request.user_instructions]
-                         if agent_request.user_instructions else []) + context_parts
-                    ) if (agent_request.user_instructions or context_parts) else None,
+                         if agent_request.user_instructions else []) + context_parts + [mode_context]
+                    ),
                 )
                 # A configured provider is not proof that generation succeeded.
                 # ChatService marks exhausted provider attempts with error=True;
@@ -203,6 +223,14 @@ class AgentExecutor:
             "confidently, say so honestly instead of guessing."
         )
         return context, None
+
+    @staticmethod
+    def _mode_context(mode: str) -> str:
+        if mode == "Plan":
+            return "Interaction mode: Plan. Do not execute tools or make changes. Explain the proposed stages, decisions, risks, and ask before acting."
+        if mode == "Build":
+            return "Interaction mode: Build. Prioritize producing and running the requested work when available. Respect all capability limits, security rules, and required approvals."
+        return "Interaction mode: Balanced. Be helpful and deliberate; take supported actions when appropriate and ask when details or approvals are required."
 
     def _run_memory_write(self, agent_request: AgentRequest) -> dict:
         content = extract_memory_content(agent_request.text)
