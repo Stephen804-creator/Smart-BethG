@@ -97,6 +97,13 @@ def chat_page(request: Request):
     })
 
 
+@router.get("/pricing", name="main.pricing")
+def pricing_page(request: Request):
+    if _require_user(request):
+        return RedirectResponse("/", status_code=302)
+    return _render(request, "pricing_page.html")
+
+
 @router.get("/welcome", name="main.welcome")
 def welcome_page(request: Request):
     if _require_user(request):
