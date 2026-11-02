@@ -22,10 +22,17 @@ class TestApprovedUiRoutes(SmartBethGTestCase):
         self.assertIn("Connect your tools", script.text)
         self.assertIn("You choose how it works", script.text)
 
+    def test_public_website_uses_approved_marketing_structure(self):
+        response = self.client.get("/welcome")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Learn</span> as you", response.text)
+        self.assertIn("No invite needed. Free to start.", response.text)
+        self.assertIn("marketing.css", response.text)
+
     def test_home_requires_authentication(self):
         response = self.client.get("/", follow_redirects=False)
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers["location"], "/login")
+        self.assertEqual(response.headers["location"], "/welcome")
 
 
 if __name__ == "__main__":
