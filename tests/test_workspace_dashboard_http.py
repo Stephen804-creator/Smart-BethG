@@ -47,6 +47,7 @@ class TestWorkspaceDashboardHttp(SmartBethGTestCase):
     def test_approved_workspace_pages_render_for_authenticated_user(self):
         for path in (
             "/settings",
+            "/profile",
             "/workspace/projects",
             "/workspace/tasks",
             "/workspace/artifacts",
