@@ -83,6 +83,9 @@
       const results=await Promise.all([request("/api/v1/connectors/catalog"),request("/api/v1/connectors")]);
       catalog=results[0].connectors||[];installed=results[1].connectors||[];
       render();
+      const params=new URLSearchParams(window.location.search);
+      if(params.get("connector_oauth")==="connected")status.textContent="Connector authorization completed for "+(params.get("provider")||"the selected service")+".";
+      else if(params.get("connector_oauth")==="denied")status.textContent="Connector authorization was cancelled or denied.";
     } catch(error) { list.innerHTML='<p class="subpage-error">Connectors could not be loaded. Refresh to try again.</p>';status.textContent=error.message; }
   }
   search.addEventListener("input",render);
