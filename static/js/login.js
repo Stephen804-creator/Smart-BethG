@@ -4,7 +4,6 @@
   const modeToggle = document.getElementById("authModeToggle");
   const submitBtn = document.getElementById("authSubmit");
   const title = document.getElementById("authTitle");
-  const inviteCodeGroup = document.getElementById("inviteCodeGroup");
   const consentGroup = document.getElementById("consentGroup");
   let mode = "login";
   let policyUpdatePending = false;
@@ -23,7 +22,6 @@
     title.textContent = "Review updated Smart BethG policies";
     submitBtn.textContent = "Accept and continue";
     modeToggle.hidden = true;
-    inviteCodeGroup.hidden = true;
     consentGroup.hidden = false;
     form.username.disabled = true;
     form.username.required = false;
@@ -44,13 +42,11 @@
       title.textContent = "Log in to Smart BethG";
       submitBtn.textContent = "Log in";
       modeToggle.textContent = "Need an account? Create one";
-      inviteCodeGroup.hidden = true;
       consentGroup.hidden = true;
     } else {
       title.textContent = "Create your Smart BethG account";
       submitBtn.textContent = "Create account";
       modeToggle.textContent = "Already have an account? Log in";
-      inviteCodeGroup.hidden = true;
       consentGroup.hidden = false;
     }
     errorEl.textContent = "";
@@ -122,7 +118,6 @@
     try {
       const csrfToken = await getCsrfToken();
       if (mode === "register") {
-        const inviteCode = form.inviteCode ? form.inviteCode.value.trim() : "";
         const res = await fetch("/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
@@ -130,7 +125,6 @@
           body: JSON.stringify({
             username,
             password,
-            invite_code: inviteCode || null,
             accepted_terms: form.acceptedTerms.checked,
             accepted_privacy: form.acceptedPrivacy.checked,
             age_verified: form.ageVerified.checked,
@@ -166,7 +160,8 @@
     }
   });
 
-  setMode("login");
+  const requestedMode = new URLSearchParams(window.location.search).get("mode");
+  setMode(requestedMode === "register" ? "register" : "login");
   if (new URLSearchParams(window.location.search).get("policy_update") === "1") {
     showPolicyUpdate();
   }
