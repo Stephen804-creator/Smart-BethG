@@ -352,6 +352,7 @@
 
   async function sendMessage(text) {
     renderMessage("user", text);
+    if (temporaryMode) temporaryMessages.push({ role: "user", content: text });
     sendBtn.disabled = true;
     promptEl.disabled = true;
     setConversationControlsBusy(true);
@@ -359,16 +360,16 @@
 
     try {
       const csrfToken = await getCsrfToken();
-      const res = await fetch("/api/chat", {
+      const selection = providerSelect && providerSelect.value ? providerSelect.value : "auto";
+      const endpoint = temporaryMode ? "/api/chat/temporary" : "/api/chat";
+      const payload = temporaryMode
+        ? { messages: temporaryMessages.slice(-40), selection, user_instructions: getUserInstructions() }
+        : { message: text, conversation_id: conversationId, selection, user_instructions: getUserInstructions() };
+      const res = await fetch(endpoint, {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({
-          message: text,
-          conversation_id: conversationId,
-          selection: providerSelect && providerSelect.value ? providerSelect.value : "auto",
-          user_instructions: getUserInstructions(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.status === 401) {
@@ -376,8 +377,7 @@
         return;
       }
 
-      messagesEl.lastChild.remove(); // remove "Thinking..." notice
-
+      if (messagesEl.lastChild) messagesEl.lastChild.remove(); // remove the Thinking notice
       if (!res.ok) {
         promptEl.value = text;
         renderNotice("Something went wrong sending that message. Your text is back in the composer so you can retry.");
@@ -385,6 +385,11 @@
       }
 
       const data = await res.json();
+      if (temporaryMode) {
+        temporaryMessages.push({ role: "assistant", content: data.reply || "" });
+        renderMessage("assistant", data.reply, buildNote(data));
+        return;
+      }
       conversationId = data.conversation_id;
       window.localStorage.setItem(STORAGE_KEY, conversationId);
       renderMessage("assistant", data.reply, buildNote(data));
