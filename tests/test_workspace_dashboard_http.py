@@ -55,6 +55,7 @@ class TestWorkspaceDashboardHttp(SmartBethGTestCase):
             "/workspace/instructions",
             "/workspace/privacy",
             "/workspace/learned",
+            "/workspace/lab",
         ):
             with self.subTest(path=path):
                 response = self.client_one.get(path)
