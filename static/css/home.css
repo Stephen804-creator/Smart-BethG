@@ -167,3 +167,13 @@
 @media (prefers-reduced-motion: reduce) {
   .bethg-home *, .bethg-home *::before, .bethg-home *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+.theme-light.bethg-home { --home-bg:#f6f8fc; --home-surface:#ffffff; --home-raised:#eaf0f8; --home-border:#dbe3ef; --home-text:#0b1626; --home-muted:#52647d; background:#f6f8fc; color:#0b1626; }
+.theme-light .home-topbar { background:rgb(246 248 252 / 94%); }
+.theme-light .home-task-card { color:#0b1626; background:#fff; }
+.theme-light .home-task-card:hover { background:#f3f7fc; }
+.theme-light .home-composer { background:#fff; }
+.theme-light .home-composer textarea { color:#0b1626; }
+.theme-light .home-drawer,.theme-light .home-popover,.theme-light .home-menu-popover,.theme-light .home-bottom-sheet { background:#fff; color:#0b1626; }
+.theme-light .home-popover a,.theme-light .home-popover button,.theme-light .home-menu-popover button,.theme-light .drawer-link,.theme-light .mode-option { color:#0b1626; }
+.theme-light .home-composer-wrap { background:linear-gradient(180deg,rgb(246 248 252 / 0%),#f6f8fc 22%); }
