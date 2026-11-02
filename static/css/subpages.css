@@ -148,3 +148,16 @@
 .instructions-footer > div { display:flex; gap:8px; }
 .instruction-secondary,.instruction-primary { min-height:40px; padding:9px 13px; border:1px solid #223555; border-radius:12px; color:#f4f7fb; background:#16253d; font-size:13px; font-weight:650; }
 .instruction-primary { border-color:#2d8cff; background:#2d8cff; }
+
+.privacy-content { display:flex; flex-direction:column; gap:12px; }
+.privacy-card { display:flex; align-items:flex-start; gap:14px; padding:17px; border:1px solid #223555; border-radius:16px; background:#0f1b2e; }
+.privacy-icon { display:grid; place-items:center; flex:0 0 40px; width:40px; height:40px; border-radius:12px; color:#79b7ff; background:#16253d; }
+.privacy-card h2 { margin:0 0 7px; font-size:17px; }
+.privacy-card p { margin:0; color:#8fa3c0; font-size:13px; line-height:1.6; }
+.privacy-card a { display:inline-block; margin-top:10px; color:#79b7ff; font-size:13px; text-decoration:none; }
+.privacy-links { display:flex; flex-wrap:wrap; gap:12px; }
+.learned-empty { display:flex; flex-direction:column; align-items:center; max-width:540px; margin:30px auto; padding:32px 22px; border:1px solid #223555; border-radius:18px; background:#0f1b2e; text-align:center; }
+.learned-icon { display:grid; place-items:center; width:58px; height:58px; margin-bottom:18px; border-radius:16px; color:#fff; background:#2ecc71; font-size:24px; }
+.learned-empty h2 { margin:0; font-size:22px; }
+.learned-empty p { margin:12px 0 0; color:#8fa3c0; font-size:14px; line-height:1.6; }
+.learned-empty a { margin-top:20px; padding:10px 15px; border-radius:13px; color:#fff; background:#2d8cff; text-decoration:none; font-weight:650; }
