@@ -94,6 +94,7 @@ def chat_page(request: Request):
     username = user.get("username") or "Smart BethG user"
     return _render(request, "home_chat.html", {
         "display_name": username.split("@", 1)[0],
+        "account_email": username if "@" in username else None,
         "avatar_initials": username[:2].upper(),
     })
 
