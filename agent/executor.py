@@ -246,7 +246,7 @@ class AgentExecutor:
                 parts.append(f"Attachment {filename} could not be read: {error}")
                 continue
             text = (extracted or "")[:remaining]
-            parts.append(f"Attachment source: {filename}\\n--- BEGIN UNTRUSTED FILE CONTENT ---\\n{text}\\n--- END UNTRUSTED FILE CONTENT ---")
+            parts.append(f"Attachment source: {filename}\n--- BEGIN UNTRUSTED FILE CONTENT ---\n{text}\n--- END UNTRUSTED FILE CONTENT ---")
             remaining -= len(text)
             if remaining <= 0:
                 parts.append("[Smart BethG stopped including attachment text at the configured chat context limit.]")
