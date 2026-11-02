@@ -177,8 +177,8 @@
 .theme-light .instructions-card { background:#fff; border-color:#dbe3ef; color:#0b1626; }
 .theme-light .subpage-back { color:#0b1626; }
 .theme-light .project-create input,.theme-light .project-create textarea,
-.theme-system .project-create input,.theme-system .project-create textarea,
-.theme-light .instructions-card textarea,.theme-system .instructions-card textarea,
+
+.theme-light .instructions-card textarea,
 .theme-light .connector-search,.theme-system .connector-search { background:#fff; color:#0b1626; border-color:#dbe3ef; }
 .theme-light .connector-search input { color:#0b1626; }
 .theme-light .connector-categories button,
