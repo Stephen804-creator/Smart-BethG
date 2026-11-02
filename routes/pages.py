@@ -139,6 +139,13 @@ def settings_page(request: Request):
     return _render(request, "settings_page.html")
 
 
+@router.get("/workspace/projects", name="main.projects_page")
+def projects_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "projects_page.html")
+
+
 @router.get("/workspace/tasks", name="main.tasks_page")
 def tasks_page(request: Request):
     if not _require_user(request):
