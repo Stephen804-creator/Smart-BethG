@@ -1,0 +1,78 @@
+/* Public website: the approved responsive marketing composition and brand tokens. */
+.bethg-marketing { margin:0; background:#08111f; color:#f4f7fb; font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; }
+.bethg-marketing * { box-sizing:border-box; }
+.bethg-marketing a { text-decoration:none; }
+.bethg-marketing [hidden] { display:none!important; }
+.marketing-header { position:sticky; top:0; z-index:30; display:flex; align-items:center; justify-content:space-between; gap:18px; min-height:78px; padding:12px clamp(16px,4vw,40px); border-bottom:1px solid #223555; background:rgb(8 17 31 / 94%); backdrop-filter:blur(16px); }
+.marketing-brand { display:flex; align-items:center; gap:10px; color:#f4f7fb; }
+.marketing-mark { display:grid; place-items:center; width:36px; height:36px; border-radius:11px; color:white; background:linear-gradient(140deg,#2d8cff,#8b5cff); }
+.marketing-brand-copy { display:flex; flex-direction:column; gap:2px; line-height:1.1; }
+.marketing-brand-copy strong { font-size:17px; letter-spacing:-.03em; }
+.marketing-brand-copy small { color:#8fa3c0; font-size:11px; }
+.marketing-header-actions { display:flex; align-items:center; gap:10px; }
+.marketing-signup,.marketing-primary { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:11px 18px; border:1px solid #2d8cff; border-radius:14px; color:#fff; background:#2d8cff; font-weight:700; }
+.marketing-signup:hover,.marketing-primary:hover { background:#1677ef; }
+.marketing-menu-button { display:grid; place-items:center; width:44px; height:44px; border:1px solid #223555; border-radius:13px; color:#f4f7fb; background:#0f1b2e; }
+.marketing-menu { position:absolute; top:68px; right:clamp(16px,4vw,40px); display:flex; flex-direction:column; width:min(260px,calc(100vw - 32px)); padding:7px; border:1px solid #223555; border-radius:15px; background:#0f1b2e; box-shadow:0 20px 45px rgb(0 0 0 / 30%); }
+.marketing-menu a { padding:12px 13px; border-radius:10px; color:#f4f7fb; }
+.marketing-menu a:hover { background:#16253d; }
+.marketing-hero { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:center; gap:clamp(30px,5vw,70px); width:min(100%,1400px); margin:0 auto; padding:clamp(54px,8vw,130px) clamp(20px,7vw,100px) clamp(60px,8vw,120px); }
+.marketing-hero-copy h1 { margin:0; font-size:clamp(52px,7.4vw,100px); line-height:.98; letter-spacing:-.065em; }
+.marketing-hero-copy h1 span { color:#2d8cff; background:linear-gradient(100deg,#2d8cff,#8b5cff,#ff8a1f); background-clip:text; -webkit-text-fill-color:transparent; }
+.marketing-hero-copy > p:not(.marketing-no-invite) { max-width:620px; margin:25px 0 0; color:#8fa3c0; font-size:clamp(16px,1.7vw,20px); line-height:1.65; }
+.marketing-hero-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:26px; }
+.marketing-secondary { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:11px 18px; border:1px solid #223555; border-radius:14px; color:#f4f7fb; background:#16253d; font-weight:700; }
+.marketing-secondary:hover { background:#203655; }
+.marketing-no-invite { margin:12px 0 0; color:#8fa3c0; font-size:13px; }
+.marketing-preview { position:relative; display:flex; align-items:center; min-height:500px; padding:18px 0; }
+.preview-phone,.preview-lesson { position:relative; display:flex; flex-direction:column; width:53%; min-height:420px; padding:13px; border:1px solid #294265; border-radius:27px; background:#08111f; box-shadow:0 25px 70px rgb(0 0 0 / 25%); }
+.preview-phone { z-index:1; }
+.preview-lesson { width:51%; min-height:400px; margin-left:-4%; padding:15px; border-radius:26px; background:#0a1424; transform:translateY(25px); }
+.preview-top,.preview-lesson-top { display:flex; align-items:center; gap:7px; font-size:9px; }
+.preview-mini-mark { display:grid; place-items:center; width:22px; height:22px; border-radius:7px; background:linear-gradient(140deg,#2d8cff,#8b5cff); font-size:8px; font-weight:800; }
+.preview-avatar { display:grid; place-items:center; width:20px; height:20px; margin-left:auto; border-radius:50%; background:#8b5cff; }
+.preview-welcome { display:flex; flex-direction:column; gap:6px; margin:25px 0 14px; }
+.preview-welcome strong { font-size:clamp(12px,1.4vw,17px); }
+.preview-welcome small { color:#8fa3c0; font-size:9px; }
+.preview-credit { align-self:flex-start; margin-top:5px; padding:6px 8px; border:1px solid #223555; border-radius:99px; color:#8fa3c0; font-size:8px; }
+.preview-credit i { color:#2d8cff; }
+.preview-tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.preview-tiles span { display:flex; flex-direction:column; gap:7px; min-height:57px; padding:8px; border:1px solid #223555; border-radius:10px; color:#dbe7f6; background:#0f1b2e; font-size:8px; }
+.preview-tiles i { color:#2d8cff; font-size:14px; }
+.preview-composer { margin-top:auto; padding:10px; border:1px solid #223555; border-radius:13px; color:#7186a5; background:#0f1b2e; font-size:8px; }
+.preview-composer span { display:flex; align-items:center; gap:8px; margin-top:9px; color:#8fa3c0; }
+.preview-composer b { padding:5px 7px; border:1px solid #223555; border-radius:99px; font-size:8px; font-weight:500; }
+.preview-composer i:last-child { margin-left:auto; color:#fff; background:#2d8cff; padding:5px; border-radius:50%; }
+.preview-lesson-top { justify-content:space-between; color:#dbe7f6; }
+.preview-lesson-top span { color:#2ecc71; font-size:8px; }
+.preview-progress { display:flex; gap:5px; margin:20px 0 15px; }
+.preview-progress i { flex:1; height:3px; border-radius:99px; background:#223555; }
+.preview-progress i:first-child,.preview-progress i:nth-child(2) { background:#2ecc71; }
+.preview-lesson h3 { margin:0; font-size:clamp(13px,1.5vw,18px); }
+.preview-lesson p { margin:9px 0 12px; color:#8fa3c0; font-size:9px; line-height:1.6; }
+.preview-code { padding:10px; border:1px solid #223555; border-radius:9px; color:#2ecc71; background:#0f1b2e; font:9px ui-monospace,monospace; }
+.preview-result { margin-top:8px; padding:10px; border-radius:8px; color:#08111f; background:#fff; font-size:12px; font-weight:700; }
+.preview-lesson-footer { display:flex; gap:8px; margin-top:auto; padding-top:18px; }
+.preview-lesson-footer span,.preview-lesson-footer b { flex:1; padding:9px 5px; border-radius:9px; background:#16253d; text-align:center; font-size:8px; }
+.preview-lesson-footer b { background:#2d8cff; }
+.marketing-section { width:min(100%,1250px); margin:0 auto; padding:clamp(48px,7vw,90px) clamp(20px,7vw,80px); }
+.marketing-section-heading h2,.marketing-final-cta h2 { margin:0; font-size:clamp(30px,4vw,48px); letter-spacing:-.045em; }
+.marketing-section-heading p,.marketing-final-cta p { margin:12px 0 0; color:#8fa3c0; font-size:clamp(15px,1.6vw,19px); line-height:1.6; }
+.marketing-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:28px; }
+.marketing-steps article { padding:22px; border:1px solid #223555; border-radius:16px; background:#0f1b2e; }
+.marketing-steps article > span { color:#2d8cff; font-size:13px; font-weight:750; letter-spacing:.1em; }
+.marketing-steps h3 { margin:16px 0 0; font-size:18px; }
+.marketing-steps p { margin:9px 0 0; color:#8fa3c0; font-size:14px; line-height:1.6; }
+.marketing-capabilities { border-top:1px solid #223555; }
+.marketing-capability-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:26px; }
+.marketing-capability-grid span { display:flex; align-items:center; gap:12px; padding:16px; border:1px solid #223555; border-radius:14px; background:#0f1b2e; }
+.marketing-capability-grid i { color:#2d8cff; }
+.marketing-final-cta { display:flex; flex-direction:column; align-items:center; padding:clamp(55px,8vw,100px) 20px; border-top:1px solid #223555; text-align:center; }
+.marketing-final-cta .marketing-primary { margin-top:24px; }
+.marketing-footer { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:22px clamp(20px,5vw,50px); border-top:1px solid #223555; }
+.marketing-footer > div { display:flex; gap:18px; }
+.marketing-footer > div a { color:#8fa3c0; font-size:13px; }
+.marketing-footer > div a:hover { color:#f4f7fb; }
+@media(max-width:900px) { .marketing-hero { grid-template-columns:1fr; padding-top:60px; } .marketing-hero-copy { max-width:760px; } .marketing-preview { width:min(100%,650px); margin:0 auto; min-height:440px; } .marketing-steps { grid-template-columns:1fr; } .marketing-capability-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:520px) { .marketing-header { min-height:66px; padding:10px 14px; } .marketing-signup { min-height:40px; padding:9px 13px; font-size:13px; } .marketing-menu-button { width:40px; height:40px; } .marketing-brand-copy strong { font-size:15px; } .marketing-hero { gap:25px; padding:42px 18px 55px; } .marketing-hero-copy h1 { font-size:clamp(48px,14vw,66px); } .marketing-hero-copy > p:not(.marketing-no-invite) { margin-top:17px; font-size:15px; } .marketing-hero-actions { gap:9px; } .marketing-primary,.marketing-secondary { padding:10px 13px; font-size:13px; } .marketing-preview { min-height:340px; padding:4px 0; } .preview-phone { min-height:320px; padding:9px; border-radius:19px; } .preview-lesson { min-height:310px; padding:10px; border-radius:18px; } .preview-welcome { margin:16px 0 10px; } .preview-tiles { gap:4px; } .preview-tiles span { min-height:44px; padding:5px; gap:4px; font-size:7px; } .preview-tiles i { font-size:11px; } .preview-composer { padding:7px; } .preview-lesson p { font-size:8px; } .marketing-section { padding:44px 18px; } .marketing-capability-grid { grid-template-columns:1fr; } .marketing-footer { flex-direction:column; align-items:flex-start; } }
+@media(prefers-reduced-motion:reduce) { .bethg-marketing * { transition-duration:.01ms!important; animation-duration:.01ms!important; } }
