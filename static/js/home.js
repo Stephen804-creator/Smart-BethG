@@ -19,6 +19,11 @@
   const attachmentPopover = document.getElementById("attachmentPopover");
   let currentMode = "Balanced";
   let temporaryChat = false;
+  window.sbgTemporaryChat = false;
+  function announceTemporaryMode() {
+    window.sbgTemporaryChat = temporaryChat;
+    document.dispatchEvent(new CustomEvent("sbg:temporary-chat", { detail: { active: temporaryChat } }));
+  }
 
   function setDrawer(open) {
     drawer.classList.toggle("is-open", open);
@@ -116,6 +121,7 @@
     temporaryButton.classList.toggle("is-active", temporaryChat);
     temporaryButton.setAttribute("aria-pressed", String(temporaryChat));
     temporaryButton.setAttribute("aria-label", temporaryChat ? "Temporary chat is on" : "Start temporary chat");
+    announceTemporaryMode();
   });
   document.getElementById("endTemporaryChat").addEventListener("click", () => {
     temporaryChat = false;
@@ -124,6 +130,7 @@
     temporaryButton.classList.remove("is-active");
     temporaryButton.setAttribute("aria-pressed", "false");
     temporaryButton.setAttribute("aria-label", "Start temporary chat");
+    announceTemporaryMode();
   });
 
   attachmentButton.addEventListener("click", () => {
