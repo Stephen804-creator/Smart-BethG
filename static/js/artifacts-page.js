@@ -20,7 +20,11 @@
       const isHtml=contentType.includes("text/html")||["html","website","webpage"].includes(artifactType);
       if(isHtml){
         const csp='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; style-src \'unsafe-inline\'">';
-        htmlPreview.srcdoc=csp+content;htmlPreview.hidden=false;preview.hidden=true;
+        const lowerContent=content.toLowerCase();
+        htmlPreview.srcdoc=lowerContent.includes("<head")
+          ? content.replace(/<head[^>]*>/i,(head)=>head+csp)
+          : "<!doctype html><html><head>"+csp+"</head><body>"+content+"</body></html>";
+        htmlPreview.hidden=false;preview.hidden=true;
       }else{
         htmlPreview.removeAttribute("srcdoc");htmlPreview.hidden=true;preview.textContent=content;preview.hidden=false;
       }
