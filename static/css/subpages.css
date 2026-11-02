@@ -219,3 +219,7 @@
   .theme-system .artifact-actions-menu button { color:#0b1626; }
   .theme-system .usage-model-row strong,.theme-system .setting-link,.theme-system .setting-feature h2,.theme-system .instructions-card label { color:#0b1626; }
 }
+
+.mission-progress span.is-indeterminate { width:35%; animation:mission-progress-sweep 1.7s ease-in-out infinite alternate; }
+@keyframes mission-progress-sweep { from { transform:translateX(0); } to { transform:translateX(185%); } }
+@media(prefers-reduced-motion:reduce) { .mission-progress span.is-indeterminate { animation:none; width:45%; } }
