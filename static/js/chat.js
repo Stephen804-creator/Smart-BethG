@@ -421,7 +421,7 @@
     if (data.fallback_used && data.provider) {
       parts.push(`switched to ${data.provider} after the requested provider failed`);
     }
-    if (data.intent && data.intent !== "chat") {
+    if (data.intent && data.intent !== "chat" && data.intent !== "plan") {
       parts.push(`action: ${data.intent}`);
     }
     return parts.length ? parts.join(" · ") : null;
