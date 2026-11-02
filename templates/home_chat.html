@@ -93,9 +93,16 @@
         <div class="temporary-banner" id="temporaryBanner" hidden><i class="fa-solid fa-eye-slash"></i><span>Temporary chat · Chat-only. Not saved in Smart BethG history or exports. Your AI provider may process messages.</span><button type="button" id="endTemporaryChat">End</button></div>
         <div class="home-composer" id="composerSurface">
           <textarea id="prompt" rows="1" maxlength="12000" placeholder="Ask anything, or say what to build next…" aria-label="Message Smart BethG"></textarea>
+          <div class="attached-files" id="attachedFiles" hidden aria-label="Attached files"></div>
+          <p class="attachment-status" id="attachmentStatus" role="status" hidden></p>
           <div class="composer-toolbar">
             <div class="composer-left">
               <button class="composer-icon-button" id="attachmentButton" type="button" aria-label="Add files"><i class="fa-solid fa-plus"></i></button>
+              <input id="filePicker" type="file" multiple hidden>
+              <input id="photoPicker" type="file" accept="image/*" multiple hidden>
+              <input id="cameraPicker" type="file" accept="image/*" capture="environment" hidden>
+              <input id="folderPicker" type="file" multiple webkitdirectory directory hidden>
+
               <div class="home-menu-popover" id="attachmentPopover" hidden>
                 <button type="button" data-attach="Files"><i class="fa-regular fa-file"></i> Files</button>
                 <button type="button" data-attach="Photos"><i class="fa-regular fa-image"></i> Photos</button>
