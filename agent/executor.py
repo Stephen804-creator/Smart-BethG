@@ -64,6 +64,7 @@ class AgentExecutor:
             context = []
             if agent_request.user_instructions:
                 context.append("User's custom instructions for this response:\n" + agent_request.user_instructions)
+            context.append(self._mentor_context(agent_request.mentor))
             context.append(mode_context)
             chat_result = self.chat_service.send(
                 agent_request.user["id"], agent_request.text,
@@ -90,7 +91,7 @@ class AgentExecutor:
                     agent_request.workspace,
                     extra_context="\n\n".join(
                         (["User's custom instructions for this response:\n" + agent_request.user_instructions]
-                         if agent_request.user_instructions else []) + context_parts + [mode_context]
+                         if agent_request.user_instructions else []) + context_parts + [self._mentor_context(agent_request.mentor), mode_context]
                     ),
                 )
                 # A configured provider is not proof that generation succeeded.
@@ -223,6 +224,12 @@ class AgentExecutor:
             "confidently, say so honestly instead of guessing."
         )
         return context, None
+
+    @staticmethod
+    def _mentor_context(enabled: bool) -> str:
+        if enabled:
+            return "Mentor preference: Include concise learning explanations, why a choice works, and a cleaner approach when useful. Keep the task output central and avoid overwhelming the user."
+        return "Mentor preference: Focus on the requested output. Avoid extra teaching explanations unless the user asks."
 
     @staticmethod
     def _mode_context(mode: str) -> str:
