@@ -331,7 +331,7 @@ class ChatService:
         return usage
 
 
-    def send_temporary(self, user_id, messages, selection=None, user_instructions=None, mode="Balanced"):
+    def send_temporary(self, user_id, messages, selection=None, user_instructions=None, mode="Balanced", mentor=True):
         """Generate a chat-only reply without creating or touching a conversation record."""
         clean = self._bound_context(messages, config.MAX_CHAT_MESSAGE_CHARS * 8)
         if not clean or clean[-1].get("role") != "user":
@@ -363,6 +363,10 @@ class ChatService:
         context_parts = []
         if user_instructions:
             context_parts.append("User's custom instructions for this response:\\n" + user_instructions)
+        if mentor:
+            context_parts.append("Mentor preference: Include concise learning explanations, why a choice works, and a cleaner approach when useful. Keep the task output central and avoid overwhelming the user.")
+        else:
+            context_parts.append("Mentor preference: Focus on the requested output. Avoid extra teaching explanations unless the user asks.")
         if mode == "Plan":
             context_parts.append("Interaction mode: Plan. This is temporary chat-only mode; do not execute tools or make changes. Explain a plan and ask before acting.")
         elif mode == "Build":
