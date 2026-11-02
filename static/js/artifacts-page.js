@@ -1,6 +1,6 @@
 (function () {
   const list=document.getElementById("artifactList"), empty=document.getElementById("artifactEmpty"), viewer=document.getElementById("artifactViewer");
-  const title=document.getElementById("artifactTitle"), preview=document.getElementById("artifactPreview"), code=document.getElementById("artifactCode"), codeText=document.getElementById("artifactCodeText"), fileName=document.getElementById("artifactFileName"), status=document.getElementById("artifactStatus");
+  const title=document.getElementById("artifactTitle"), preview=document.getElementById("artifactPreview"), htmlPreview=document.getElementById("artifactHtmlPreview"), code=document.getElementById("artifactCode"), codeText=document.getElementById("artifactCodeText"), fileName=document.getElementById("artifactFileName"), status=document.getElementById("artifactStatus");
   const menuButton=document.getElementById("artifactMenuButton"), menu=document.getElementById("artifactActionsMenu");
   let artifacts=[], selected=null, content="";
   async function get(url) {
@@ -15,7 +15,16 @@
       const response=await get("/api/v1/artifacts/"+encodeURIComponent(item.id)+"/content");
       content=await response.text();
       title.textContent=item.name||"Artifact"; fileName.textContent=item.name||"artifact.txt";
-      preview.textContent=content;codeText.textContent=content;
+      const contentType=String(item.content_type||"").toLowerCase();
+      const artifactType=String(item.artifact_type||"").toLowerCase();
+      const isHtml=contentType.includes("text/html")||["html","website","webpage"].includes(artifactType);
+      if(isHtml){
+        const csp='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; style-src \'unsafe-inline\'">';
+        htmlPreview.srcdoc=csp+content;htmlPreview.hidden=false;preview.hidden=true;
+      }else{
+        htmlPreview.removeAttribute("srcdoc");htmlPreview.hidden=true;preview.textContent=content;preview.hidden=false;
+      }
+      codeText.textContent=content;
       empty.hidden=true;viewer.hidden=false;status.textContent="";
       list.querySelectorAll("button").forEach((b)=>b.classList.toggle("is-selected",b.dataset.id===String(item.id)));
     } catch(error) { status.textContent=error.message; }
