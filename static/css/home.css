@@ -198,3 +198,5 @@
 .attached-file-chip button { display:grid; place-items:center; width:22px; height:22px; border:0; border-radius:50%; color:var(--home-muted); background:transparent; }
 .attached-file-chip button:hover { color:var(--home-text); background:var(--home-surface); }
 .attachment-status { margin:4px 2px 0; color:var(--home-muted); font-size:12px; line-height:1.4; }
+.home-brand-mark { padding:0; overflow:hidden; background:transparent; }
+.home-brand-mark img { display:block; width:100%; height:100%; object-fit:contain; border-radius:10px; }
