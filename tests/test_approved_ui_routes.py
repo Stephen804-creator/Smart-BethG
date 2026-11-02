@@ -14,10 +14,13 @@ class TestApprovedUiRoutes(SmartBethGTestCase):
         response = self.client.get("/onboarding")
         self.assertEqual(response.status_code, 200)
         self.assertIn("Meet Smart BethG", response.text)
-        self.assertIn("Do real work", response.text)
-        self.assertIn("Connect your tools", response.text)
-        self.assertIn("You choose how it works", response.text)
         self.assertIn("onboarding.css", response.text)
+        self.assertIn("onboarding.js", response.text)
+        script = self.client.get("/static/js/onboarding.js")
+        self.assertEqual(script.status_code, 200)
+        self.assertIn("Do real work", script.text)
+        self.assertIn("Connect your tools", script.text)
+        self.assertIn("You choose how it works", script.text)
 
     def test_home_requires_authentication(self):
         response = self.client.get("/", follow_redirects=False)
