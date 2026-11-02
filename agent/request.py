@@ -19,6 +19,7 @@ class AgentRequest:
     conversation_id: Optional[int] = None
     selection: Optional[str] = None  # AI provider/model choice, passed through to chat when intent is "chat"
     user_instructions: Optional[str] = None  # User-authored context for AI chat responses
+    mode: str = "Balanced"  # User-selected interaction mode
 
     def __post_init__(self):
         if not isinstance(self.text, str) or not self.text.strip():
@@ -27,3 +28,5 @@ class AgentRequest:
             raise ValueError("AgentRequest.workspace must be a non-empty string.")
         if "id" not in self.user:
             raise ValueError("AgentRequest.user must include an 'id'.")
+        if self.mode not in {"Plan", "Balanced", "Build"}:
+            raise ValueError("AgentRequest.mode must be Plan, Balanced, or Build.")
