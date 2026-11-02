@@ -275,3 +275,7 @@
 .theme-light .library-file-card { background:#fff; border-color:#dbe3ef; }
 .theme-light .library-file-copy strong { color:#0b1626; }
 @media(prefers-color-scheme:light) { .theme-system .library-file-card { background:#fff; border-color:#dbe3ef; } .theme-system .library-file-copy strong { color:#0b1626; } }
+
+.artifact-html-preview { display:block; width:100%; height:520px; border:0; background:#fff; }
+.artifact-html-preview[hidden] { display:none!important; }
+@media(max-width:700px) { .artifact-html-preview { height:380px; } }
