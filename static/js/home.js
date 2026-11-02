@@ -158,7 +158,7 @@
 
   const creditsButton = document.getElementById("creditsButton");
   creditsButton.addEventListener("click", () => {
-    window.location.href = "/credits";
+    window.location.href = "/workspace/credits";
   });
 
   const params = new URLSearchParams(window.location.search);
