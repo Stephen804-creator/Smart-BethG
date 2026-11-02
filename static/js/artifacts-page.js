@@ -64,7 +64,14 @@
   menuButton.addEventListener("click",()=>{menu.hidden=!menu.hidden;menuButton.setAttribute("aria-expanded",String(!menu.hidden));});
   document.addEventListener("click",(event)=>{if(!menu.contains(event.target)&&!menuButton.contains(event.target)){menu.hidden=true;menuButton.setAttribute("aria-expanded","false");}});
   document.getElementById("artifactDownload").addEventListener("click",()=>{
-    if(!selected)return;const blob=new Blob([content],{type:"text/plain;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=(selected.name||"artifact").replace(/[^a-z0-9._-]/gi,"_")+".txt";a.click();URL.revokeObjectURL(url);menu.hidden=true;
+    if(!selected)return;
+    const contentType=String(selected.content_type||"text/plain");
+    const blob=new Blob([content],{type:contentType+";charset=utf-8"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;
+    const safeName=(selected.name||"artifact").replace(/[^a-z0-9._-]/gi,"_");
+    const extension=contentType.includes("html")?"html":contentType.includes("json")?"json":contentType.includes("css")?"css":contentType.includes("javascript")?"js":"txt";
+    a.download=/\\.[a-z0-9]{1,8}$/i.test(safeName)?safeName:safeName+"."+extension;
+    a.click();URL.revokeObjectURL(url);menu.hidden=true;
   });
   document.getElementById("artifactCopyLink").addEventListener("click",async()=>{
     if(!selected)return;const url=window.location.origin+"/workspace/artifacts?id="+encodeURIComponent(selected.id);
