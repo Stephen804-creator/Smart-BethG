@@ -20,6 +20,7 @@ class AgentRequest:
     selection: Optional[str] = None  # AI provider/model choice, passed through to chat when intent is "chat"
     user_instructions: Optional[str] = None  # User-authored context for AI chat responses
     mode: str = "Balanced"  # User-selected interaction mode
+    mentor: bool = True  # Include learning-oriented explanations when useful
 
     def __post_init__(self):
         if not isinstance(self.text, str) or not self.text.strip():
