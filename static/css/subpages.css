@@ -1,0 +1,23 @@
+/* Shared focused-page shell matching the app's compact mobile mockups. */
+.bethg-subpage { margin:0; min-height:100dvh; background:#08111f; color:#f4f7fb; font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; }
+.bethg-subpage * { box-sizing:border-box; }
+.bethg-subpage [hidden] { display:none!important; }
+.subpage-shell { width:min(100%,900px); min-height:100dvh; margin:0 auto; padding:0 clamp(16px,4vw,32px) 32px; }
+.subpage-header { position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:16px; min-height:78px; background:rgb(8 17 31 / 95%); border-bottom:1px solid transparent; backdrop-filter:blur(14px); }
+.subpage-back { display:grid; place-items:center; width:42px; height:42px; border-radius:12px; color:#f4f7fb; text-decoration:none; }
+.subpage-back:hover { background:#16253d; }
+.subpage-header h1 { margin:0; font-size:clamp(22px,4vw,30px); line-height:1.2; letter-spacing:-.035em; }
+.subpage-spacer { flex:1; }
+.subpage-content { padding:clamp(28px,5vh,54px) 0 20px; }
+.subpage-section { margin-bottom:34px; }
+.subpage-section-label { margin:0 0 13px; color:#8fa3c0; font-size:13px; letter-spacing:.08em; }
+.mission-list { display:flex; flex-direction:column; gap:14px; }
+.mission-card { padding:19px 20px; border:1px solid #223555; border-radius:16px; background:#0f1b2e; }
+.mission-card h2 { margin:0; color:#f4f7fb; font-size:clamp(18px,3vw,24px); line-height:1.25; }
+.mission-card-meta { margin:3px 0 15px; color:#8fa3c0; font-size:15px; }
+.mission-progress { width:100%; height:8px; overflow:hidden; border-radius:999px; background:#16253d; }
+.mission-progress span { display:block; height:100%; border-radius:inherit; background:#2ecc71; }
+.subpage-muted { color:#8fa3c0; font-size:14px; line-height:1.5; }
+.subpage-error { color:#ff8a1f; }
+.subpage-empty { padding:18px; border:1px dashed #223555; border-radius:15px; color:#8fa3c0; }
+@media(max-width:600px) { .subpage-header { min-height:72px; gap:12px; } .subpage-content { padding-top:28px; } .mission-card { padding:17px 16px; } }
