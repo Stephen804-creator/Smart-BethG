@@ -28,6 +28,7 @@ class ChatMessage(BaseModel):
     user_instructions: str | None = Field(default=None, max_length=4000)
     mode: Literal["Plan", "Balanced", "Build"] = "Balanced"
     mentor: bool = True
+    file_ids: list[int] = Field(default_factory=list, max_length=10)
 
 
 class TemporaryMessage(BaseModel):
@@ -69,6 +70,7 @@ def send_message(payload: ChatMessage, user=Depends(get_current_user)):
         user_instructions=payload.user_instructions,
         mode=payload.mode,
         mentor=payload.mentor,
+        file_ids=payload.file_ids,
     )
     outcome = _executor.run(agent_request)
     return {**outcome["result"], "intent": outcome["intent"]}
