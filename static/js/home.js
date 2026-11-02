@@ -18,6 +18,11 @@
   const attachmentButton = document.getElementById("attachmentButton");
   const attachmentPopover = document.getElementById("attachmentPopover");
   let currentMode = "Balanced";
+  window.sbgCurrentMode = currentMode;
+  function announceMode() {
+    window.sbgCurrentMode = currentMode;
+    document.dispatchEvent(new CustomEvent("sbg:mode-change", { detail: { mode: currentMode } }));
+  }
   let temporaryChat = false;
   window.sbgTemporaryChat = false;
   function announceTemporaryMode() {
@@ -97,6 +102,7 @@
     button.addEventListener("click", () => {
       currentMode = button.dataset.mode;
       document.getElementById("modeLabel").textContent = currentMode;
+      announceMode();
       modeSheet.querySelectorAll("[data-mode]").forEach((item) => {
         const selected = item === button;
         item.classList.toggle("is-selected", selected);
