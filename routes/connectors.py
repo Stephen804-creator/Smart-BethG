@@ -64,7 +64,7 @@ def start_oauth(installation_id: int, request: Request, user=Depends(get_current
 def oauth_callback(provider: str, request: Request, code: str | None = None,
                    state: str | None = None, error: str | None = None):
     if error:
-        return RedirectResponse(url="/?connector_oauth=denied", status_code=303)
+        return RedirectResponse(url="/workspace/connectors?connector_oauth=denied", status_code=303)
     callback_url = _callback_url(request, provider)
     try:
         result = ConnectorOAuthService().callback(provider, code, state, callback_url)
@@ -72,7 +72,7 @@ def oauth_callback(provider: str, request: Request, code: str | None = None,
         raise HTTPException(status_code=400, detail="Connector authorization state is invalid or expired. Start the connection again.")
     except RuntimeError:
         raise HTTPException(status_code=502, detail="The provider connection failed. Check provider configuration and try again.")
-    return RedirectResponse(url="/?connector_oauth=connected&provider=" + result["connector_key"], status_code=303)
+    return RedirectResponse(url="/workspace/connectors?connector_oauth=connected&provider=" + result["connector_key"], status_code=303)
 
 @router.post("/{installation_id}/actions/{action}")
 def run_connector_action(installation_id: int, action: str, payload: ActionRequest,
