@@ -1,5 +1,6 @@
 """HTTP-level coverage for the project and mission dashboard capability slice."""
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 from main_fastapi import create_app
 from services.auth_service import create_user
@@ -32,14 +33,69 @@ class TestWorkspaceDashboardHttp(SmartBethGTestCase):
             raise AssertionError("Test login failed: " + response.text)
         return response.json()["csrf_token"]
 
-    def test_home_renders_real_project_and_mission_controls(self):
+    def test_home_uses_approved_chat_first_mockup(self):
         response = self.client_one.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn('id="projectCreateForm"', response.text)
-        self.assertIn('id="missionCreateForm"', response.text)
-        self.assertIn("workspace-dashboard.js", response.text)
-        self.assertIn("Projects and missions", response.text)
-        self.assertIn("Record a mission", response.text)
+        self.assertIn('id="welcomePanel"', response.text)
+        self.assertIn('id="taskGrid"', response.text)
+        self.assertIn('id="composerSurface"', response.text)
+        self.assertIn("home.css", response.text)
+        self.assertIn("Learn as you build", response.text)
+        self.assertNotIn('id="projectCreateForm"', response.text)
+        self.assertNotIn("Projects and missions", response.text)
+
+    def test_approved_workspace_pages_render_for_authenticated_user(self):
+        for path in (
+            "/settings",
+            "/profile",
+            "/workspace/projects",
+            "/workspace/tasks",
+            "/workspace/artifacts",
+            "/workspace/connectors",
+            "/workspace/credits",
+            "/workspace/instructions",
+            "/workspace/privacy",
+            "/workspace/learned",
+            "/workspace/lab",
+            "/workspace/files",
+        ):
+            with self.subTest(path=path):
+                response = self.client_one.get(path)
+                self.assertEqual(response.status_code, 200, response.text)
+
+    def test_chat_api_passes_uploaded_file_ids_and_preferences_to_agent(self):
+        outcome = {"intent": "chat", "status": "completed", "result": {"reply": "Read the attachment.", "provider_configured": True}}
+        with patch("routes.chat._executor.run", return_value=outcome) as run:
+            response = self.client_one.post(
+                "/api/chat",
+                headers={"X-CSRF-Token": self.csrf_one},
+                json={
+                    "message": "Summarize the attached file",
+                    "file_ids": [17],
+                    "mode": "Build",
+                    "mentor": False,
+                },
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        request = run.call_args.args[0]
+        self.assertEqual(request.file_ids, [17])
+        self.assertEqual(request.mode, "Build")
+        self.assertFalse(request.mentor)
+
+    def test_temporary_chat_does_not_create_saved_conversation(self):
+        before = self.client_one.get("/api/chat/conversations")
+        self.assertEqual(before.status_code, 200)
+        self.assertEqual(before.json()["conversations"], [])
+        with patch("services.chat_service.provider_manager.choose_auto", return_value=(None, None)):
+            response = self.client_one.post(
+                "/api/chat/temporary",
+                headers={"X-CSRF-Token": self.csrf_one},
+                json={"messages": [{"role": "user", "content": "A temporary question"}]},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["temporary"])
+        after = self.client_one.get("/api/chat/conversations")
+        self.assertEqual(after.json()["conversations"], [])
 
     def test_project_and_mission_api_flow_is_owner_scoped(self):
         project_response = self.client_one.post(

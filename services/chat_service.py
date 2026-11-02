@@ -329,3 +329,61 @@ class ChatService:
         usage = self.repo.usage_totals_for_user(user_id)
         usage["budget"] = self.budget_service.get_usage(user_id)
         return usage
+
+
+    def send_temporary(self, user_id, messages, selection=None, user_instructions=None, mode="Balanced", mentor=True):
+        """Generate a chat-only reply without creating or touching a conversation record."""
+        clean = self._bound_context(messages, config.MAX_CHAT_MESSAGE_CHARS * 8)
+        if not clean or clean[-1].get("role") != "user":
+            raise ValueError("Temporary chat must end with a user message.")
+        latest = clean[-1]["content"].strip()
+        if not latest:
+            raise ValueError("Message must not be empty.")
+
+        if not selection or selection == "auto":
+            provider_name, model_id = provider_manager.choose_auto(latest)
+        else:
+            provider_name, model_id = provider_manager.resolve_selection(selection)
+        if not provider_name:
+            return {
+                "reply": "Smart BethG isn't connected to an AI model yet. An operator needs to configure a provider before chat can produce real responses.",
+                "provider_configured": False,
+                "temporary": True,
+            }
+
+        provider = provider_manager.get(user_id, provider_name)
+        if not provider:
+            return {
+                "reply": "The selected AI provider isn't available for this account. Choose Auto or connect a supported provider.",
+                "provider_configured": False,
+                "temporary": True,
+            }
+        if mode not in {"Plan", "Balanced", "Build"}:
+            raise ValueError("Temporary chat mode must be Plan, Balanced, or Build.")
+        context_parts = []
+        if user_instructions:
+            context_parts.append("User's custom instructions for this response:\\n" + user_instructions)
+        if mentor:
+            context_parts.append("Mentor preference: Include concise learning explanations, why a choice works, and a cleaner approach when useful. Keep the task output central and avoid overwhelming the user.")
+        else:
+            context_parts.append("Mentor preference: Focus on the requested output. Avoid extra teaching explanations unless the user asks.")
+        if mode == "Plan":
+            context_parts.append("Interaction mode: Plan. This is temporary chat-only mode; do not execute tools or make changes. Explain a plan and ask before acting.")
+        elif mode == "Build":
+            context_parts.append("Interaction mode: Build. This temporary conversation is chat-only and cannot execute tools; focus on producing the requested draft or explanation while respecting safety rules.")
+        else:
+            context_parts.append("Interaction mode: Balanced. Be helpful and deliberate; this temporary conversation is chat-only and does not execute tools.")
+        clean = [{"role": "user", "content": part} for part in context_parts] + clean
+        result, used_provider, used_model, attempted, last_error = self._generate_with_fallback(
+            provider, provider_name, model_id, clean, user_id,
+        )
+        if result is None:
+            reply = "The daily usage budget has been reached. Your usage resets at 00:00 UTC." if isinstance(last_error, BudgetExceededError) else "Smart BethG could not reach a configured AI provider. Please try again later."
+            return {"reply": reply, "provider_configured": True, "temporary": True, "error": True}
+        return {
+            "reply": result["text"],
+            "provider_configured": True,
+            "temporary": True,
+            "provider": used_provider,
+            "model": used_model,
+        }

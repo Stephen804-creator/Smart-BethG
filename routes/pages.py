@@ -72,21 +72,17 @@ def _real_capabilities():
 def home(request: Request):
     user = _require_user(request)
     if not user:
-        return RedirectResponse("/login", status_code=302)
+        return RedirectResponse("/welcome", status_code=302)
 
-    return _render(
-        request,
-        "index.html",
-        {
-            "app_version": "1.0.0",
-            "quick_actions": None,
-            "capabilities": _real_capabilities(),
-            "missions": None,
-            "artifacts": None,
-            "system_status": _real_system_status(),
-            "error_message": None,
-        },
-    )
+    # The approved product mockup defines Home as chat-first, with no dashboard
+    # sections. The old index template remains available for future workspace
+    # screens, but is no longer the app's landing page.
+    username = user.get("username") or "Smart BethG user"
+    return _render(request, "home_chat.html", {
+        "display_name": username.split("@", 1)[0],
+        "account_email": username if "@" in username else None,
+        "avatar_initials": username[:2].upper(),
+    })
 
 
 @router.get("/chat", name="main.chat_page")
@@ -94,7 +90,27 @@ def chat_page(request: Request):
     user = _require_user(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
-    return _render(request, "chat.html")
+    # Keep the legacy /chat URL aligned with the single approved chat Home.
+    username = user.get("username") or "Smart BethG user"
+    return _render(request, "home_chat.html", {
+        "display_name": username.split("@", 1)[0],
+        "account_email": username if "@" in username else None,
+        "avatar_initials": username[:2].upper(),
+    })
+
+
+@router.get("/pricing", name="main.pricing")
+def pricing_page(request: Request):
+    if _require_user(request):
+        return RedirectResponse("/", status_code=302)
+    return _render(request, "pricing_page.html")
+
+
+@router.get("/welcome", name="main.welcome")
+def welcome_page(request: Request):
+    if _require_user(request):
+        return RedirectResponse("/", status_code=302)
+    return _render(request, "marketing_page.html")
 
 
 @router.get("/terms", name="main.terms")
@@ -124,6 +140,103 @@ def service_worker():
     """
     static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
     return FileResponse(os.path.join(static_dir, "service-worker.js"), media_type="application/javascript")
+
+
+@router.get("/workspace/lab", name="main.lab_page")
+def lab_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "lab_page.html")
+
+
+@router.get("/workspace/credits", name="main.credits_page")
+def credits_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "credits_page.html")
+
+
+@router.get("/workspace/artifacts", name="main.artifacts_page")
+def artifacts_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "artifacts_page.html")
+
+
+@router.get("/workspace/files", name="main.files_page")
+def files_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "files_page.html")
+
+
+@router.get("/workspace/privacy", name="main.privacy_settings_page")
+def privacy_settings_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "privacy_settings_page.html")
+
+
+@router.get("/workspace/learned", name="main.learned_page")
+def learned_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "learned_page.html")
+
+
+@router.get("/workspace/instructions", name="main.instructions_page")
+def instructions_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "instructions_page.html")
+
+
+@router.get("/workspace/connectors", name="main.connectors_page")
+def connectors_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "connectors_page.html")
+
+
+@router.get("/profile", name="main.profile_page")
+def profile_page(request: Request):
+    user = _require_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    username = user.get("username") or "Smart BethG user"
+    return _render(request, "profile_page.html", {
+        "display_name": username.split("@", 1)[0],
+        "account_email": username if "@" in username else None,
+        "account_username": username,
+    })
+
+
+@router.get("/settings", name="main.settings_page")
+def settings_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "settings_page.html")
+
+
+@router.get("/workspace/projects", name="main.projects_page")
+def projects_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "projects_page.html")
+
+
+@router.get("/workspace/tasks", name="main.tasks_page")
+def tasks_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "tasks_page.html")
+
+
+@router.get("/onboarding", name="main.onboarding")
+def onboarding_page(request: Request):
+    if _require_user(request):
+        return RedirectResponse("/", status_code=302)
+    return _render(request, "onboarding.html")
 
 
 @router.get("/login", name="main.login")

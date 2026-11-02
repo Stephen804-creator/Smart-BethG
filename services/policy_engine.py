@@ -14,7 +14,7 @@ class PolicyEngine:
             return PolicyDecision("deny","Action is not registered.",False,"unknown")
         if not installation or installation.get("user_id")!=user_id:
             return PolicyDecision("deny","Connector installation not found for this user.",False,capability.risk)
-        if installation.get("status")!="connected" and installation.get("connector_key")!="smartbethg":
+        if installation.get("status")!="connected":
             return PolicyDecision("deny","Connector is not connected.",False,capability.risk)
         if capability.permission not in set(installation.get("granted_permissions") or []):
             return PolicyDecision("deny","Connector permission has not been granted.",False,capability.risk)

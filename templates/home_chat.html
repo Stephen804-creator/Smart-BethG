@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08111f">
+  <meta name="description" content="Learn as you build with Smart BethG.">
+  <title>Smart BethG</title>
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/approved-design.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+</head>
+<body class="bethg-home">
+  <div class="home-shell">
+    <header class="home-topbar">
+      <button class="home-icon-button" id="menuButton" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="homeDrawer"><i class="fa-solid fa-bars"></i></button>
+      <a class="home-brand" href="/" aria-label="Smart BethG home"><span class="home-brand-mark"><img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt=""></span><span class="home-brand-copy"><span>Smart BethG</span><small>Learn as you build</small></span></a>
+      <span class="home-topbar-spacer"></span>
+      <button class="home-icon-button" id="temporaryChatButton" type="button" aria-label="Start temporary chat" title="Temporary chat"><i class="fa-regular fa-clock"></i></button>
+      <button class="home-avatar" id="avatarButton" type="button" aria-label="Profile menu" aria-expanded="false" aria-controls="avatarPopover">{{ avatar_initials|default("SB") }}</button>
+      <div class="home-popover" id="avatarPopover" hidden>
+        <div class="profile-popover-summary"><strong>{{ display_name|default("Smart BethG user") }}</strong><small>{{ account_email|default("") }}</small></div>
+        <a href="/profile"><i class="fa-regular fa-user"></i> Profile</a>
+        <a href="/settings"><i class="fa-solid fa-gear"></i> Settings</a>
+        <button id="logoutButton" type="button"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sign out</button>
+      </div>
+    </header>
+
+    <div class="home-scrim" id="homeScrim" hidden></div>
+    <aside class="home-drawer" id="homeDrawer" aria-label="Main menu" aria-hidden="true">
+      <div class="drawer-heading">
+        <a class="home-brand" href="/"><span class="home-brand-mark">SB</span><span>Smart BethG</span></a>
+        <button class="home-icon-button" id="closeDrawerButton" type="button" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <button class="drawer-new-chat" id="newChatButton" type="button"><i class="fa-solid fa-pen"></i> New chat</button>
+      <section class="drawer-group">
+        <button class="drawer-group-toggle" type="button" aria-expanded="true" data-disclosure="recents"><span>Recents</span><i class="fa-solid fa-chevron-down"></i></button>
+        <div class="drawer-group-content" data-disclosure-content="recents">
+          <p id="conversationStatus" class="drawer-status" role="status"></p>
+          <div id="conversationList" class="conversation-list"></div>
+        </div>
+      </section>
+      <section class="drawer-group">
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" data-disclosure="projects"><span>Projects</span><i class="fa-solid fa-chevron-down"></i></button>
+        <div class="drawer-group-content" data-disclosure-content="projects" hidden><a class="drawer-link" href="/workspace/projects"><i class="fa-regular fa-folder"></i> Projects</a></div>
+      </section>
+      <section class="drawer-group">
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" data-disclosure="tasks"><span>Tasks &amp; Missions</span><i class="fa-solid fa-chevron-down"></i></button>
+        <div class="drawer-group-content" data-disclosure-content="tasks" hidden><a class="drawer-link" href="/workspace/tasks"><i class="fa-solid fa-list-check"></i> Tasks &amp; Missions</a></div>
+      </section>
+      <section class="drawer-group">
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" data-disclosure="artifacts"><span>Artifacts</span><i class="fa-solid fa-chevron-down"></i></button>
+        <div class="drawer-group-content" data-disclosure-content="artifacts" hidden><a class="drawer-link" href="/workspace/artifacts"><i class="fa-regular fa-file-code"></i> Artifacts</a></div>
+      </section>
+      <a class="drawer-new-chat drawer-direct-link" href="/workspace/lab"><i class="fa-solid fa-microchip"></i> Lab</a>
+      <a class="drawer-new-chat drawer-direct-link" href="/settings"><i class="fa-solid fa-gear"></i> Settings</a>
+      <p class="drawer-footnote">Learn as you build.</p>
+    </aside>
+
+    <main class="home-main">
+      <section class="home-welcome" id="welcomePanel" aria-labelledby="welcomeTitle">
+        <div class="home-greeting">
+          <p class="home-eyebrow">Your AI workspace</p>
+          <h1 id="welcomeTitle">Welcome back, {{ display_name|default("there") }}.</h1>
+          <p class="home-subtitle">What should we work on?</p>
+        </div>
+        <button class="credits-chip" id="creditsButton" type="button"><i class="fa-solid fa-bolt"></i><span id="creditsLabel">Credits</span><i class="fa-solid fa-chevron-right"></i></button>
+        <div class="home-task-grid" id="taskGrid" aria-label="Start a task">
+          <button class="home-task-card" type="button" data-prompt="Create a presentation about"><span class="task-icon task-blue"><i class="fa-solid fa-file-powerpoint"></i></span><span>Create slides</span><i class="fa-solid fa-arrow-up-right-from-square task-open"></i></button>
+          <button class="home-task-card" type="button" data-prompt="Write a report about"><span class="task-icon task-purple"><i class="fa-regular fa-file-lines"></i></span><span>Write a report</span><i class="fa-solid fa-arrow-up-right-from-square task-open"></i></button>
+          <button class="home-task-card" type="button" data-prompt="Help me build an app that"><span class="task-icon task-green"><i class="fa-solid fa-code"></i></span><span>Build an app</span><i class="fa-solid fa-arrow-up-right-from-square task-open"></i></button>
+          <button class="home-task-card" type="button" data-prompt="Analyze this data and explain"><span class="task-icon task-orange"><i class="fa-solid fa-chart-column"></i></span><span>Analyze data</span><i class="fa-solid fa-arrow-up-right-from-square task-open"></i></button>
+          <button class="home-task-card" type="button" data-prompt="Help me build a website for"><span class="task-icon task-blue"><i class="fa-solid fa-globe"></i></span><span>Build a website</span><i class="fa-solid fa-arrow-up-right-from-square task-open"></i></button>
+          <button class="home-task-card" type="button" data-prompt="Help me plan a project for"><span class="task-icon task-green"><i class="fa-solid fa-diagram-project"></i></span><span>Plan a project</span><i class="fa-solid fa-arrow-up-right-from-square task-open"></i></button>
+          <button class="home-task-card" type="button" data-prompt="Research this topic and summarize reliable sources about"><span class="task-icon task-purple"><i class="fa-solid fa-magnifying-glass"></i></span><span>Research a topic</span><i class="fa-solid fa-arrow-up-right-from-square task-open"></i></button>
+          <button class="home-task-card" type="button" data-prompt="Draft an email to"><span class="task-icon task-orange"><i class="fa-regular fa-envelope"></i></span><span>Draft an email</span><i class="fa-solid fa-arrow-up-right-from-square task-open"></i></button>
+        </div>
+      </section>
+
+      <section class="home-conversation" id="conversationPanel" aria-label="Conversation" hidden>
+        <div id="messages" class="home-messages" aria-live="polite" aria-label="Chat messages"></div>
+        <section id="approvalPanel" class="approval-panel" aria-labelledby="approvalHeading" aria-live="polite" hidden>
+          <h2 id="approvalHeading">Actions waiting for your approval</h2>
+          <p class="approval-description">Review the operation before deciding.</p>
+          <div id="approvalList" class="approval-list"></div>
+          <p id="approvalStatus" class="approval-status" role="status"></p>
+        </section>
+      </section>
+
+      <section class="home-composer-wrap" aria-label="Message Smart BethG">
+        <div class="temporary-banner" id="temporaryBanner" hidden><i class="fa-solid fa-eye-slash"></i><span>Temporary chat · Chat-only. Not saved in Smart BethG history or exports; this session ends on refresh. Your AI provider may process messages.</span><button type="button" id="endTemporaryChat">End</button></div>
+        <div class="home-composer" id="composerSurface">
+          <textarea id="prompt" rows="1" maxlength="12000" placeholder="Ask anything, or say what to build next…" aria-label="Message Smart BethG"></textarea>
+          <div class="attached-files" id="attachedFiles" hidden aria-label="Attached files"></div>
+          <p class="attachment-status" id="attachmentStatus" role="status" hidden></p>
+          <div class="composer-toolbar">
+            <div class="composer-left">
+              <button class="composer-icon-button" id="attachmentButton" type="button" aria-label="Add files"><i class="fa-solid fa-plus"></i></button>
+              <input id="filePicker" type="file" multiple hidden>
+              <input id="photoPicker" type="file" accept="image/*" multiple hidden>
+              <input id="cameraPicker" type="file" accept="image/*" capture="environment" hidden>
+              <input id="folderPicker" type="file" multiple webkitdirectory directory hidden>
+
+              <div class="home-menu-popover" id="attachmentPopover" hidden>
+                <button type="button" data-attach="Files"><i class="fa-regular fa-file"></i> Files</button>
+                <button type="button" data-attach="Photos"><i class="fa-regular fa-image"></i> Photos</button>
+                <button type="button" data-attach="Camera"><i class="fa-solid fa-camera"></i> Camera</button>
+                <button type="button" data-attach="Folders"><i class="fa-regular fa-folder"></i> Folders</button>
+              </div>
+              <button class="mode-pill" id="modeButton" type="button" aria-expanded="false" aria-controls="modeSheet"><i class="fa-solid fa-sliders"></i><span id="modeLabel">Balanced</span><i class="fa-solid fa-chevron-down"></i></button>
+            </div>
+            <div class="composer-right">
+              <select id="providerSelect" aria-label="AI provider" hidden><option value="auto">Auto</option></select>
+              <button class="composer-icon-button" id="micButton" type="button" aria-label="Voice input" title="Voice input"><i class="fa-solid fa-microphone"></i></button>
+              <button class="home-send-button" id="sendMessage" type="button" aria-label="Send message"><i class="fa-solid fa-arrow-up"></i></button>
+            </div>
+          </div>
+        </div>
+        <p id="providerStatus" class="form-help provider-status" role="status" hidden></p>
+        <p class="home-disclaimer">Smart BethG can make mistakes. Check important information.</p>
+      </section>
+    </main>
+
+    <div class="home-bottom-sheet-backdrop" id="sheetBackdrop" hidden></div>
+    <section class="home-bottom-sheet" id="modeSheet" role="dialog" aria-modal="true" aria-labelledby="modeSheetTitle" hidden>
+      <div class="sheet-grab"></div><h2 id="modeSheetTitle">Choose a mode</h2>
+      <button class="mode-option" type="button" data-mode="Plan"><span class="mode-option-icon mode-plan"><i class="fa-regular fa-lightbulb"></i></span><span><strong>Plan</strong><small>Thinks first and asks before acting.</small></span><span class="mode-check"></span></button>
+      <button class="mode-option is-selected" type="button" data-mode="Balanced"><span class="mode-option-icon mode-balanced"><i class="fa-solid fa-scale-balanced"></i></span><span><strong>Balanced</strong><small>Helpful, thoughtful, and ready to work.</small></span><span class="mode-check"><i class="fa-solid fa-check"></i></span></button>
+      <button class="mode-option" type="button" data-mode="Build"><span class="mode-option-icon mode-build"><i class="fa-solid fa-hammer"></i></span><span><strong>Build</strong><small>Creates and runs things when possible.</small></span><span class="mode-check"></span></button>
+    </section>
+  </div>
+  <script src="{{ url_for('static', filename='js/preferences.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/home.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/chat.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/register-sw.js') }}" defer></script>
+</body>
+</html>

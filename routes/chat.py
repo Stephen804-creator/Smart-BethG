@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from typing import Annotated, Literal
 
 import config
 from services.rate_limiter import check_rate_limit
@@ -24,6 +25,23 @@ class ChatMessage(BaseModel):
     conversation_id: int | None = Field(default=None, ge=1)
     # "auto" (default), "<provider>", or "<provider>:<model_id>"
     selection: str | None = Field(default=None, max_length=256)
+    user_instructions: str | None = Field(default=None, max_length=4000)
+    mode: Literal["Plan", "Balanced", "Build"] = "Balanced"
+    mentor: bool = True
+    file_ids: list[Annotated[int, Field(ge=1)]] = Field(default_factory=list, max_length=10)
+
+
+class TemporaryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=config.MAX_CHAT_MESSAGE_CHARS)
+
+
+class TemporaryChatRequest(BaseModel):
+    messages: list[TemporaryMessage] = Field(min_length=1, max_length=40)
+    selection: str | None = Field(default="auto", max_length=256)
+    user_instructions: str | None = Field(default=None, max_length=4000)
+    mode: Literal["Plan", "Balanced", "Build"] = "Balanced"
+    mentor: bool = True
 
 
 @router.post("")
@@ -49,9 +67,36 @@ def send_message(payload: ChatMessage, user=Depends(get_current_user)):
         user=user,
         conversation_id=payload.conversation_id,
         selection=payload.selection,
+        user_instructions=payload.user_instructions,
+        mode=payload.mode,
+        mentor=payload.mentor,
+        file_ids=payload.file_ids,
     )
     outcome = _executor.run(agent_request)
     return {**outcome["result"], "intent": outcome["intent"]}
+
+
+
+
+@router.post("/temporary")
+def send_temporary_message(payload: TemporaryChatRequest, user=Depends(get_current_user), service: ChatService = Depends(get_chat_service)):
+    if not check_rate_limit(
+        f"temporary-chat-user:{user['id']}",
+        max_attempts=config.CHAT_RATE_LIMIT_MAX_ATTEMPTS,
+        window_seconds=config.CHAT_RATE_LIMIT_WINDOW_SECONDS,
+    ):
+        raise HTTPException(status_code=429, detail="Temporary chat rate limit reached. Please wait before sending another request.")
+    try:
+        return service.send_temporary(
+            user["id"],
+            [message.model_dump() for message in payload.messages],
+            selection=payload.selection,
+            user_instructions=payload.user_instructions,
+            mode=payload.mode,
+            mentor=payload.mentor,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @router.get("/providers")

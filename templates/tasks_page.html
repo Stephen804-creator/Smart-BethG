@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08111f"><title>Tasks &amp; Missions · Smart BethG</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/approved-design.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/subpages.css') }}"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"></head>
+<body class="bethg-subpage"><main class="subpage-shell">
+<header class="subpage-header"><a class="subpage-back" href="/" aria-label="Back to Home"><i class="fa-solid fa-chevron-left"></i></a><h1>Tasks &amp; Missions</h1><span class="subpage-spacer"></span></header>
+<section class="subpage-content" aria-live="polite">
+<div class="subpage-section"><p class="subpage-section-label">ACTIVE</p><div id="activeMissions" class="mission-list"><p class="subpage-muted">Loading your missions…</p></div></div>
+<div class="subpage-section"><p class="subpage-section-label">DONE</p><div id="doneMissions" class="mission-list"><p class="subpage-muted">Completed missions will appear here.</p></div></div>
+<p id="missionPageStatus" class="subpage-muted" role="status"></p>
+</section></main><script src="{{ url_for('static', filename='js/preferences.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/tasks-page.js') }}" defer></script></body></html>

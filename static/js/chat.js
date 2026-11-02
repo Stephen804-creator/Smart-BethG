@@ -15,6 +15,27 @@
   const SELECTION_KEY = "sbg:selection";
   let conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
   let isSending = false;
+  let temporaryMode = Boolean(window.sbgTemporaryChat);
+  let temporaryMessages = [];
+  let currentMode = window.sbgCurrentMode || "Balanced";
+  document.addEventListener("sbg:mode-change", (event) => {
+    const mode = event.detail && event.detail.mode;
+    if (["Plan", "Balanced", "Build"].includes(mode)) currentMode = mode;
+  });
+
+  document.addEventListener("sbg:temporary-chat", (event) => {
+    temporaryMode = Boolean(event.detail && event.detail.active);
+    temporaryMessages = [];
+    messagesEl.replaceChildren();
+    if (conversationListEl) conversationListEl.querySelectorAll("button").forEach((item) => { item.disabled = temporaryMode; });
+    if (temporaryMode) {
+      conversationId = null;
+      return;
+    }
+    conversationId = window.localStorage.getItem(STORAGE_KEY) || null;
+    loadHistory();
+    loadConversationList();
+  });
 
   function setConversationControlsBusy(busy) {
     isSending = busy;
@@ -152,7 +173,7 @@
   }
 
   async function loadConversationList() {
-    if (!conversationListEl) return;
+    if (!conversationListEl || temporaryMode) return;
     const status = document.getElementById("conversationStatus");
     if (status) status.replaceChildren();
     try {
@@ -193,7 +214,7 @@
   }
 
   function switchConversation(id) {
-    if (isSending) return;
+    if (isSending || temporaryMode) return;
     conversationId = id;
     window.localStorage.setItem(STORAGE_KEY, conversationId);
     messagesEl.innerHTML = "";
@@ -204,6 +225,13 @@
   if (newChatBtn) {
     newChatBtn.addEventListener("click", () => {
       if (isSending) return;
+      document.dispatchEvent(new CustomEvent("sbg:files-clear"));
+      if (temporaryMode) {
+        temporaryMessages = [];
+        messagesEl.replaceChildren();
+        promptEl.focus();
+        return;
+      }
       conversationId = null;
       window.localStorage.removeItem(STORAGE_KEY);
       messagesEl.innerHTML = "";
@@ -323,8 +351,21 @@
     }
   }
 
+  function getUserInstructions() {
+    try { return window.localStorage.getItem("sbg:systemInstructions") || ""; }
+    catch (_) { return ""; }
+  }
+
+  function getMentorPreference() {
+    try {
+      const preferences = JSON.parse(window.localStorage.getItem("sbg:preferences") || "{}");
+      return preferences.mentor !== false;
+    } catch (_) { return true; }
+  }
+
   async function sendMessage(text) {
     renderMessage("user", text);
+    if (temporaryMode) temporaryMessages.push({ role: "user", content: text });
     sendBtn.disabled = true;
     promptEl.disabled = true;
     setConversationControlsBusy(true);
@@ -332,15 +373,17 @@
 
     try {
       const csrfToken = await getCsrfToken();
-      const res = await fetch("/api/chat", {
+      const selection = providerSelect && providerSelect.value ? providerSelect.value : "auto";
+      const fileIds = (window.sbgSelectedFiles || []).map((file) => Number(file.id)).filter((id) => Number.isInteger(id) && id > 0);
+      const endpoint = temporaryMode ? "/api/chat/temporary" : "/api/chat";
+      const payload = temporaryMode
+        ? { messages: temporaryMessages.slice(-40), selection, user_instructions: getUserInstructions(), mode: currentMode, mentor: getMentorPreference() }
+        : { message: text, conversation_id: conversationId, selection, user_instructions: getUserInstructions(), mode: currentMode, mentor: getMentorPreference(), file_ids: fileIds };
+      const res = await fetch(endpoint, {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({
-          message: text,
-          conversation_id: conversationId,
-          selection: providerSelect && providerSelect.value ? providerSelect.value : "auto",
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.status === 401) {
@@ -348,8 +391,7 @@
         return;
       }
 
-      messagesEl.lastChild.remove(); // remove "Thinking..." notice
-
+      if (messagesEl.lastChild) messagesEl.lastChild.remove(); // remove the Thinking notice
       if (!res.ok) {
         promptEl.value = text;
         renderNotice("Something went wrong sending that message. Your text is back in the composer so you can retry.");
@@ -357,9 +399,17 @@
       }
 
       const data = await res.json();
+      if (temporaryMode) {
+        temporaryMessages.push({ role: "assistant", content: data.reply || "" });
+        renderMessage("assistant", data.reply, buildNote(data));
+        return;
+      }
       conversationId = data.conversation_id;
       window.localStorage.setItem(STORAGE_KEY, conversationId);
       renderMessage("assistant", data.reply, buildNote(data));
+      if (fileIds.length && data.intent === "chat" && data.provider_configured !== false && !data.error) {
+        document.dispatchEvent(new CustomEvent("sbg:files-clear"));
+      }
       loadConversationList();
       loadApprovals();
     } catch (err) {
@@ -383,7 +433,7 @@
     if (data.fallback_used && data.provider) {
       parts.push(`switched to ${data.provider} after the requested provider failed`);
     }
-    if (data.intent && data.intent !== "chat") {
+    if (data.intent && data.intent !== "chat" && data.intent !== "plan") {
       parts.push(`action: ${data.intent}`);
     }
     return parts.length ? parts.join(" · ") : null;

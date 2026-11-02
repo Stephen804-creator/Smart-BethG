@@ -15,7 +15,7 @@ class TestConnectorInstallations(SmartBethGTestCase):
 
     def test_installation_is_owner_scoped_and_does_not_expose_secret_reference(self):
         installed=self.installations.install(self.owner["id"],"smartbethg")
-        self.assertEqual(installed["status"],"disconnected")
+        self.assertEqual(installed["status"],"connected")
         self.assertIn("smartbethg.knowledge.search",installed["granted_permissions"])
         self.assertNotIn("credential_ref",installed)
         self.assertIsNone(self.installations.get_for_user(self.other["id"],installed["id"]))
@@ -28,6 +28,19 @@ class TestConnectorInstallations(SmartBethGTestCase):
         self.assertEqual(result["status"],"completed")
         self.assertTrue(result["result"]["success"])
         self.assertEqual(result["result"]["results"],[])
+
+    def test_builtin_connector_disconnect_revokes_access_and_can_reconnect(self):
+        installed=self.installations.install(self.owner["id"],"smartbethg")
+        self.assertEqual(installed["status"],"connected")
+        self.assertTrue(self.installations.disconnect(self.owner["id"],installed["id"]))
+        disconnected=self.installations.get_for_user(self.owner["id"],installed["id"])
+        self.assertEqual(disconnected["status"],"disconnected")
+        denied=ConnectorActionService().request_action(
+            self.owner["id"],installed["id"],"knowledge.search",{"query":"example","limit":1}
+        )
+        self.assertEqual(denied["status"],"denied")
+        reconnected=self.installations.install(self.owner["id"],"smartbethg")
+        self.assertEqual(reconnected["status"],"connected")
 
     def test_connector_credentials_are_encrypted_at_rest(self):
         installed=self.installations.install(self.owner["id"],"github",permissions=["github.issues.list"])

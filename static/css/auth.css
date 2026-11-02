@@ -1,0 +1,17 @@
+/* Authentication screens follow the approved Smart BethG dark UI. */
+.auth-shell { background: radial-gradient(ellipse at 50% 0%, rgb(45 140 255 / 9%), transparent 45%), #08111f; }
+.auth-card { background: #0f1b2e; border: 1px solid #223555; border-radius: 20px; box-shadow: 0 24px 70px rgb(0 0 0 / 28%); }
+.auth-card h1 { color: #f4f7fb; letter-spacing: -.035em; }
+.auth-card .eyebrow { color: #8fa3c0; }
+.auth-card .form-label { color: #8fa3c0; }
+.auth-card .form-control { min-height: 46px; background: #08111f; border: 1px solid #223555; border-radius: 12px; color: #f4f7fb; }
+.auth-card .form-control:focus { border-color: #2d8cff; box-shadow: 0 0 0 3px rgb(45 140 255 / 15%); }
+.auth-card .btn-primary { min-height: 46px; border-radius: 14px; background: #2d8cff; color: white; }
+.auth-card .checkbox-row { align-items: flex-start; gap: 10px; color: #8fa3c0; line-height: 1.5; }
+.auth-card .checkbox-row input { margin-top: 4px; accent-color: #2d8cff; }
+.auth-card .checkbox-row a { color: #79b7ff; }
+.auth-toggle { color: #79b7ff; }
+.google-auth-button { min-height: 46px; border-radius: 14px; border-color: #223555; background: #16253d; color: #f4f7fb; }
+.google-auth-button:hover { background: #203655; }
+
+.auth-intro { margin: -2px 0 20px; color: #8fa3c0; font-size: 14px; line-height: 1.5; }
