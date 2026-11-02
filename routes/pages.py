@@ -77,7 +77,11 @@ def home(request: Request):
     # The approved product mockup defines Home as chat-first, with no dashboard
     # sections. The old index template remains available for future workspace
     # screens, but is no longer the app's landing page.
-    return _render(request, "home_chat.html")
+    username = user.get("username") or "Smart BethG user"
+    return _render(request, "home_chat.html", {
+        "display_name": username.split("@", 1)[0],
+        "avatar_initials": username[:2].upper(),
+    })
 
 
 @router.get("/chat", name="main.chat_page")
@@ -86,7 +90,11 @@ def chat_page(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=302)
     # Keep the legacy /chat URL aligned with the single approved chat Home.
-    return _render(request, "home_chat.html")
+    username = user.get("username") or "Smart BethG user"
+    return _render(request, "home_chat.html", {
+        "display_name": username.split("@", 1)[0],
+        "avatar_initials": username[:2].upper(),
+    })
 
 
 @router.get("/terms", name="main.terms")
