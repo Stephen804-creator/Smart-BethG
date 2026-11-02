@@ -69,7 +69,7 @@ class AgentExecutor:
                     agent_request.conversation_id, agent_request.selection,
                     agent_request.workspace,
                     extra_context="\n\n".join(
-                        (["User's custom instructions for this response:\\n" + agent_request.user_instructions]
+                        (["User's custom instructions for this response:\n" + agent_request.user_instructions]
                          if agent_request.user_instructions else []) + context_parts
                     ) if (agent_request.user_instructions or context_parts) else None,
                 )
