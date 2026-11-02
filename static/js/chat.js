@@ -407,7 +407,7 @@
       conversationId = data.conversation_id;
       window.localStorage.setItem(STORAGE_KEY, conversationId);
       renderMessage("assistant", data.reply, buildNote(data));
-      if (fileIds.length && data.provider_configured !== false && !data.error) {
+      if (fileIds.length && data.intent === "chat" && data.provider_configured !== false && !data.error) {
         document.dispatchEvent(new CustomEvent("sbg:files-clear"));
       }
       loadConversationList();
