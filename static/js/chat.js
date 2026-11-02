@@ -355,6 +355,13 @@
     catch (_) { return ""; }
   }
 
+  function getMentorPreference() {
+    try {
+      const preferences = JSON.parse(window.localStorage.getItem("sbg:preferences") || "{}");
+      return preferences.mentor !== false;
+    } catch (_) { return true; }
+  }
+
   async function sendMessage(text) {
     renderMessage("user", text);
     if (temporaryMode) temporaryMessages.push({ role: "user", content: text });
@@ -368,8 +375,8 @@
       const selection = providerSelect && providerSelect.value ? providerSelect.value : "auto";
       const endpoint = temporaryMode ? "/api/chat/temporary" : "/api/chat";
       const payload = temporaryMode
-        ? { messages: temporaryMessages.slice(-40), selection, user_instructions: getUserInstructions(), mode: currentMode }
-        : { message: text, conversation_id: conversationId, selection, user_instructions: getUserInstructions(), mode: currentMode };
+        ? { messages: temporaryMessages.slice(-40), selection, user_instructions: getUserInstructions(), mode: currentMode, mentor: getMentorPreference() }
+        : { message: text, conversation_id: conversationId, selection, user_instructions: getUserInstructions(), mode: currentMode, mentor: getMentorPreference() };
       const res = await fetch(endpoint, {
         method: "POST",
         credentials: "same-origin",
