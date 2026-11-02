@@ -7,9 +7,10 @@
   function apply() {
     const prefs = read();
     const root = document.body;
-    root.classList.toggle("theme-light", prefs.appearance === "light");
-    root.classList.toggle("theme-dark", prefs.appearance === "dark");
-    root.classList.toggle("theme-system", !prefs.appearance || prefs.appearance === "system");
+    const appearance = prefs.appearance || "dark";
+    root.classList.toggle("theme-light", appearance === "light");
+    root.classList.toggle("theme-dark", appearance === "dark");
+    root.classList.toggle("theme-system", appearance === "system");
     root.classList.toggle("font-readable", prefs.font === "readable");
     root.classList.toggle("font-mono", prefs.font === "mono");
   }
