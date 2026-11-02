@@ -46,3 +46,5 @@
 .splash-start { margin-top:28px; }
 .splash-brand-mark { padding:0; overflow:hidden; background:transparent; border:0; box-shadow:none; }
 .splash-brand-mark img { display:block; width:100%; height:100%; object-fit:contain; border-radius:25px; }
+.art-center { padding:0; overflow:hidden; border:0; background:transparent; box-shadow:none; }
+.art-center img { display:block; width:100%; height:100%; object-fit:contain; border-radius:34px; }
