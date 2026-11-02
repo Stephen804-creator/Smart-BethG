@@ -161,6 +161,21 @@
     window.location.href = "/workspace/credits";
   });
 
+  async function loadCreditBudget() {
+    const label = document.getElementById("creditsLabel");
+    try {
+      const response = await fetch("/api/v1/chat/usage", { credentials: "same-origin", cache: "no-store" });
+      if (response.status === 401) { window.location.href = "/login"; return; }
+      if (!response.ok) return;
+      const data = await response.json();
+      const budget = data.budget || {};
+      const limit = Number(budget.daily_token_limit || 0);
+      const used = Number(budget.tokens_reserved_or_used || 0);
+      if (limit > 0) label.textContent = Math.max(0, limit - used).toLocaleString() + " tokens left";
+    } catch (_) { /* Keep the neutral chip label if usage is unavailable. */ }
+  }
+  loadCreditBudget();
+
   const params = new URLSearchParams(window.location.search);
   if (params.has("prompt")) {
     prompt.value = params.get("prompt") || "";
