@@ -17,6 +17,11 @@
   let isSending = false;
   let temporaryMode = Boolean(window.sbgTemporaryChat);
   let temporaryMessages = [];
+  let currentMode = window.sbgCurrentMode || "Balanced";
+  document.addEventListener("sbg:mode-change", (event) => {
+    const mode = event.detail && event.detail.mode;
+    if (["Plan", "Balanced", "Build"].includes(mode)) currentMode = mode;
+  });
 
   document.addEventListener("sbg:temporary-chat", (event) => {
     temporaryMode = Boolean(event.detail && event.detail.active);
@@ -363,8 +368,8 @@
       const selection = providerSelect && providerSelect.value ? providerSelect.value : "auto";
       const endpoint = temporaryMode ? "/api/chat/temporary" : "/api/chat";
       const payload = temporaryMode
-        ? { messages: temporaryMessages.slice(-40), selection, user_instructions: getUserInstructions() }
-        : { message: text, conversation_id: conversationId, selection, user_instructions: getUserInstructions() };
+        ? { messages: temporaryMessages.slice(-40), selection, user_instructions: getUserInstructions(), mode: currentMode }
+        : { message: text, conversation_id: conversationId, selection, user_instructions: getUserInstructions(), mode: currentMode };
       const res = await fetch(endpoint, {
         method: "POST",
         credentials: "same-origin",
