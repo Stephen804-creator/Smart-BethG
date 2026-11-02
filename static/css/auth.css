@@ -13,3 +13,5 @@
 .auth-toggle { color: #79b7ff; }
 .google-auth-button { min-height: 46px; border-radius: 14px; border-color: #223555; background: #16253d; color: #f4f7fb; }
 .google-auth-button:hover { background: #203655; }
+
+.auth-intro { margin: -2px 0 20px; color: #8fa3c0; font-size: 14px; line-height: 1.5; }
