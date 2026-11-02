@@ -38,3 +38,4 @@
 .bethg-onboarding :focus-visible { outline:2px solid #2d8cff; outline-offset:3px; }
 @media(min-width:700px) { .onboarding-stage { grid-template-columns:1fr; gap:26px; } .onboarding-art { width:320px; } }
 @media(prefers-reduced-motion:reduce) { .bethg-onboarding * { transition-duration:.01ms!important; } }
+.onboarding-mark { font-size:11px; font-weight:850; letter-spacing:-.06em; }
