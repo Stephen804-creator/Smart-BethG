@@ -118,6 +118,13 @@ def service_worker():
     return FileResponse(os.path.join(static_dir, "service-worker.js"), media_type="application/javascript")
 
 
+@router.get("/settings", name="main.settings_page")
+def settings_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "settings_page.html")
+
+
 @router.get("/workspace/tasks", name="main.tasks_page")
 def tasks_page(request: Request):
     if not _require_user(request):
