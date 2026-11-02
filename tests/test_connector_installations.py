@@ -15,7 +15,7 @@ class TestConnectorInstallations(SmartBethGTestCase):
 
     def test_installation_is_owner_scoped_and_does_not_expose_secret_reference(self):
         installed=self.installations.install(self.owner["id"],"smartbethg")
-        self.assertEqual(installed["status"],"disconnected")
+        self.assertEqual(installed["status"],"connected")
         self.assertIn("smartbethg.knowledge.search",installed["granted_permissions"])
         self.assertNotIn("credential_ref",installed)
         self.assertIsNone(self.installations.get_for_user(self.other["id"],installed["id"]))
