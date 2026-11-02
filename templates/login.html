@@ -73,9 +73,7 @@
         </div>
     </div>
 
-    <script>
-      try { if (!window.localStorage.getItem("sbg:onboardingSeen")) window.location.replace("/onboarding"); } catch (_) {}
-    </script>
+    <script src="{{ url_for('static', filename='js/first-run.js') }}"></script>
     <script src="{{ url_for('static', filename='js/login.js') }}"></script>
     <script src="{{ url_for('static', filename='js/register-sw.js') }}"></script>
 </body>
