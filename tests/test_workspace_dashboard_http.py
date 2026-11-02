@@ -1,5 +1,6 @@
 """HTTP-level coverage for the project and mission dashboard capability slice."""
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 from main_fastapi import create_app
 from services.auth_service import create_user
@@ -56,6 +57,21 @@ class TestWorkspaceDashboardHttp(SmartBethGTestCase):
             with self.subTest(path=path):
                 response = self.client_one.get(path)
                 self.assertEqual(response.status_code, 200, response.text)
+
+    def test_temporary_chat_does_not_create_saved_conversation(self):
+        before = self.client_one.get("/api/chat/conversations")
+        self.assertEqual(before.status_code, 200)
+        self.assertEqual(before.json()["conversations"], [])
+        with patch("services.chat_service.provider_manager.choose_auto", return_value=(None, None)):
+            response = self.client_one.post(
+                "/api/chat/temporary",
+                headers={"X-CSRF-Token": self.csrf_one},
+                json={"messages": [{"role": "user", "content": "A temporary question"}]},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["temporary"])
+        after = self.client_one.get("/api/chat/conversations")
+        self.assertEqual(after.json()["conversations"], [])
 
     def test_project_and_mission_api_flow_is_owner_scoped(self):
         project_response = self.client_one.post(
