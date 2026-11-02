@@ -4,6 +4,8 @@
   const mentor = document.getElementById("mentorSetting");
   const mentorStatus = document.getElementById("mentorStatus");
   const values = preferences.read();
+  values.appearance = values.appearance || "dark";
+  values.font = values.font || "default";
   function markSelected() {
     buttons.forEach((button) => {
       button.classList.toggle("is-selected", values[button.dataset.setting] === button.dataset.value);
