@@ -1,0 +1,40 @@
+/* Onboarding follows the supplied first-run flow and approved visual tokens. */
+.bethg-onboarding { margin:0; min-height:100dvh; background:#08111f; color:#f4f7fb; font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; }
+.bethg-onboarding * { box-sizing:border-box; }
+.bethg-onboarding [hidden] { display:none!important; }
+.onboarding-shell { min-height:100dvh; width:min(100%,860px); margin:auto; padding:24px clamp(20px,5vw,48px) max(24px,env(safe-area-inset-bottom)); display:flex; flex-direction:column; }
+.onboarding-header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.onboarding-brand { display:flex; align-items:center; gap:10px; color:#f4f7fb; font-size:17px; font-weight:750; text-decoration:none; letter-spacing:-.03em; }
+.onboarding-mark { display:grid; place-items:center; width:36px; height:36px; border-radius:11px; color:white; background:linear-gradient(140deg,#2d8cff,#8b5cff); }
+.onboarding-skip { padding:9px 13px; border:1px solid #223555; border-radius:12px; color:#8fa3c0; background:#0f1b2e; }
+.onboarding-skip:hover { color:#f4f7fb; background:#16253d; }
+.onboarding-stage { flex:1; display:grid; grid-template-columns:minmax(0,1fr); align-content:center; gap:clamp(28px,6vh,52px); padding:clamp(32px,7vh,70px) 0; text-align:center; }
+.onboarding-art { position:relative; width:min(100%,340px); aspect-ratio:1; margin:0 auto; display:grid; place-items:center; }
+.art-glow { position:absolute; width:65%; aspect-ratio:1; border-radius:50%; background:radial-gradient(circle,rgb(45 140 255 / 22%),rgb(139 92 255 / 10%) 52%,transparent 72%); }
+.art-orbit { position:absolute; width:85%; height:58%; border:1px solid #223555; border-radius:50%; transform:rotate(-28deg); }
+.orbit-two { width:65%; height:90%; transform:rotate(38deg); border-color:#2d4568; }
+.art-center { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; width:122px; height:122px; border:1px solid #3b5b83; border-radius:34px; background:linear-gradient(145deg,#16253d,#0f1b2e); box-shadow:0 20px 70px rgb(45 140 255 / 15%); color:#f4f7fb; }
+.art-center i { font-size:38px; background:linear-gradient(135deg,#2d8cff,#8b5cff); color:transparent; background-clip:text; }
+.art-center span { font-size:12px; font-weight:800; letter-spacing:.12em; color:#8fa3c0; }
+.art-card { position:absolute; display:flex; align-items:center; gap:9px; padding:12px 14px; border:1px solid #223555; border-radius:14px; background:#0f1b2e; color:#f4f7fb; font-size:13px; box-shadow:0 12px 35px rgb(0 0 0 / 20%); }
+.art-card i { color:#2d8cff; }
+.art-card b { color:#2ecc71; font-size:14px; }
+.art-card-one { top:15%; left:0; transform:rotate(-7deg); }
+.art-card-two { top:19%; right:0; transform:rotate(7deg); }
+.art-card-three { bottom:13%; left:50%; transform:translateX(-50%) rotate(-2deg); }
+.onboarding-copy { max-width:620px; margin:0 auto; }
+.onboarding-kicker { margin:0 0 13px; color:#8fa3c0; font-size:12px; font-weight:700; letter-spacing:.12em; }
+.onboarding-copy h1 { margin:0; font-size:clamp(30px,6vw,46px); line-height:1.1; letter-spacing:-.045em; }
+.onboarding-copy p:last-child { margin:15px 0 0; color:#8fa3c0; font-size:clamp(16px,2.5vw,19px); line-height:1.6; }
+.onboarding-footer { padding-top:18px; }
+.onboarding-dots { display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:24px; }
+.onboarding-dots button { width:8px; height:8px; padding:0; border:0; border-radius:999px; background:#2d4568; transition:width .16s; }
+.onboarding-dots button.is-active { width:25px; background:#2d8cff; }
+.onboarding-actions { display:flex; justify-content:space-between; gap:12px; }
+.onboarding-back,.onboarding-next { min-height:48px; padding:12px 18px; border:1px solid #223555; border-radius:14px; color:#f4f7fb; background:#16253d; font-weight:650; }
+.onboarding-back:disabled { opacity:.4; }
+.onboarding-next { margin-left:auto; border-color:#2d8cff; background:#2d8cff; }
+.onboarding-next:hover { background:#1677ef; }
+.bethg-onboarding :focus-visible { outline:2px solid #2d8cff; outline-offset:3px; }
+@media(min-width:700px) { .onboarding-stage { grid-template-columns:1fr; gap:26px; } .onboarding-art { width:320px; } }
+@media(prefers-reduced-motion:reduce) { .bethg-onboarding * { transition-duration:.01ms!important; } }
