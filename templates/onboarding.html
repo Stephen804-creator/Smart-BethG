@@ -15,8 +15,16 @@
 <main class="onboarding-shell" aria-labelledby="onboardingTitle">
   <header class="onboarding-header">
     <a class="onboarding-brand" href="/login" aria-label="Smart BethG"><span class="onboarding-mark">SB</span><span>Smart BethG</span></a>
-    <button class="onboarding-skip" id="skipOnboarding" type="button">Skip</button>
+    <button class="onboarding-skip" id="skipOnboarding" type="button" hidden>Skip</button>
   </header>
+  <section class="onboarding-splash" id="onboardingSplash" aria-labelledby="splashTitle">
+    <div class="splash-brand-mark" aria-hidden="true">SB</div>
+    <p class="onboarding-kicker">SMART BETHG</p>
+    <h1 id="splashTitle">Learn as you build.</h1>
+    <p>Your AI work partner for creating, building, and understanding each stage.</p>
+    <button class="onboarding-next splash-start" id="onboardingStart" type="button">Get started <i class="fa-solid fa-arrow-right"></i></button>
+  </section>
+  <div id="onboardingSlides" hidden>
   <section class="onboarding-stage">
     <div class="onboarding-art" aria-hidden="true">
       <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
@@ -44,6 +52,7 @@
       <button class="onboarding-next" id="onboardingNext" type="button">Next <i class="fa-solid fa-arrow-right"></i></button>
     </div>
   </footer>
+  </div>
 </main>
 <script src="{{ url_for('static', filename='js/onboarding.js') }}" defer></script>
 </body>
