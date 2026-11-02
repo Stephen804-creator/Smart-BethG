@@ -48,6 +48,7 @@ class TestSessionRevocation(SmartBethGTestCase):
 
     def test_current_session_version_remains_valid(self):
         created = create_user("session-owner-valid", "password123")
+        self._accept_current_policies(created["id"])
         current = get_user_by_id(created["id"])
         scope = {
             "type": "http",
