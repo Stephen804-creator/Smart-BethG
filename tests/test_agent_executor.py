@@ -105,9 +105,11 @@ class TestAgentExecutor(SmartBethGTestCase):
             text="Explain this concept",
             user=self.user,
             user_instructions="Use beginner-friendly language and explain why.",
+            mentor=False,
         )
         executor.run(req)
         self.assertIn("Use beginner-friendly language and explain why.", calls["extra_context"])
+        self.assertIn("Avoid extra teaching explanations", calls["extra_context"])
 
     def test_remember_intent_stores_a_real_memory_entry(self):
         req = AgentRequest(text="remember that I prefer concise answers", user=self.user)
