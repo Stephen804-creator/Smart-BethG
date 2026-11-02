@@ -21,7 +21,8 @@
       <button class="home-icon-button" id="temporaryChatButton" type="button" aria-label="Start temporary chat" title="Temporary chat"><i class="fa-regular fa-clock"></i></button>
       <button class="home-avatar" id="avatarButton" type="button" aria-label="Profile menu" aria-expanded="false" aria-controls="avatarPopover">{{ avatar_initials|default("SB") }}</button>
       <div class="home-popover" id="avatarPopover" hidden>
-        <a href="/settings"><i class="fa-regular fa-user"></i> Profile</a>
+        <div class="profile-popover-summary"><strong>{{ display_name|default("Smart BethG user") }}</strong><small>{{ account_email|default("") }}</small></div>
+        <a href="/profile"><i class="fa-regular fa-user"></i> Profile</a>
         <a href="/settings"><i class="fa-solid fa-gear"></i> Settings</a>
         <button id="logoutButton" type="button"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sign out</button>
       </div>
