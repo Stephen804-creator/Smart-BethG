@@ -28,7 +28,6 @@ class ChatMessage(BaseModel):
     user_instructions: str | None = Field(default=None, max_length=4000)
     mode: Literal["Plan", "Balanced", "Build"] = "Balanced"
     mentor: bool = True
-    mentor: bool = True
 
 
 class TemporaryMessage(BaseModel):
@@ -41,6 +40,7 @@ class TemporaryChatRequest(BaseModel):
     selection: str | None = Field(default="auto", max_length=256)
     user_instructions: str | None = Field(default=None, max_length=4000)
     mode: Literal["Plan", "Balanced", "Build"] = "Balanced"
+    mentor: bool = True
 
 
 @router.post("")
