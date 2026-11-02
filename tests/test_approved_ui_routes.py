@@ -29,6 +29,14 @@ class TestApprovedUiRoutes(SmartBethGTestCase):
         self.assertIn("No invite needed. Free to start.", response.text)
         self.assertIn("marketing.css", response.text)
 
+    def test_public_pricing_page_matches_approved_plan_structure(self):
+        response = self.client.get("/pricing")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Simple pricing", response.text)
+        self.assertIn("Pay as you go", response.text)
+        self.assertIn("₦2,500", response.text)
+        self.assertIn("pricing.css", response.text)
+
     def test_home_requires_authentication(self):
         response = self.client.get("/", follow_redirects=False)
         self.assertEqual(response.status_code, 302)
