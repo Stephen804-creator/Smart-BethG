@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#08111f">
+<meta name="description" content="Meet Smart BethG — learn as you build.">
+<title>Meet Smart BethG</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/approved-design.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/onboarding.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+</head>
+<body class="bethg-onboarding">
+<main class="onboarding-shell" aria-labelledby="onboardingTitle">
+  <header class="onboarding-header">
+    <a class="onboarding-brand" href="/login" aria-label="Smart BethG"><span class="onboarding-mark"><i class="fa-solid fa-brain"></i></span><span>Smart BethG</span></a>
+    <button class="onboarding-skip" id="skipOnboarding" type="button">Skip</button>
+  </header>
+  <section class="onboarding-stage">
+    <div class="onboarding-art" aria-hidden="true">
+      <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
+      <div class="art-glow"></div>
+      <div class="art-center"><i class="fa-solid fa-brain"></i><span>SB</span></div>
+      <div class="art-card art-card-one"><i class="fa-solid fa-code"></i><span>Build</span><b>✓</b></div>
+      <div class="art-card art-card-two"><i class="fa-regular fa-lightbulb"></i><span>Learn</span><b>↗</b></div>
+      <div class="art-card art-card-three"><i class="fa-solid fa-wand-magic-sparkles"></i><span>Create</span><b>✦</b></div>
+    </div>
+    <div class="onboarding-copy">
+      <p class="onboarding-kicker" id="onboardingStep">WELCOME · 1 OF 4</p>
+      <h1 id="onboardingTitle">Meet Smart BethG</h1>
+      <p id="onboardingDescription">Your AI work partner that helps you create, build, and understand the work along the way.</p>
+    </div>
+  </section>
+  <footer class="onboarding-footer">
+    <div class="onboarding-dots" role="group" aria-label="Onboarding slide">
+      <button type="button" class="is-active" data-slide="0" aria-label="Slide 1" aria-current="step"></button>
+      <button type="button" data-slide="1" aria-label="Slide 2"></button>
+      <button type="button" data-slide="2" aria-label="Slide 3"></button>
+      <button type="button" data-slide="3" aria-label="Slide 4"></button>
+    </div>
+    <div class="onboarding-actions">
+      <button class="onboarding-back" id="onboardingBack" type="button" disabled>Back</button>
+      <button class="onboarding-next" id="onboardingNext" type="button">Next <i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+  </footer>
+</main>
+<script src="{{ url_for('static', filename='js/onboarding.js') }}" defer></script>
+</body>
+</html>
