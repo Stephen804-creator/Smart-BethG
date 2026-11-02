@@ -27,6 +27,8 @@ class ChatMessage(BaseModel):
     selection: str | None = Field(default=None, max_length=256)
     user_instructions: str | None = Field(default=None, max_length=4000)
     mode: Literal["Plan", "Balanced", "Build"] = "Balanced"
+    mentor: bool = True
+    mentor: bool = True
 
 
 class TemporaryMessage(BaseModel):
@@ -66,6 +68,7 @@ def send_message(payload: ChatMessage, user=Depends(get_current_user)):
         selection=payload.selection,
         user_instructions=payload.user_instructions,
         mode=payload.mode,
+        mentor=payload.mentor,
     )
     outcome = _executor.run(agent_request)
     return {**outcome["result"], "intent": outcome["intent"]}
@@ -88,6 +91,7 @@ def send_temporary_message(payload: TemporaryChatRequest, user=Depends(get_curre
             selection=payload.selection,
             user_instructions=payload.user_instructions,
             mode=payload.mode,
+            mentor=payload.mentor,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
