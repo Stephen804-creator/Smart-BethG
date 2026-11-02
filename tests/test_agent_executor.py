@@ -73,6 +73,23 @@ class TestAgentExecutor(SmartBethGTestCase):
         executor.run(req)
         self.assertEqual(calls["selection"], "anthropic:claude-opus-5")
 
+    def test_user_instructions_are_passed_to_chat_context(self):
+        calls = {}
+
+        class RecordingChatService(ChatService):
+            def send(self, user_id, message, conversation_id=None, selection=None, workspace="default", extra_context=None):
+                calls["extra_context"] = extra_context
+                return super().send(user_id, message, conversation_id, selection, workspace, extra_context)
+
+        executor = AgentExecutor(tool_service=ToolService(), chat_service=RecordingChatService())
+        req = AgentRequest(
+            text="Explain this concept",
+            user=self.user,
+            user_instructions="Use beginner-friendly language and explain why.",
+        )
+        executor.run(req)
+        self.assertIn("Use beginner-friendly language and explain why.", calls["extra_context"])
+
     def test_remember_intent_stores_a_real_memory_entry(self):
         req = AgentRequest(text="remember that I prefer concise answers", user=self.user)
         outcome = self.executor.run(req)
