@@ -162,41 +162,41 @@
 .learned-empty p { margin:12px 0 0; color:#8fa3c0; font-size:14px; line-height:1.6; }
 .learned-empty a { margin-top:20px; padding:10px 15px; border-radius:13px; color:#fff; background:#2d8cff; text-decoration:none; font-weight:650; }
 
-.theme-light.bethg-subpage,.theme-system.bethg-subpage { background:#f6f8fc; color:#0b1626; }
-.theme-light .subpage-header,.theme-system .subpage-header { background:rgb(246 248 252 / 95%); }
-.theme-light .subpage-header h1,.theme-system .subpage-header h1 { color:#0b1626; }
-.theme-light .mission-card,.theme-system .mission-card,
-.theme-light .project-create,.theme-system .project-create,
-.theme-light .project-list-card,.theme-system .project-list-card,
-.theme-light .connector-card,.theme-system .connector-card,
-.theme-light .artifact-workspace,.theme-system .artifact-workspace,
-.theme-light .usage-card,.theme-system .usage-card,
-.theme-light .usage-stat,.theme-system .usage-stat,
-.theme-light .privacy-card,.theme-system .privacy-card,
-.theme-light .learned-empty,.theme-system .learned-empty,
-.theme-light .instructions-card,.theme-system .instructions-card { background:#fff; border-color:#dbe3ef; color:#0b1626; }
-.theme-light .subpage-back,.theme-system .subpage-back { color:#0b1626; }
+.theme-light.bethg-subpage { background:#f6f8fc; color:#0b1626; }
+.theme-light .subpage-header { background:rgb(246 248 252 / 95%); }
+.theme-light .subpage-header h1 { color:#0b1626; }
+.theme-light .mission-card,
+.theme-light .project-create,
+.theme-light .project-list-card,
+.theme-light .connector-card,
+.theme-light .artifact-workspace,
+.theme-light .usage-card,
+.theme-light .usage-stat,
+.theme-light .privacy-card,
+.theme-light .learned-empty,
+.theme-light .instructions-card { background:#fff; border-color:#dbe3ef; color:#0b1626; }
+.theme-light .subpage-back { color:#0b1626; }
 .theme-light .project-create input,.theme-light .project-create textarea,
 .theme-system .project-create input,.theme-system .project-create textarea,
 .theme-light .instructions-card textarea,.theme-system .instructions-card textarea,
 .theme-light .connector-search,.theme-system .connector-search { background:#fff; color:#0b1626; border-color:#dbe3ef; }
-.theme-light .connector-search input,.theme-system .connector-search input { color:#0b1626; }
-.theme-light .connector-categories button,.theme-system .connector-categories button,
-.theme-light .artifact-tabs,.theme-system .artifact-tabs { background:#eaf0f8; }
-.theme-light .connector-categories button,.theme-system .connector-categories button { color:#52647d; border-color:#dbe3ef; }
-.theme-light .connector-categories button.is-selected,.theme-system .connector-categories button.is-selected { color:#fff; background:#2d8cff; }
-.theme-light .artifact-viewer h2,.theme-system .artifact-viewer h2 { color:#0b1626; border-color:#dbe3ef; }
-.theme-light .artifact-preview,.theme-system .artifact-preview { color:#0b1626; }
-.theme-light .artifact-menu-button,.theme-system .artifact-menu-button,
-.theme-light .artifact-actions-menu,.theme-system .artifact-actions-menu,
-.theme-light .artifact-file-list button,.theme-system .artifact-file-list button,
-.theme-light .project-archive,.theme-system .project-archive { background:#eaf0f8; color:#0b1626; border-color:#dbe3ef; }
-.theme-light .artifact-actions-menu button,.theme-system .artifact-actions-menu button { color:#0b1626; }
-.theme-light .usage-model-row,.theme-system .usage-model-row { background:#fff; border-color:#dbe3ef; }
-.theme-light .usage-model-row strong,.theme-system .usage-model-row strong { color:#0b1626; }
-.theme-light .setting-link,.theme-system .setting-link { background:#fff; border-color:#dbe3ef; color:#0b1626; }
-.theme-light .setting-feature,.theme-system .setting-feature { background:#fff; border-color:#dbe3ef; }
-.theme-light .instructions-card label,.theme-system .instructions-card label { color:#0b1626; }
+.theme-light .connector-search input { color:#0b1626; }
+.theme-light .connector-categories button,
+.theme-light .artifact-tabs { background:#eaf0f8; }
+.theme-light .connector-categories button { color:#52647d; border-color:#dbe3ef; }
+.theme-light .connector-categories button.is-selected { color:#fff; background:#2d8cff; }
+.theme-light .artifact-viewer h2 { color:#0b1626; border-color:#dbe3ef; }
+.theme-light .artifact-preview { color:#0b1626; }
+.theme-light .artifact-menu-button,
+.theme-light .artifact-actions-menu,
+.theme-light .artifact-file-list button,
+.theme-light .project-archive { background:#eaf0f8; color:#0b1626; border-color:#dbe3ef; }
+.theme-light .artifact-actions-menu button { color:#0b1626; }
+.theme-light .usage-model-row { background:#fff; border-color:#dbe3ef; }
+.theme-light .usage-model-row strong { color:#0b1626; }
+.theme-light .setting-link { background:#fff; border-color:#dbe3ef; color:#0b1626; }
+.theme-light .setting-feature { background:#fff; border-color:#dbe3ef; }
+.theme-light .instructions-card label { color:#0b1626; }
 @media (prefers-color-scheme: light) {
   .theme-system.bethg-home { --home-bg:#f6f8fc; --home-surface:#fff; --home-raised:#eaf0f8; --home-border:#dbe3ef; --home-text:#0b1626; --home-muted:#52647d; background:#f6f8fc; color:#0b1626; }
   .theme-system .home-topbar { background:rgb(246 248 252 / 94%); }
