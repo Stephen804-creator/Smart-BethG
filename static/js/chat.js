@@ -373,10 +373,11 @@
     try {
       const csrfToken = await getCsrfToken();
       const selection = providerSelect && providerSelect.value ? providerSelect.value : "auto";
+      const fileIds = (window.sbgSelectedFiles || []).map((file) => Number(file.id)).filter((id) => Number.isInteger(id) && id > 0);
       const endpoint = temporaryMode ? "/api/chat/temporary" : "/api/chat";
       const payload = temporaryMode
         ? { messages: temporaryMessages.slice(-40), selection, user_instructions: getUserInstructions(), mode: currentMode, mentor: getMentorPreference() }
-        : { message: text, conversation_id: conversationId, selection, user_instructions: getUserInstructions(), mode: currentMode, mentor: getMentorPreference() };
+        : { message: text, conversation_id: conversationId, selection, user_instructions: getUserInstructions(), mode: currentMode, mentor: getMentorPreference(), file_ids: fileIds };
       const res = await fetch(endpoint, {
         method: "POST",
         credentials: "same-origin",
@@ -405,6 +406,9 @@
       conversationId = data.conversation_id;
       window.localStorage.setItem(STORAGE_KEY, conversationId);
       renderMessage("assistant", data.reply, buildNote(data));
+      if (fileIds.length && data.provider_configured !== false && !data.error) {
+        document.dispatchEvent(new CustomEvent("sbg:files-clear"));
+      }
       loadConversationList();
       loadApprovals();
     } catch (err) {
