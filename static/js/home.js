@@ -17,6 +17,16 @@
   const composerSurface = document.getElementById("composerSurface");
   const attachmentButton = document.getElementById("attachmentButton");
   const attachmentPopover = document.getElementById("attachmentPopover");
+  const attachedFilesEl = document.getElementById("attachedFiles");
+  const attachmentStatus = document.getElementById("attachmentStatus");
+  const filePickers = {
+    Files: document.getElementById("filePicker"),
+    Photos: document.getElementById("photoPicker"),
+    Camera: document.getElementById("cameraPicker"),
+    Folders: document.getElementById("folderPicker"),
+  };
+  let selectedFiles = [];
+  window.sbgSelectedFiles = selectedFiles;
   let currentMode = "Balanced";
   window.sbgCurrentMode = currentMode;
   function announceMode() {
@@ -27,6 +37,11 @@
   window.sbgTemporaryChat = false;
   function announceTemporaryMode() {
     window.sbgTemporaryChat = temporaryChat;
+    attachmentButton.disabled = temporaryChat;
+    if (temporaryChat && selectedFiles.length) {
+      clearSelectedFiles();
+      showAttachmentStatus("Attachments are not included in Temporary Chat. Uploaded files remain in your library.");
+    }
     document.dispatchEvent(new CustomEvent("sbg:temporary-chat", { detail: { active: temporaryChat } }));
   }
 
@@ -139,20 +154,75 @@
     announceTemporaryMode();
   });
 
+  function showAttachmentStatus(message) {
+    attachmentStatus.textContent = message;
+    attachmentStatus.hidden = !message;
+  }
+  function renderAttachedFiles() {
+    attachedFilesEl.replaceChildren();
+    attachedFilesEl.hidden = selectedFiles.length === 0;
+    selectedFiles.forEach((file, index) => {
+      const chip = document.createElement("span"); chip.className = "attached-file-chip";
+      const icon = document.createElement("i"); icon.className = "fa-regular fa-file";
+      const name = document.createElement("span"); name.textContent = file.filename;
+      const remove = document.createElement("button"); remove.type = "button"; remove.setAttribute("aria-label", "Remove " + file.filename); remove.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      remove.addEventListener("click", () => { selectedFiles.splice(index, 1); window.sbgSelectedFiles = selectedFiles; renderAttachedFiles(); });
+      chip.append(icon, name, remove); attachedFilesEl.appendChild(chip);
+    });
+    window.sbgSelectedFiles = selectedFiles;
+  }
+  function clearSelectedFiles() {
+    selectedFiles = [];
+    window.sbgSelectedFiles = selectedFiles;
+    renderAttachedFiles();
+  }
+  document.addEventListener("sbg:files-clear", clearSelectedFiles);
+
+  async function uploadSelectedFiles(fileList) {
+    if (temporaryChat) { showAttachmentStatus("File attachments are disabled in Temporary Chat."); return; }
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const remaining = Math.max(0, 10 - selectedFiles.length);
+    if (files.length > remaining) showAttachmentStatus("You can attach up to 10 files per message. Uploading the first " + remaining + ".");
+    const batch = files.slice(0, remaining);
+    attachmentButton.disabled = true;
+    let added = 0;
+    try {
+      for (let index = 0; index < batch.length; index += 1) {
+        const file = batch[index];
+        showAttachmentStatus("Uploading " + (index + 1) + " of " + batch.length + "…");
+        const csrfResponse = await fetch("/auth/csrf", { credentials: "same-origin", cache: "no-store" });
+        if (!csrfResponse.ok) throw new Error("Could not obtain security token.");
+        const csrf = await csrfResponse.json();
+        const formData = new FormData(); formData.append("file", file, file.name);
+        const response = await fetch("/api/v1/files", { method: "POST", credentials: "same-origin", headers: { "X-CSRF-Token": csrf.csrf_token }, body: formData });
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 401) { window.location.href = "/login"; return; }
+        if (!response.ok) throw new Error(data.detail || "Could not upload " + file.name + ".");
+        selectedFiles.push({ id: data.id, filename: data.filename || file.name, content_type: data.content_type || file.type });
+        added += 1; renderAttachedFiles();
+      }
+      showAttachmentStatus(added + " file" + (added === 1 ? "" : "s") + " attached. Uploaded files are also saved in your library.");
+    } catch (error) {
+      showAttachmentStatus(error.message);
+    } finally {
+      attachmentButton.disabled = temporaryChat;
+      Object.values(filePickers).forEach((picker) => { picker.value = ""; });
+    }
+  }
+
   attachmentButton.addEventListener("click", () => {
+    if (temporaryChat) { showAttachmentStatus("File attachments are disabled in Temporary Chat."); return; }
     attachmentPopover.hidden = !attachmentPopover.hidden;
   });
   attachmentPopover.querySelectorAll("[data-attach]").forEach((button) => {
     button.addEventListener("click", () => {
-      const feature = button.dataset.attach;
+      const picker = filePickers[button.dataset.attach];
       attachmentPopover.hidden = true;
-      const notice = document.createElement("p");
-      notice.className = "composer-feature-notice";
-      notice.textContent = feature + " attachment is not connected in this version yet.";
-      document.querySelector(".home-composer-wrap").appendChild(notice);
-      window.setTimeout(() => notice.remove(), 4500);
+      if (picker) picker.click();
     });
   });
+  Object.values(filePickers).forEach((picker) => picker.addEventListener("change", () => uploadSelectedFiles(picker.files)));
 
   const micButton = document.getElementById("micButton");
   micButton.addEventListener("click", () => {
