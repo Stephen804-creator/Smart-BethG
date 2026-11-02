@@ -138,3 +138,13 @@
 .usage-model-row { display:flex; align-items:center; justify-content:space-between; gap:15px; padding:13px 15px; border:1px solid #223555; border-radius:13px; background:#0f1b2e; }
 .usage-model-row strong { font-size:13px; overflow-wrap:anywhere; }
 .usage-model-row span { flex:0 0 auto; color:#8fa3c0; font-size:12px; }
+
+.instructions-card { padding:20px; border:1px solid #223555; border-radius:16px; background:#0f1b2e; }
+.instructions-card > .subpage-muted { margin:0 0 18px; line-height:1.6; }
+.instructions-card label { display:block; margin:0 0 8px; color:#f4f7fb; font-weight:650; }
+.instructions-card textarea { display:block; width:100%; min-height:240px; padding:14px; border:1px solid #223555; border-radius:13px; color:#f4f7fb; background:#08111f; font:inherit; line-height:1.6; resize:vertical; }
+.instructions-card textarea:focus { outline:2px solid #2d8cff; outline-offset:1px; }
+.instructions-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; }
+.instructions-footer > div { display:flex; gap:8px; }
+.instruction-secondary,.instruction-primary { min-height:40px; padding:9px 13px; border:1px solid #223555; border-radius:12px; color:#f4f7fb; background:#16253d; font-size:13px; font-weight:650; }
+.instruction-primary { border-color:#2d8cff; background:#2d8cff; }
