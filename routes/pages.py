@@ -72,7 +72,7 @@ def _real_capabilities():
 def home(request: Request):
     user = _require_user(request)
     if not user:
-        return RedirectResponse("/login", status_code=302)
+        return RedirectResponse("/welcome", status_code=302)
 
     # The approved product mockup defines Home as chat-first, with no dashboard
     # sections. The old index template remains available for future workspace
@@ -95,6 +95,13 @@ def chat_page(request: Request):
         "display_name": username.split("@", 1)[0],
         "avatar_initials": username[:2].upper(),
     })
+
+
+@router.get("/welcome", name="main.welcome")
+def welcome_page(request: Request):
+    if _require_user(request):
+        return RedirectResponse("/", status_code=302)
+    return _render(request, "marketing_page.html")
 
 
 @router.get("/terms", name="main.terms")
