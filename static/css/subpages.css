@@ -261,3 +261,17 @@
   .theme-system .profile-card h2,.theme-system .profile-field strong { color:#0b1626; }
   .theme-system .profile-field { border-color:#dbe3ef; }
 }
+
+.library-list { display:flex; flex-direction:column; gap:10px; margin-top:17px; }
+.library-file-card { display:flex; align-items:center; gap:12px; padding:13px; border:1px solid #223555; border-radius:15px; background:#0f1b2e; }
+.library-file-icon { display:grid; place-items:center; width:40px; height:40px; flex:0 0 40px; border-radius:11px; color:#79b7ff; background:#16253d; }
+.library-file-copy { min-width:0; flex:1; display:flex; flex-direction:column; gap:4px; }
+.library-file-copy strong { color:#f4f7fb; font-size:14px; overflow-wrap:anywhere; }
+.library-file-copy small { color:#8fa3c0; font-size:11px; }
+.library-file-actions { display:flex; gap:6px; }
+.library-file-actions a,.library-file-actions button { display:grid; place-items:center; width:34px; height:34px; border:1px solid #223555; border-radius:10px; color:#8fa3c0; background:#16253d; }
+.library-file-actions a:hover,.library-file-actions button:hover { color:#f4f7fb; border-color:#365b8b; }
+.library-file-actions button:disabled { opacity:.5; }
+.theme-light .library-file-card { background:#fff; border-color:#dbe3ef; }
+.theme-light .library-file-copy strong { color:#0b1626; }
+@media(prefers-color-scheme:light) { .theme-system .library-file-card { background:#fff; border-color:#dbe3ef; } .theme-system .library-file-copy strong { color:#0b1626; } }
