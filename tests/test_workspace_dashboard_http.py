@@ -62,6 +62,25 @@ class TestWorkspaceDashboardHttp(SmartBethGTestCase):
                 response = self.client_one.get(path)
                 self.assertEqual(response.status_code, 200, response.text)
 
+    def test_chat_api_passes_uploaded_file_ids_and_preferences_to_agent(self):
+        outcome = {"intent": "chat", "status": "completed", "result": {"reply": "Read the attachment.", "provider_configured": True}}
+        with patch("routes.chat._executor.run", return_value=outcome) as run:
+            response = self.client_one.post(
+                "/api/chat",
+                headers={"X-CSRF-Token": self.csrf_one},
+                json={
+                    "message": "Summarize the attached file",
+                    "file_ids": [17],
+                    "mode": "Build",
+                    "mentor": False,
+                },
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        request = run.call_args.args[0]
+        self.assertEqual(request.file_ids, [17])
+        self.assertEqual(request.mode, "Build")
+        self.assertFalse(request.mentor)
+
     def test_temporary_chat_does_not_create_saved_conversation(self):
         before = self.client_one.get("/api/chat/conversations")
         self.assertEqual(before.status_code, 200)
