@@ -20,7 +20,7 @@
   let touchStartX = null;
 
   function finish() {
-    window.localStorage.setItem("sbg:onboardingSeen", "1");
+    try { window.localStorage.setItem("sbg:onboardingSeen", "1"); } catch (_) { /* Storage may be disabled; account creation remains available. */ }
     window.location.href = "/login?mode=register";
   }
   function render() {
@@ -60,6 +60,7 @@
   skip.addEventListener("click", finish);
   dots.forEach((dot) => dot.addEventListener("click", () => { index = Number(dot.dataset.slide); render(); }));
   document.addEventListener("keydown", (event) => {
+    if (slidesContainer.hidden) return;
     if (event.key === "ArrowRight" && index < slides.length - 1) { index += 1; render(); }
     if (event.key === "ArrowLeft" && index > 0) { index -= 1; render(); }
   });
