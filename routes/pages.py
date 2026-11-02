@@ -118,6 +118,13 @@ def service_worker():
     return FileResponse(os.path.join(static_dir, "service-worker.js"), media_type="application/javascript")
 
 
+@router.get("/workspace/credits", name="main.credits_page")
+def credits_page(request: Request):
+    if not _require_user(request):
+        return RedirectResponse("/login", status_code=302)
+    return _render(request, "credits_page.html")
+
+
 @router.get("/workspace/artifacts", name="main.artifacts_page")
 def artifacts_page(request: Request):
     if not _require_user(request):
