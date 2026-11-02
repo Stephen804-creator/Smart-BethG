@@ -38,7 +38,7 @@
       const title = document.createElement("h2"); title.textContent=item.name;
       const note = document.createElement("p"); note.textContent= item.category.charAt(0).toUpperCase()+item.category.slice(1).replace("-"," ")+" · "+(item.actions||[]).length+" available actions";
       text.append(title,note);
-      const isActive = Boolean(install && (install.status === "connected" || item.key === "smartbethg"));
+      const isActive = Boolean(install && install.status === "connected");
       const action = document.createElement("button"); action.type="button"; action.className=isActive?"connector-connected":"connector-connect";
       if (isActive) { action.innerHTML='<i class="fa-solid fa-check"></i>'; action.setAttribute("aria-label","Connected"); action.title="Connected"; }
       else { action.textContent=install?"Connect":"+"; action.setAttribute("aria-label",install?"Connect "+item.name:"Add "+item.name); action.title=action.getAttribute("aria-label"); }
@@ -60,9 +60,10 @@
     button.disabled=true; status.textContent="Preparing "+item.name+"…";
     try {
       let current=install;
-      if (!current) {
+      if (!current || (item.key === "smartbethg" && current.status !== "connected")) {
         current=await request("/api/v1/connectors",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({connector_key:item.key,permissions:item.key==="smartbethg"?["smartbethg.knowledge.search"]:[]})});
-        installed.push(current);
+        const existingIndex=installed.findIndex((entry)=>entry.id===current.id);
+        if(existingIndex>=0)installed[existingIndex]=current;else installed.push(current);
       }
       if (item.key === "smartbethg") {
         status.textContent="Smart BethG Knowledge was added. No external sign-in is required.";
