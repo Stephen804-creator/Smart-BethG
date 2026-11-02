@@ -102,3 +102,22 @@
 .artifact-code pre { min-width:0; max-width:100%; margin:0; padding:16px; overflow:auto; color:#d6e3f5; background:#08111f; font-size:12px; line-height:1.6; }
 .artifact-code code { white-space:pre; }
 @media(max-width:700px) { .artifact-page { grid-template-columns:minmax(0,1fr); gap:20px; } .artifact-list { max-height:190px; overflow:auto; } .artifact-code { grid-template-columns:105px minmax(0,1fr); } .artifact-preview { min-height:250px; } }
+
+.project-create { display:flex; flex-direction:column; gap:9px; margin-bottom:30px; padding:18px; border:1px solid #223555; border-radius:16px; background:#0f1b2e; }
+.project-create h2 { margin:0 0 4px; font-size:19px; }
+.project-create label { color:#8fa3c0; font-size:13px; }
+.project-create label span { color:#7186a5; }
+.project-create input,.project-create textarea { width:100%; padding:11px 12px; border:1px solid #223555; border-radius:12px; color:#f4f7fb; background:#08111f; resize:vertical; }
+.project-create button { align-self:flex-start; padding:11px 15px; border:0; border-radius:13px; color:#fff; background:#2d8cff; font-weight:650; }
+.project-create button:disabled { opacity:.55; }
+.project-create p { margin:0; }
+.project-list-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.project-list-header .subpage-section-label { margin:0 0 12px; }
+.project-list { display:flex; flex-direction:column; gap:12px; }
+.project-list-card { display:flex; align-items:center; gap:13px; padding:15px; border:1px solid #223555; border-radius:16px; background:#0f1b2e; }
+.project-list-icon { display:grid; place-items:center; width:42px; height:42px; flex:0 0 42px; border-radius:12px; color:#79b7ff; background:#16253d; }
+.project-list-copy { min-width:0; flex:1; }
+.project-list-copy h2 { margin:0; font-size:16px; overflow-wrap:anywhere; }
+.project-list-copy p { margin:5px 0 0; color:#8fa3c0; font-size:13px; line-height:1.45; overflow-wrap:anywhere; }
+.project-archive { padding:8px 10px; border:1px solid #223555; border-radius:10px; color:#8fa3c0; background:#16253d; font-size:12px; }
+.project-archive:hover { color:#f4f7fb; }
