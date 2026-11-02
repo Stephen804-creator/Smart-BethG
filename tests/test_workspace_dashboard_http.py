@@ -32,14 +32,16 @@ class TestWorkspaceDashboardHttp(SmartBethGTestCase):
             raise AssertionError("Test login failed: " + response.text)
         return response.json()["csrf_token"]
 
-    def test_home_renders_real_project_and_mission_controls(self):
+    def test_home_uses_approved_chat_first_mockup(self):
         response = self.client_one.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn('id="projectCreateForm"', response.text)
-        self.assertIn('id="missionCreateForm"', response.text)
-        self.assertIn("workspace-dashboard.js", response.text)
-        self.assertIn("Projects and missions", response.text)
-        self.assertIn("Record a mission", response.text)
+        self.assertIn('id="welcomePanel"', response.text)
+        self.assertIn('id="taskGrid"', response.text)
+        self.assertIn('id="composerSurface"', response.text)
+        self.assertIn("home.css", response.text)
+        self.assertIn("Learn as you build", response.text)
+        self.assertNotIn('id="projectCreateForm"', response.text)
+        self.assertNotIn("Projects and missions", response.text)
 
     def test_project_and_mission_api_flow_is_owner_scoped(self):
         project_response = self.client_one.post(
