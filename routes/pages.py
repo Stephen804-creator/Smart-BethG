@@ -80,6 +80,7 @@ def home(request: Request):
     username = user.get("username") or "Smart BethG user"
     return _render(request, "home_chat.html", {
         "display_name": username.split("@", 1)[0],
+        "account_email": username if "@" in username else None,
         "avatar_initials": username[:2].upper(),
     })
 
@@ -187,6 +188,19 @@ def connectors_page(request: Request):
     if not _require_user(request):
         return RedirectResponse("/login", status_code=302)
     return _render(request, "connectors_page.html")
+
+
+@router.get("/profile", name="main.profile_page")
+def profile_page(request: Request):
+    user = _require_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    username = user.get("username") or "Smart BethG user"
+    return _render(request, "profile_page.html", {
+        "display_name": username.split("@", 1)[0],
+        "account_email": username if "@" in username else None,
+        "account_username": username,
+    })
 
 
 @router.get("/settings", name="main.settings_page")
