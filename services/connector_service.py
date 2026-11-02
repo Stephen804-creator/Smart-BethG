@@ -78,9 +78,16 @@ class ConnectorInstallationService:
             raise ValueError("A requested permission is not defined for this connector.")
         label=(label or CATALOG[connector_key]["name"]).strip()
         if not label or len(label)>120: raise ValueError("Connector label must be between 1 and 120 characters.")
+        initial_status = "connected" if connector_key == "smartbethg" else "disconnected"
         conn=get_connection()
         try:
-            conn.execute("INSERT INTO connector_installations(user_id,connector_key,label,status,granted_permissions_json) VALUES (?,?,?,'disconnected',?) ON CONFLICT(user_id,connector_key,label) DO NOTHING",(user_id,connector_key,label,json.dumps(sorted(set(permissions)))))
+            conn.execute(
+                "INSERT INTO connector_installations(user_id,connector_key,label,status,granted_permissions_json) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(user_id,connector_key,label) DO UPDATE SET "
+                "status=CASE WHEN excluded.connector_key='smartbethg' THEN 'connected' ELSE connector_installations.status END, "
+                "granted_permissions_json=excluded.granted_permissions_json",
+                (user_id,connector_key,label,initial_status,json.dumps(sorted(set(permissions)))),
+            )
             conn.commit()
         finally: conn.close()
         return next(item for item in self.list_for_user(user_id) if item["connector_key"]==connector_key and item["label"]==label)
