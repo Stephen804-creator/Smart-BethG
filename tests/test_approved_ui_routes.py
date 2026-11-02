@@ -15,6 +15,8 @@ class TestApprovedUiRoutes(SmartBethGTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Meet Smart BethG", response.text)
         self.assertIn("onboarding.css", response.text)
+        self.assertIn("onboardingSplash", response.text)
+        self.assertIn("Get started", response.text)
         self.assertIn("onboarding.js", response.text)
         script = self.client.get("/static/js/onboarding.js")
         self.assertEqual(script.status_code, 200)
