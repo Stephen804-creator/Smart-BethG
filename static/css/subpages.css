@@ -241,3 +241,14 @@
 .lab-tool-card > span:nth-child(2) { flex:1; }
 .theme-light .lab-card,.theme-light .lab-tool-card { background:#fff; border-color:#dbe3ef; color:#0b1626; }
 @media(max-width:500px) { .lab-card { flex-wrap:wrap; } .lab-state { width:100%; text-align:left; padding-left:55px; } }
+
+.profile-content { display:flex; flex-direction:column; gap:16px; }
+.profile-card { display:flex; align-items:center; gap:15px; padding:20px; border:1px solid #223555; border-radius:16px; background:#0f1b2e; }
+.profile-avatar { display:grid; place-items:center; width:60px; height:60px; flex:0 0 60px; border-radius:50%; color:#fff; background:linear-gradient(135deg,#2d8cff,#8b5cff); font-size:22px; font-weight:750; }
+.profile-card h2 { margin:0; font-size:21px; overflow-wrap:anywhere; }
+.profile-card p { margin:6px 0 0; color:#8fa3c0; font-size:13px; overflow-wrap:anywhere; }
+.profile-info { padding:17px; border:1px solid #223555; border-radius:16px; background:#0f1b2e; }
+.profile-info .subpage-section-label { margin:0 0 12px; }
+.profile-field { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding:13px 0; border-top:1px solid #223555; font-size:13px; }
+.profile-field span { color:#8fa3c0; }
+.profile-field strong { color:#f4f7fb; text-align:right; overflow-wrap:anywhere; }
