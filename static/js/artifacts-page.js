@@ -75,7 +75,7 @@
   });
   document.getElementById("artifactCopyLink").addEventListener("click",async()=>{
     if(!selected)return;const url=window.location.origin+"/workspace/artifacts?id="+encodeURIComponent(selected.id);
-    try{await navigator.clipboard.writeText(url);status.textContent="Artifact link copied."; }catch(_){status.textContent="Clipboard access is unavailable in this browser.";}menu.hidden=true;
+    try{await navigator.clipboard.writeText(url);status.textContent="Private artifact link copied. It only opens for your account."; }catch(_){status.textContent="Clipboard access is unavailable in this browser.";}menu.hidden=true;
   });
   const id=new URLSearchParams(window.location.search).get("id");
   load().then(()=>{if(id){const item=artifacts.find((x)=>String(x.id)===id);if(item)loadContent(item);}});
