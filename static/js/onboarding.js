@@ -11,8 +11,13 @@
   const next = document.getElementById("onboardingNext");
   const back = document.getElementById("onboardingBack");
   const skip = document.getElementById("skipOnboarding");
+  const splash = document.getElementById("onboardingSplash");
+  const slidesContainer = document.getElementById("onboardingSlides");
+  const start = document.getElementById("onboardingStart");
+  const stage = document.querySelector(".onboarding-stage");
   const dots = [...document.querySelectorAll("[data-slide]")];
   let index = 0;
+  let touchStartX = null;
 
   function finish() {
     window.localStorage.setItem("sbg:onboardingSeen", "1");
@@ -31,6 +36,22 @@
       else dot.removeAttribute("aria-current");
     });
   }
+  start.addEventListener("click", () => {
+    splash.hidden = true;
+    slidesContainer.hidden = false;
+    skip.hidden = false;
+    render();
+  });
+  stage.addEventListener("touchstart", (event) => {
+    touchStartX = event.changedTouches[0].clientX;
+  }, { passive: true });
+  stage.addEventListener("touchend", (event) => {
+    if (touchStartX === null) return;
+    const delta = event.changedTouches[0].clientX - touchStartX;
+    touchStartX = null;
+    if (delta < -45 && index < slides.length - 1) { index += 1; render(); }
+    else if (delta > 45 && index > 0) { index -= 1; render(); }
+  }, { passive: true });
   next.addEventListener("click", () => {
     if (index === slides.length - 1) { finish(); return; }
     index += 1; render();
