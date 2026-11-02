@@ -17,8 +17,9 @@
 <body>
     <div class="auth-shell">
         <div class="auth-card">
-            <p class="eyebrow">Smart BethG</p>
+            <p class="eyebrow">Smart BethG · Learn as you build</p>
             <h1 id="authTitle">Log in to Smart BethG</h1>
+            <p class="auth-intro">Free to start. No invite needed. Learn as you build.</p>
 
             <form id="authForm">
                 <div class="form-group">
@@ -78,6 +79,9 @@
         </div>
     </div>
 
+    <script>
+      try { if (!window.localStorage.getItem("sbg:onboardingSeen")) window.location.replace("/onboarding"); } catch (_) {}
+    </script>
     <script src="{{ url_for('static', filename='js/login.js') }}"></script>
     <script src="{{ url_for('static', filename='js/register-sw.js') }}"></script>
 </body>
