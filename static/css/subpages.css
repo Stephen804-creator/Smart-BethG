@@ -252,3 +252,12 @@
 .profile-field { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding:13px 0; border-top:1px solid #223555; font-size:13px; }
 .profile-field span { color:#8fa3c0; }
 .profile-field strong { color:#f4f7fb; text-align:right; overflow-wrap:anywhere; }
+
+.theme-light .profile-card,.theme-light .profile-info { background:#fff; border-color:#dbe3ef; }
+.theme-light .profile-card h2,.theme-light .profile-field strong { color:#0b1626; }
+.theme-light .profile-field { border-color:#dbe3ef; }
+@media(prefers-color-scheme:light) {
+  .theme-system .profile-card,.theme-system .profile-info { background:#fff; border-color:#dbe3ef; }
+  .theme-system .profile-card h2,.theme-system .profile-field strong { color:#0b1626; }
+  .theme-system .profile-field { border-color:#dbe3ef; }
+}
