@@ -73,6 +73,25 @@ class TestAgentExecutor(SmartBethGTestCase):
         executor.run(req)
         self.assertEqual(calls["selection"], "anthropic:claude-opus-5")
 
+    def test_plan_mode_does_not_execute_classified_tools(self):
+        calls = {"tools": 0, "context": None}
+
+        class RecordingToolService:
+            def execute(self, user, action, workspace="default", **kwargs):
+                calls["tools"] += 1
+                return {"success": True, "status": "executed"}
+
+        class RecordingChatService(ChatService):
+            def send(self, user_id, message, conversation_id=None, selection=None, workspace="default", extra_context=None):
+                calls["context"] = extra_context
+                return super().send(user_id, message, conversation_id, selection, workspace, extra_context)
+
+        executor = AgentExecutor(tool_service=RecordingToolService(), chat_service=RecordingChatService())
+        outcome = executor.run(AgentRequest(text="check repo status", user=self.user, mode="Plan"))
+        self.assertEqual(calls["tools"], 0)
+        self.assertIn("Do not execute tools or make changes", calls["context"])
+        self.assertEqual(outcome["intent"], "plan")
+
     def test_user_instructions_are_passed_to_chat_context(self):
         calls = {}
 
