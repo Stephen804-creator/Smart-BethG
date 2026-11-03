@@ -8,7 +8,7 @@ class TestDatabaseSchema(SmartBethGTestCase):
         "users", "agents", "tasks", "approvals", "audit_events", "tools",
         "providers", "conversations", "messages", "missions", "mission_runs",
         "files", "memory", "research", "evidence", "workflows", "artifacts",
-        "social_content", "projects", "logs",
+        "social_content", "projects", "logs", "provenance_events",\n        "provenance_manifests", "provenance_signatures",
     }
 
     def test_all_expected_tables_exist(self):
