@@ -33,6 +33,19 @@ class TestArtifactService(SmartBethGTestCase):
         with self.assertRaises(ValueError):
             self.service.create(self.owner["id"], "too-large", "x" * (self.service.MAX_CONTENT_BYTES + 1))
 
+    def test_text_artifact_idempotency_rejects_changed_content(self):
+        first = self.service.create(
+            self.owner["id"], "idempotent.txt", "first content", idempotency_key="text-once"
+        )
+        again = self.service.create(
+            self.owner["id"], "idempotent.txt", "first content", idempotency_key="text-once"
+        )
+        self.assertEqual(first["id"], again["id"])
+        with self.assertRaisesRegex(ValueError, "different artifact content"):
+            self.service.create(
+                self.owner["id"], "idempotent.txt", "changed content", idempotency_key="text-once"
+            )
+
     def _temporary_asset(self, content):
         handle = tempfile.NamedTemporaryFile(delete=False)
         try:
