@@ -115,9 +115,11 @@ class ArtifactService:
 
     def create_binary_from_path(
         self, user_id, name, source_path, content_type, mission_id=None,
-        idempotency_key=None,
+        idempotency_key=None, provenance_event_type="asset_uploaded",
+        provenance_actor_type="human", provenance_actor_id=None,
+        provenance_actor_label=None, provenance_agent_id=None, provenance_payload=None,
     ):
-        """Persist a bounded, signature-checked binary asset and its upload event."""
+        """Persist a bounded binary asset and append its actual creation/transformation event."""
         name = (name or "").strip()
         if not name or len(name) > 160:
             raise ValueError("Artifact name must be between 1 and 160 characters.")
@@ -232,16 +234,23 @@ class ArtifactService:
 
         try:
             from repositories.provenance_repository import ProvenanceRepository
+            event_payload = {
+                "content_type": media_type,
+                "size_bytes": size,
+                "checksum_sha256": checksum,
+                "source_filename": name,
+            }
+            if provenance_payload:
+                event_payload.update(dict(provenance_payload))
             ProvenanceRepository().append_event(
-                user_id, artifact_id, "asset_uploaded", "human",
-                actor_id=str(user_id),
-                payload={
-                    "content_type": media_type,
-                    "size_bytes": size,
-                    "checksum_sha256": checksum,
-                    "source_filename": name,
-                },
-                idempotency_key=f"asset-upload:{idempotency_key}" if idempotency_key else None,
+                user_id, artifact_id, provenance_event_type, provenance_actor_type,
+                actor_id=provenance_actor_id if provenance_actor_id is not None else str(user_id),
+                actor_label=provenance_actor_label,
+                agent_id=provenance_agent_id,
+                payload=event_payload,
+                idempotency_key=(
+                    f"{provenance_event_type}:{idempotency_key}" if idempotency_key else None
+                ),
             )
         except Exception:
             self.delete(user_id, artifact_id)
