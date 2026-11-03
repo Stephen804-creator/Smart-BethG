@@ -180,7 +180,7 @@ class ProvenanceManifestService:
                 "name": artifact["name"],
                 "media_type": artifact.get("content_type") or "application/octet-stream",
                 "artifact_type": artifact.get("artifact_type") or "unknown",
-                "size_bytes": len(content) if (content := b"") else artifact.get("size_bytes", 0),
+                "size_bytes": artifact.get("size_bytes", 0),
                 "sha256": asset_hash,
             },
             "created_at": artifact.get("created_at"),
@@ -260,6 +260,18 @@ class ProvenanceManifestService:
         }
 
     def generate_manifest(self, user_id, artifact_id):
+        artifact, content, asset_hash, events, integrity = self._snapshot(user_id, artifact_id)
+        latest = self.repository.get_latest_manifest(user_id, artifact_id)
+        if latest:
+            try:
+                latest_json = json.loads(latest["manifest_json"])
+            except (TypeError, ValueError):
+                latest_json = {}
+            if (
+                latest.get("event_chain_head_sha256") == integrity["head_sha256"]
+                and latest_json.get("asset", {}).get("sha256") == asset_hash
+            ):
+                return self._public_record(latest)
         signing = {
             "status": "unsigned",
             "algorithm": None,
@@ -304,6 +316,8 @@ class ProvenanceManifestService:
 
         try:
             manifest = json.loads(record["manifest_json"])
+            if not isinstance(manifest, dict) or not isinstance(manifest.get("asset"), dict):
+                raise ValueError("Manifest structure is invalid.")
             recalculated = sha256_hex(canonical_json(manifest))
         except (TypeError, ValueError):
             return {"valid": False, "status": "invalid", "reason": "manifest_malformed"}
