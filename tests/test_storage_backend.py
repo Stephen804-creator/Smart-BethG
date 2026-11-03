@@ -27,6 +27,16 @@ class TestLocalFilesystemStorage(unittest.TestCase):
         with self.assertRaises(StorageError):
             self.storage.get_bytes("uploads", 8, locator)
 
+    def test_file_backed_upload_round_trips(self):
+        with tempfile.NamedTemporaryFile(delete=False) as source:
+            source.write(b"file-backed-asset")
+            source_path = source.name
+        try:
+            locator = self.storage.put_file("artifacts", 7, "asset.bin", source_path)
+            self.assertEqual(self.storage.get_bytes("artifacts", 7, locator), b"file-backed-asset")
+        finally:
+            os.unlink(source_path)
+
     def test_rejects_traversal_object_name(self):
         with self.assertRaises(ValueError):
             self.storage.put_bytes("uploads", 7, "../secret.txt", b"no")
