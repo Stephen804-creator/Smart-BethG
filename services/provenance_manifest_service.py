@@ -324,6 +324,11 @@ class ProvenanceManifestService:
             return {"valid": False, "status": "invalid", "reason": "manifest_malformed"}
         if not hmac.compare_digest(recalculated, str(record["manifest_sha256"])):
             return {"valid": False, "status": "invalid", "reason": "manifest_digest_mismatch"}
+        if manifest.get("schema_id") != record["schema_id"]:
+            return {"valid": False, "status": "invalid", "reason": "manifest_schema_mismatch"}
+        manifest_chain = manifest.get("event_chain") or {}
+        if manifest_chain.get("head_sha256") != record["event_chain_head_sha256"]:
+            return {"valid": False, "status": "invalid", "reason": "manifest_event_head_mismatch"}
 
         try:
             content, stored = self.artifacts.read_bytes(user_id, artifact_id)
@@ -332,22 +337,36 @@ class ProvenanceManifestService:
         if content is None or not stored:
             return {"valid": False, "status": "invalid", "reason": "asset_unavailable_or_changed"}
         asset_hash = sha256_hex(content)
+        manifest_asset = manifest.get("asset") or {}
         if (
-            not hmac.compare_digest(asset_hash, str(manifest.get("asset", {}).get("sha256", "")))
-            or len(content) != manifest.get("asset", {}).get("size_bytes")
+            not hmac.compare_digest(asset_hash, str(manifest_asset.get("sha256", "")))
+            or len(content) != manifest_asset.get("size_bytes")
         ):
             return {"valid": False, "status": "invalid", "reason": "asset_digest_mismatch"}
+        if (
+            stored.get("content_type") != manifest_asset.get("media_type")
+            or stored.get("name") != manifest_asset.get("name")
+        ):
+            return {"valid": False, "status": "invalid", "reason": "asset_metadata_mismatch"}
 
         chain = self.repository.verify_chain(
             user_id, artifact_id, expected_head=record["event_chain_head_sha256"] or ""
         )
         if not chain["valid"]:
             return {"valid": False, "status": "invalid", "reason": "event_chain_" + chain["reason"]}
+        if manifest_chain.get("events_count") != chain["events_checked"]:
+            return {"valid": False, "status": "invalid", "reason": "manifest_event_count_mismatch"}
 
         signatures = self.repository.list_signatures(user_id, record["id"])
         if not signatures:
+            status = "invalid" if record["status"] == "signed" else "unsigned"
             return {
-                "valid": False, "status": "unsigned", "reason": "signature_missing",
+                "valid": False, "status": status, "reason": "signature_missing",
+                "manifest_id": record["id"], "manifest_sha256": record["manifest_sha256"],
+            }
+        if record["status"] != "signed":
+            return {
+                "valid": False, "status": "invalid", "reason": "manifest_signature_state_mismatch",
                 "manifest_id": record["id"], "manifest_sha256": record["manifest_sha256"],
             }
 
