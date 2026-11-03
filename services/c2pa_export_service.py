@@ -317,8 +317,8 @@ class C2paExportService:
         output_source_references = [{
             "source_id": artifact_id,
             "source_sha256": artifact["checksum_sha256"],
-            "relationship": "parentOf",
-        }] if not has_ai_contribution else []
+            "relationship": "pre_signing_version" if has_ai_contribution else "parentOf",
+        }]
         output_source_references.extend(source_references)
         for source in output_source_references:
             self.repository.append_event(
