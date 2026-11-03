@@ -2,7 +2,6 @@ name: Smart BethG tests
 
 on:
   pull_request:
-    branches: [main]
   # Run tests on every branch, not only main. Refactor branches need the same
   # PostgreSQL-backed regression feedback before their changes can be reviewed
   # or merged; limiting push runs to main would hide failures during development.
