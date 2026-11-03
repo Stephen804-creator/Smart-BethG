@@ -12,8 +12,8 @@ class TestProvenanceContracts(SmartBethGTestCase):
     def test_sha256_uses_exact_utf8_bytes(self):
         self.assertEqual(
             sha256_hex("provenance"),
-            "b6a8f0e5d9b0e2b9e6f3a0f2a1e1b9f3",
-        ) if False else self.assertEqual(len(sha256_hex("provenance")), 64)
+            "96d815328a42cb4ef89d5e0b7a1df6be43b484832c83a7b4596d8402c7c0b12b",
+        )
 
     def test_rejects_unknown_event_and_actor_types(self):
         with self.assertRaises(ValueError):
