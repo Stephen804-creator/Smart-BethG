@@ -12,6 +12,11 @@ from services.artifact_service import ArtifactService
 from services.provenance_manifest_service import ProvenanceManifestService
 
 
+MAX_C2PA_SOURCE_INGREDIENTS = 10
+MAX_C2PA_SOURCE_BYTES = 20 * 1024 * 1024
+MAX_C2PA_HUMAN_ACTIONS = 100
+MAX_C2PA_AI_MODELS = 10
+
 TRAINED_ALGORITHMIC_MEDIA = (
     "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"
 )
@@ -179,9 +184,14 @@ class C2paExportService:
         source_rows = [
             row for row in event_rows if row["event_type"] == "source_attached"
         ]
+        if len(source_rows) > MAX_C2PA_SOURCE_INGREDIENTS:
+            raise ValueError(
+                f"C2PA export supports at most {MAX_C2PA_SOURCE_INGREDIENTS} source attachments."
+            )
         omitted_sources = []
         source_ingredients = []
         source_references = []
+        total_source_bytes = 0
         for index, row in enumerate(source_rows, start=1):
             payload = self._event_payload(row)
             source_id = payload.get("source_artifact_id")
@@ -194,6 +204,9 @@ class C2paExportService:
             source_bytes, source_record = self.artifacts.read_bytes(user_id, source_id)
             if source_bytes is None or not source_record:
                 raise ValueError("A recorded source asset could not be read.")
+            total_source_bytes += len(source_bytes)
+            if total_source_bytes > MAX_C2PA_SOURCE_BYTES:
+                raise ValueError("C2PA source ingredients exceed the 20 MiB combined size limit.")
             actual_source_hash = sha256_hex(source_bytes)
             if actual_source_hash != source_hash:
                 raise ValueError("A recorded source asset no longer matches its provenance hash.")
@@ -235,6 +248,10 @@ class C2paExportService:
             if key in seen_models:
                 continue
             seen_models.add(key)
+            if len(seen_models) > MAX_C2PA_AI_MODELS:
+                raise ValueError(
+                    f"C2PA export supports at most {MAX_C2PA_AI_MODELS} distinct AI models."
+                )
             disclosure = {
                 "modelType": "c2pa.types.model",
                 "contentProfile": {"humanOversightLevel": oversight_level},
@@ -290,8 +307,12 @@ class C2paExportService:
                                 ingredient["mime_type"],
                                 io.BytesIO(ingredient["content"]),
                             )
-                        for row in event_rows:
-                            if row["event_type"] == "human_edit":
+                        human_edit_rows = [
+                            row for row in event_rows if row["event_type"] == "human_edit"
+                        ]
+                        if len(human_edit_rows) > MAX_C2PA_HUMAN_ACTIONS:
+                            human_edit_rows = human_edit_rows[-MAX_C2PA_HUMAN_ACTIONS:]
+                        for row in human_edit_rows:
                                 details = self._event_payload(row)
                                 summary = details.get("summary")
                                 builder.add_action({
