@@ -51,7 +51,10 @@ class ChatService:
     def list_conversations(self, user_id):
         return self.repo.list_for_user(user_id)
 
-    def send(self, user_id, message, conversation_id=None, selection=None, workspace="default", extra_context=None):
+    def send(
+        self, user_id, message, conversation_id=None, selection=None,
+        workspace="default", extra_context=None, orchestrator_id="direct_chat",
+    ):
         """
         `selection` is whatever the UI sent: "auto" (or None/empty),
         "<provider>", or "<provider>:<model_id>". Auto mode uses Smart
@@ -102,7 +105,10 @@ class ChatService:
                 "requested_selection": selection or "auto", "selected_provider": None,
                 "selected_model": None, "route_preview": self._route_summary(route_preview),
             }, "unavailable")
-            self.repo.add_message(conversation_id, "assistant", reply)
+            self.repo.add_message(
+                conversation_id, "assistant", reply,
+                orchestrator_id=orchestrator_id,
+            )
             self.repo.touch(conversation_id)
             return {
                 "conversation_id": conversation_id,
@@ -153,7 +159,10 @@ class ChatService:
                 "selected_model": model_id, "attempted_providers": attempted,
                 "route_preview": self._route_summary(route_preview),
             }, "provider_failure_or_budget_block")
-            self.repo.add_message(conversation_id, "assistant", reply)
+            self.repo.add_message(
+                conversation_id, "assistant", reply,
+                orchestrator_id=orchestrator_id,
+            )
             self.repo.touch(conversation_id)
             return {
                 "conversation_id": conversation_id,
@@ -179,7 +188,7 @@ class ChatService:
             "Chat reply generated (user=%s, provider=%s, model=%s, in=%s, out=%s)",
             user_id, used_provider, used_model, result.get("input_tokens"), result.get("output_tokens"),
         )
-        self.repo.add_message(
+        assistant_message_id = self.repo.add_message(
             conversation_id,
             "assistant",
             reply,
@@ -187,6 +196,8 @@ class ChatService:
             model=used_model,
             tokens_in=result.get("input_tokens"),
             tokens_out=result.get("output_tokens"),
+            orchestrator_id=orchestrator_id,
+            fallback_used=fallback_used,
         )
         self.repo.touch(conversation_id)
         return {
@@ -196,6 +207,8 @@ class ChatService:
             "provider": used_provider,
             "model": used_model,
             "fallback_used": fallback_used,
+            "message_id": assistant_message_id,
+            "orchestrator_id": orchestrator_id,
         }
 
     @staticmethod
