@@ -1,6 +1,8 @@
 """Authenticated owner-scoped provenance timeline API."""
 from typing import Any, Literal
 
+import config
+
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,6 +10,7 @@ from api.dependencies import (
     get_current_user, get_provenance_service, get_provenance_manifest_service,
     get_c2pa_export_service,
 )
+from services.rate_limiter import check_rate_limit
 
 router = APIRouter(prefix="/provenance", tags=["provenance"])
 
@@ -42,6 +45,12 @@ def export_c2pa_artifact(
     user=Depends(get_current_user),
     service=Depends(get_c2pa_export_service),
 ):
+    if not check_rate_limit(
+        f"c2pa-export-user:{user['id']}",
+        max_attempts=config.C2PA_EXPORT_RATE_LIMIT_MAX_ATTEMPTS,
+        window_seconds=config.C2PA_EXPORT_RATE_LIMIT_WINDOW_SECONDS,
+    ):
+        raise HTTPException(status_code=429, detail="C2PA export rate limit reached.")
     try:
         return service.export(user["id"], artifact_id)
     except LookupError:
@@ -60,6 +69,12 @@ def verify_c2pa_artifact(
     user=Depends(get_current_user),
     service=Depends(get_c2pa_export_service),
 ):
+    if not check_rate_limit(
+        f"c2pa-verify-user:{user['id']}",
+        max_attempts=config.C2PA_VERIFY_RATE_LIMIT_MAX_ATTEMPTS,
+        window_seconds=config.C2PA_VERIFY_RATE_LIMIT_WINDOW_SECONDS,
+    ):
+        raise HTTPException(status_code=429, detail="C2PA verification rate limit reached.")
     try:
         return service.verify_artifact(user["id"], artifact_id)
     except LookupError:
