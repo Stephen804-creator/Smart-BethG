@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -55,6 +56,32 @@ class LocalFilesystemStorage:
                 handle.write(content)
                 handle.flush()
                 os.fsync(handle.fileno())
+            os.replace(temporary, target)
+        except Exception:
+            try:
+                os.unlink(temporary)
+            except OSError:
+                pass
+            raise
+        return str(target)
+
+    def put_file(self, namespace, owner_id, object_name, source_path):
+        """Copy a bounded server-owned temporary file into the owner's storage area."""
+        if not _OBJECT_RE.fullmatch(str(object_name or "")):
+            raise ValueError("Invalid storage object name.")
+        source = Path(source_path)
+        if not source.is_file():
+            raise StorageError("Temporary upload file is unavailable.")
+        root = self._owner_root(namespace, owner_id)
+        target = (root / object_name).resolve()
+        if root not in target.parents:
+            raise ValueError("Storage path escapes its owner directory.")
+        fd, temporary = tempfile.mkstemp(prefix=".upload-", dir=str(root))
+        try:
+            with open(source, "rb") as input_handle, os.fdopen(fd, "wb") as output_handle:
+                shutil.copyfileobj(input_handle, output_handle, 64 * 1024)
+                output_handle.flush()
+                os.fsync(output_handle.fileno())
             os.replace(temporary, target)
         except Exception:
             try:
@@ -138,6 +165,16 @@ class S3CompatibleStorage:
         key = self._key(namespace, owner_id, object_name)
         try:
             self.client.put_object(Bucket=self.bucket, Key=key, Body=content)
+        except Exception as exc:
+            raise StorageError("Object storage upload failed.") from exc
+        return f"s3://{self.bucket}/{key}"
+
+    def put_file(self, namespace, owner_id, object_name, source_path):
+        """Upload a server-owned temporary file without loading it into memory."""
+        key = self._key(namespace, owner_id, object_name)
+        try:
+            with open(source_path, "rb") as source:
+                self.client.upload_fileobj(source, self.bucket, key)
         except Exception as exc:
             raise StorageError("Object storage upload failed.") from exc
         return f"s3://{self.bucket}/{key}"
