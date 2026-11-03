@@ -93,6 +93,18 @@ if PROVENANCE_SIGNING_TRUST_LEVEL not in {"development", "configured"}:
         "SMART_BETHG_PROVENANCE_TRUST_LEVEL must be development or configured."
     )
 
+# C2PA signing uses a separate X.509 certificate/key pair. It is not the same
+# key as the internal Ed25519 JSON-manifest signer.
+C2PA_SIGN_CERT_PEM = os.getenv("SMART_BETHG_C2PA_SIGN_CERT_PEM", "").replace("\\n", "\n").strip()
+C2PA_SIGN_PRIVATE_KEY_PEM = os.getenv(
+    "SMART_BETHG_C2PA_SIGN_PRIVATE_KEY_PEM", ""
+).replace("\\n", "\n").strip()
+C2PA_SIGN_ALGORITHM = os.getenv("SMART_BETHG_C2PA_SIGN_ALGORITHM", "PS256").strip().upper()
+C2PA_TSA_URL = os.getenv("SMART_BETHG_C2PA_TSA_URL", "").strip()
+C2PA_TRUST_ANCHORS_PEM = os.getenv(
+    "SMART_BETHG_C2PA_TRUST_ANCHORS_PEM", ""
+).replace("\\n", "\n").strip()
+
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
 GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
