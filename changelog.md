@@ -818,3 +818,12 @@ retraining loop - intentionally a manual, operator-controlled step.
 - Added PostgreSQL-backed background jobs with idempotency, leases, priorities, bounded retries, guarded completion, owner-scoped status/cancel endpoints, and a separate worker entry point.
 - Added validated connector-action plans to missions. Mission run creation and queue insertion share one transaction; the worker persists progress and pauses/resumes around approval-required steps.
 - Live external OAuth/token lifecycle and GitHub/Drive/Slack adapters are not included yet; those catalog entries are intentionally non-executable until trusted adapters are implemented and connected.
+
+
+## 2026-10-28 — Smart BethG UI/UX implementation
+
+- Grouped dashboard navigation and moved secondary workspace areas into expandable sections to reduce first-screen clutter.
+- Added responsive chat starter prompts, a collapsible response-options panel, and an accessible getting-started guide across login, dashboard, and chat.
+- Added browser-local display preferences for theme and typography, with saved preferences restored on load.
+- Preserved existing backend endpoints and documented outstanding browser, accessibility, and Figma visual verification in `docs/UI_UX_IMPLEMENTATION_AUDIT_2026-10-28.md`.
+- **Verification pending:** automated checks and real-browser testing must pass before merge. The Figma MCP tool-call limit prevented screenshot-based comparison during this pass.

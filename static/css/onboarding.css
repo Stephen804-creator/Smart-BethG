@@ -1,0 +1,65 @@
+/* Smart BethG getting-started experience.
+   Kept in its own file so the guide can evolve without destabilising the shared application styles. */
+.onboarding-help-button { position: relative; }
+.onboarding-dialog {
+    width: min(880px, calc(100vw - 28px));
+    max-width: 880px;
+    max-height: min(760px, calc(100dvh - 28px));
+    padding: 0;
+    overflow: auto;
+    color: var(--text-primary, #f8fafc);
+    background: var(--surface, #0f1a2b);
+    border: 1px solid var(--border-light, #2f435f);
+    border-radius: 24px;
+    box-shadow: 0 28px 100px rgba(0,0,0,.55);
+}
+.onboarding-dialog::backdrop { background: rgba(2, 8, 18, .78); backdrop-filter: blur(8px); }
+.onboarding-shell { min-height: 520px; display: flex; flex-direction: column; }
+.onboarding-header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 26px; border-bottom:1px solid var(--border, #22324a); }
+.onboarding-brand { display:flex; align-items:center; gap:12px; color:var(--text-primary, #f8fafc); text-decoration:none; font-weight:750; }
+.onboarding-brand small { display:block; margin-top:3px; color:var(--text-secondary, #94a3b8); font-size:12px; font-weight:500; }
+.onboarding-brand-mark { display:grid; place-items:center; width:42px; height:42px; border-radius:14px; color:#bae6fd; background:linear-gradient(145deg,#1d4ed8,#0e7490); }
+.onboarding-close { width:40px; height:40px; border:1px solid var(--border, #22324a); border-radius:12px; color:var(--text-secondary, #94a3b8); background:transparent; cursor:pointer; }
+.onboarding-close:hover { color:var(--text-primary, #f8fafc); background:var(--surface-hover, #192943); }
+.onboarding-progress { height:3px; background:var(--border, #22324a); }
+.onboarding-progress span { display:block; height:100%; width:16.666%; background:linear-gradient(90deg,#38bdf8,#818cf8); transition:width .25s ease; }
+.onboarding-main { display:grid; grid-template-columns:minmax(220px,.85fr) minmax(0,1.15fr); gap:clamp(22px,4vw,46px); align-items:center; flex:1; padding:clamp(24px,5vw,48px); }
+.onboarding-visual { min-height:280px; position:relative; display:grid; place-items:center; isolation:isolate; overflow:hidden; border:1px solid rgba(56,189,248,.18); border-radius:22px; background:radial-gradient(circle at 50% 42%,rgba(37,99,235,.24),transparent 53%),linear-gradient(145deg,#0b1729,#101e32); }
+.onboarding-orbit { position:absolute; z-index:-1; border:1px solid rgba(125,211,252,.22); border-radius:50%; transform:rotate(-24deg); }
+.orbit-one { width:190px; height:190px; }
+.orbit-two { width:245px; height:110px; }
+.onboarding-visual-icon { display:grid; place-items:center; width:100px; height:100px; border:1px solid rgba(125,211,252,.3); border-radius:30px; color:#bae6fd; font-size:38px; background:linear-gradient(145deg,rgba(37,99,235,.48),rgba(8,145,178,.24)); box-shadow:0 0 70px rgba(56,189,248,.14); }
+.onboarding-visual-caption { position:absolute; left:14px; right:14px; bottom:18px; text-align:center; color:#cbd5e1; font-size:12px; letter-spacing:.03em; }
+.onboarding-copy .eyebrow { color:#7dd3fc; font-size:11px; font-weight:750; letter-spacing:.12em; }
+.onboarding-copy h2 { margin:12px 0 14px; font-size:clamp(27px,4vw,38px); line-height:1.12; letter-spacing:-.035em; }
+.onboarding-copy > p:not(.eyebrow) { color:var(--text-secondary,#94a3b8); font-size:16px; line-height:1.75; }
+.onboarding-tip { display:flex; gap:11px; align-items:flex-start; margin-top:24px; padding:14px; border:1px solid rgba(56,189,248,.18); border-radius:14px; color:#cbd5e1; background:rgba(56,189,248,.07); font-size:13px; line-height:1.55; }
+.onboarding-tip i { margin-top:2px; color:#7dd3fc; }
+.onboarding-footer { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px 26px; border-top:1px solid var(--border,#22324a); }
+.onboarding-footer-actions { display:flex; align-items:center; gap:10px; }
+.onboarding-dots { display:flex; align-items:center; justify-content:center; gap:7px; }
+.onboarding-dot { width:7px; height:7px; padding:0; border:0; border-radius:99px; background:#475569; cursor:pointer; }
+.onboarding-dot[aria-current="step"] { width:22px; background:#38bdf8; }
+.onboarding-dialog button:focus-visible { outline:3px solid #7dd3fc; outline-offset:3px; }
+.onboarding-dialog .btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+@media (max-width:620px) {
+ .onboarding-dialog { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); border-radius:18px; }
+ .onboarding-shell { min-height:0; }
+ .onboarding-header { padding:14px 16px; }
+ .onboarding-main { grid-template-columns:1fr; gap:20px; padding:20px 18px; }
+ .onboarding-visual { min-height:135px; }
+ .onboarding-orbit.orbit-one { width:125px; height:125px; }
+ .onboarding-orbit.orbit-two { width:170px; height:80px; }
+ .onboarding-visual-icon { width:60px; height:60px; border-radius:20px; font-size:25px; }
+ .onboarding-visual-caption { bottom:8px; font-size:10px; }
+ .onboarding-copy h2 { font-size:28px; }
+ .onboarding-copy > p:not(.eyebrow) { font-size:14px; line-height:1.6; }
+ .onboarding-tip { margin-top:15px; }
+ .onboarding-footer { flex-wrap:wrap; padding:14px 16px; }
+ .onboarding-dots { order:3; width:100%; }
+ .onboarding-footer-actions { margin-left:auto; }
+ .onboarding-footer-actions .btn { padding:9px 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+ .onboarding-progress span { transition:none; }
+}

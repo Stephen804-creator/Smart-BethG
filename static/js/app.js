@@ -29,9 +29,14 @@
     syncNavigationState();
   });
 
-  app.querySelectorAll(".sidebar nav a").forEach((link) => {
+  app.querySelectorAll('.sidebar nav a, .hero-actions a[href^="#"]').forEach((link) => {
     link.addEventListener("click", () => {
-      if (mobileQuery.matches) {
+      // In-page links open their disclosure before the browser scrolls to it.
+      if (link.hash) {
+        const target = document.querySelector(link.hash);
+        if (target instanceof HTMLDetailsElement) target.open = true;
+      }
+      if (mobileQuery.matches && link.closest(".sidebar")) {
         app.classList.remove("mobile-nav-open");
         syncNavigationState();
       }
