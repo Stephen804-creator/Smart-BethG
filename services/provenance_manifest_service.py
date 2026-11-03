@@ -117,6 +117,7 @@ class ProvenanceManifestService:
             if event_type == "asset_uploaded":
                 origin = "user_uploaded"
             elif event_type == "ai_contribution":
+                origin = "ai_assisted_creation"
                 contributor = {
                     "role": "ai_provider",
                     "provider": provider or "unknown",
@@ -338,7 +339,7 @@ class ProvenanceManifestService:
             return {"valid": False, "status": "invalid", "reason": "asset_digest_mismatch"}
 
         chain = self.repository.verify_chain(
-            user_id, artifact_id, expected_head=record["event_chain_head_sha256"]
+            user_id, artifact_id, expected_head=record["event_chain_head_sha256"] or ""
         )
         if not chain["valid"]:
             return {"valid": False, "status": "invalid", "reason": "event_chain_" + chain["reason"]}
