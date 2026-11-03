@@ -1,8 +1,13 @@
 """Authenticated artifact API."""
-import os\nimport tempfile\n\nfrom fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File, Form, Header
+import os
+import tempfile
+
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File, Form, Header
 from pydantic import BaseModel, Field
 
-import config\nfrom api.dependencies import get_artifact_service, get_current_user\nfrom services.rate_limiter import check_rate_limit
+import config
+from api.dependencies import get_artifact_service, get_current_user
+from services.rate_limiter import check_rate_limit
 
 router = APIRouter(prefix="/artifacts", tags=["artifacts"])
 
