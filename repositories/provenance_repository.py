@@ -1,5 +1,5 @@
 """Owner-scoped persistence and hash chaining for provenance events."""
-from repositories.provenance_contracts import canonical_json, sha256_hex
+from repositories.provenance_contracts import canonical_json, sha256_hex, validate_event
 
 
 class ProvenanceRepository:
@@ -8,7 +8,15 @@ class ProvenanceRepository:
         actor_id=None, actor_label=None, provider=None, model=None,
         agent_id=None, workflow_id=None, mission_id=None, idempotency_key=None,
     ):
-        payload = payload or {}
+        payload = validate_event(
+            event_type, actor_type, payload, actor_id=actor_id, actor_label=actor_label
+        )
+        for label, value in (("provider", provider), ("model", model), ("agent_id", agent_id)):
+            if value is not None and (not isinstance(value, str) or len(value) > 160):
+                raise ValueError(f"Provenance {label} must be at most 160 characters.")
+        for label, value in (("workflow_id", workflow_id), ("mission_id", mission_id)):
+            if value is not None and (not isinstance(value, int) or isinstance(value, bool) or value < 1):
+                raise ValueError(f"Provenance {label} must be a positive integer.")
         if idempotency_key is not None:
             idempotency_key = str(idempotency_key).strip()
             if not idempotency_key or len(idempotency_key) > 200:
