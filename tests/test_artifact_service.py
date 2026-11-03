@@ -1,9 +1,6 @@
+import hashlib
 import os
-import os\nimport tempfile\n\nfrom tests.base import SmartBethGTestCase
-from services.auth_service import create_user
-from services.artifact_service import ArtifactService\nfrom repositories.provenance_repository import ProvenanceRepository
-import config
-
+import tempfile
 
 class TestArtifactService(SmartBethGTestCase):
     def setUp(self):
@@ -50,7 +47,7 @@ class TestArtifactService(SmartBethGTestCase):
             )
             self.assertEqual(artifact["artifact_type"], "image")
             self.assertEqual(artifact["content_type"], "image/png")
-            self.assertEqual(artifact["checksum_sha256"], __import__("hashlib").sha256(png).hexdigest())
+            self.assertEqual(artifact["checksum_sha256"], hashlib.sha256(png).hexdigest())
             content, record = self.service.read_bytes(self.owner["id"], artifact["id"])
             self.assertEqual(content, png)
             self.assertEqual(record["id"], artifact["id"])
