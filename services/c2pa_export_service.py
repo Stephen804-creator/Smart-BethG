@@ -313,6 +313,9 @@ class C2paExportService:
                 except OSError:
                     pass
 
+        self._copy_source_contributions(
+            user_id, artifact_id, output_artifact, artifact, event_rows
+        )
         output_source_references = [{
             "source_id": artifact_id,
             "source_sha256": artifact["checksum_sha256"],
@@ -356,6 +359,106 @@ class C2paExportService:
             },
             "internal_manifest": output_internal_manifest,
         }
+
+    def _copy_source_contributions(self, user_id, source_id, output_artifact, source_artifact, source_events):
+        """Carry forward actual contributors without claiming they signed the new container."""
+        output_id = output_artifact["id"]
+        output_hash = output_artifact["checksum_sha256"]
+        source_hash = source_artifact["checksum_sha256"]
+        copied_agent_ids = set()
+        original_agent_ids = {
+            row.get("agent_id") for row in source_events
+            if row["event_type"] == "agent_contribution" and row.get("agent_id")
+        }
+
+        self.repository.append_event(
+            user_id, output_id, "agent_contribution", "smart_bethg",
+            actor_id="smart_bethg", actor_label="Smart BethG C2PA exporter",
+            agent_id="c2pa_exporter",
+            payload={
+                "role": "orchestrator",
+                "operation": "c2pa_manifest_embedding",
+                "source_artifact_id": source_id,
+                "source_sha256": source_hash,
+                "output_sha256": output_hash,
+                "attribution_basis": "system_derived",
+            },
+            idempotency_key=f"c2pa-agent:{source_id}:{output_id}",
+        )
+
+        for row in source_events:
+            event_type = row["event_type"]
+            original_payload = self._event_payload(row)
+            if event_type == "ai_contribution":
+                payload = {
+                    "source_type": original_payload.get("source_type", "derived_source_asset"),
+                    "source_artifact_id": source_id,
+                    "source_sha256": source_hash,
+                    "source_output_sha256": original_payload.get("output_sha256", source_hash),
+                    "derived_asset_sha256": output_hash,
+                    "fallback_used": bool(original_payload.get("fallback_used")),
+                    "attribution_basis": "derived_from_source_asset",
+                }
+                self.repository.append_event(
+                    user_id, output_id, "ai_contribution", "provider",
+                    actor_id=row.get("actor_id"), actor_label=row.get("actor_label"),
+                    provider=row.get("provider"), model=row.get("model"),
+                    agent_id=row.get("agent_id"), payload=payload,
+                    idempotency_key=f"c2pa-ai:{source_id}:{output_id}:{row['id']}",
+                )
+                if row.get("agent_id") and row["agent_id"] not in original_agent_ids:
+                    if row["agent_id"] not in copied_agent_ids:
+                        self.repository.append_event(
+                            user_id, output_id, "agent_contribution", "smart_bethg",
+                            actor_id="smart_bethg", actor_label="Smart BethG orchestrator",
+                            agent_id=row["agent_id"],
+                            payload={
+                                "role": "orchestrator",
+                                "source_artifact_id": source_id,
+                                "source_sha256": source_hash,
+                                "derived_asset_sha256": output_hash,
+                                "attribution_basis": "derived_from_source_asset",
+                            },
+                            idempotency_key=f"c2pa-agent-source:{source_id}:{output_id}:{row['id']}",
+                        )
+                        copied_agent_ids.add(row["agent_id"])
+            elif event_type == "agent_contribution":
+                self.repository.append_event(
+                    user_id, output_id, "agent_contribution", "smart_bethg",
+                    actor_id="smart_bethg", actor_label=row.get("actor_label"),
+                    agent_id=row.get("agent_id"),
+                    payload={
+                        "role": original_payload.get("role", "contributor"),
+                        "source_artifact_id": source_id,
+                        "source_sha256": source_hash,
+                        "derived_asset_sha256": output_hash,
+                        "attribution_basis": "derived_from_source_asset",
+                    },
+                    idempotency_key=f"c2pa-agent-source:{source_id}:{output_id}:{row['id']}",
+                )
+                if row.get("agent_id"):
+                    copied_agent_ids.add(row["agent_id"])
+            elif event_type in {"human_edit", "review", "approval", "rejection"}:
+                payload = {
+                    key: original_payload[key]
+                    for key in (
+                        "summary", "instruction_text", "instruction_text_included",
+                        "attribution_basis",
+                    )
+                    if key in original_payload
+                }
+                payload.update({
+                    "source_artifact_id": source_id,
+                    "source_sha256": source_hash,
+                    "derived_asset_sha256": output_hash,
+                    "attribution_basis": "derived_from_source_asset",
+                })
+                self.repository.append_event(
+                    user_id, output_id, event_type, "human",
+                    actor_id=row.get("actor_id"), actor_label=row.get("actor_label"),
+                    payload=payload,
+                    idempotency_key=f"c2pa-human:{source_id}:{output_id}:{row['id']}",
+                )
 
     def _signer_info(self, c2pa):
         algorithm = getattr(c2pa.C2paSigningAlg, self.signing_algorithm, None)
