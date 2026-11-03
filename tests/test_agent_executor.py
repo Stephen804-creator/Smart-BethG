@@ -64,9 +64,16 @@ class TestAgentExecutor(SmartBethGTestCase):
         calls = {}
 
         class RecordingChatService(ChatService):
-            def send(self, user_id, message, conversation_id=None, selection=None, workspace="default", extra_context=None):
+            def send(
+                self, user_id, message, conversation_id=None, selection=None,
+                workspace="default", extra_context=None, orchestrator_id="direct_chat",
+            ):
                 calls["selection"] = selection
-                return super().send(user_id, message, conversation_id, selection, workspace, extra_context)
+                calls["orchestrator_id"] = orchestrator_id
+                return super().send(
+                    user_id, message, conversation_id, selection, workspace,
+                    extra_context, orchestrator_id=orchestrator_id,
+                )
 
         executor = AgentExecutor(tool_service=ToolService(), chat_service=RecordingChatService())
         req = AgentRequest(text="hello", user=self.user, selection="anthropic:claude-opus-5")
