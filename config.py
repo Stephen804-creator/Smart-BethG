@@ -106,6 +106,9 @@ AUTH_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("SMART_BETHG_AUTH_RATE_LIMIT_WIND
 MAX_UPLOAD_SIZE_BYTES = int(
     os.getenv("SMART_BETHG_MAX_UPLOAD_BYTES", str(15 * 1024 * 1024))
 )
+# Asset uploads share the existing bounded upload ceiling until media-specific
+# infrastructure and hosting limits are independently validated.
+MAX_ASSET_UPLOAD_BYTES = MAX_UPLOAD_SIZE_BYTES
 BRAVE_SEARCH_API_KEY = os.getenv("BRAVE_SEARCH_API_KEY", "")
 
 # Docker execution is opt-in and restricted to exact, operator-approved image tags.
