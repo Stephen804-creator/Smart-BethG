@@ -248,6 +248,64 @@ class ArtifactService:
             raise
         return self.get(user_id, artifact_id)
 
+    def create_from_chat_message(self, user_id, conversation_id, message_id, name):
+        """Create an asset from one owned successful assistant message and cite its real execution."""
+        from repositories.conversation_repository import ConversationRepository
+        from repositories.provenance_repository import ProvenanceRepository
+
+        message = ConversationRepository().get_message_for_user(
+            user_id, conversation_id, message_id
+        )
+        if not message:
+            raise LookupError("Chat message not found.")
+        if message.get("role") != "assistant":
+            raise ValueError("Only successful assistant messages can become generated assets.")
+        provider = (message.get("provider") or "").strip()
+        model = (message.get("model") or "").strip()
+        orchestrator_id = (message.get("orchestrator_id") or "").strip()
+        if not provider or not model:
+            raise ValueError("This assistant message has no successful provider/model execution to attribute.")
+        if orchestrator_id not in {"agent_executor", "direct_chat"}:
+            raise ValueError("The chat orchestrator identity is missing or unsupported.")
+
+        artifact = self.create(
+            user_id, name, message["content"], artifact_type="text",
+            idempotency_key=f"chat-message:{message_id}",
+        )
+        provenance = ProvenanceRepository()
+        output_hash = artifact["checksum_sha256"]
+        provenance.append_event(
+            user_id, artifact["id"], "ai_contribution", "provider",
+            actor_id=provider, actor_label=provider,
+            provider=provider, model=model,
+            payload={
+                "source_type": "chat_message",
+                "source_conversation_id": conversation_id,
+                "source_message_id": message_id,
+                "fallback_used": bool(message.get("fallback_used")),
+                "output_sha256": output_hash,
+            },
+            idempotency_key=f"chat-ai:{message_id}",
+        )
+        orchestrator_label = (
+            "Smart BethG Agent Executor"
+            if orchestrator_id == "agent_executor" else "Smart BethG Direct Chat"
+        )
+        provenance.append_event(
+            user_id, artifact["id"], "agent_contribution", "smart_bethg",
+            actor_id="smart_bethg", actor_label=orchestrator_label,
+            agent_id=orchestrator_id,
+            payload={
+                "role": "orchestrator",
+                "source_type": "chat_message",
+                "source_conversation_id": conversation_id,
+                "source_message_id": message_id,
+                "output_sha256": output_hash,
+            },
+            idempotency_key=f"chat-agent:{message_id}",
+        )
+        return self.get(user_id, artifact["id"])
+
     def read_bytes(self, user_id, artifact_id):
         record = self.get(user_id, artifact_id)
         if not record:
