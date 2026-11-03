@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from api.dependencies import get_artifact_service, get_current_user
 from main_fastapi import create_app
 from services.artifact_service import ArtifactService
+from repositories.conversation_repository import ConversationRepository
+from repositories.provenance_repository import ProvenanceRepository
 from services.auth_service import create_user
 from tests.base import SmartBethGTestCase
 
@@ -49,6 +51,34 @@ class TestArtifactUploadRoutes(SmartBethGTestCase):
 
         foreign_download = self.other_client.get(f"/api/v1/artifacts/{artifact['id']}/download")
         self.assertEqual(foreign_download.status_code, 404)
+
+    def test_create_asset_from_chat_records_real_execution_metadata(self):
+        conversations = ConversationRepository()
+        conversation_id = conversations.create(self.owner["id"])
+        message_id = conversations.add_message(
+            conversation_id, "assistant", "Generated document content",
+            provider="openai", model="gpt-test-model",
+            orchestrator_id="agent_executor", fallback_used=True,
+        )
+        response = self.client.post(
+            "/api/v1/artifacts/from-chat",
+            headers={"X-CSRF-Token": self.client.csrf_token},
+            json={
+                "name": "generated-document.txt",
+                "conversation_id": conversation_id,
+                "message_id": message_id,
+            },
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        artifact = response.json()
+        self.assertNotIn("path", artifact)
+        events = ProvenanceRepository().list_events(self.owner["id"], artifact["id"])
+        self.assertEqual([event["event_type"] for event in events], [
+            "asset_created", "ai_contribution", "agent_contribution"
+        ])
+        self.assertEqual(events[1]["provider"], "openai")
+        self.assertEqual(events[1]["model"], "gpt-test-model")
+        self.assertEqual(events[2]["agent_id"], "agent_executor")
 
     def test_upload_requires_csrf(self):
         png = bytes.fromhex("89504e470d0a1a0a") + b"csrf-test"
