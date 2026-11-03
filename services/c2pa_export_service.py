@@ -232,12 +232,20 @@ class C2paExportService:
                 "source_id": source_id,
             })
 
+        human_edit_rows = [
+            row for row in event_rows if row["event_type"] == "human_edit"
+        ]
+        omitted_human_edit_actions = max(
+            0, len(human_edit_rows) - MAX_C2PA_HUMAN_ACTIONS
+        )
+        human_edit_rows = human_edit_rows[-MAX_C2PA_HUMAN_ACTIONS:]
+
         assertions = [{
             "label": "io.github.stephen804creator.smartbethg.provenance",
             "data": {
                 "internal_manifest_sha256": internal_manifest_hash,
                 "event_chain_head_sha256": internal_manifest["event_chain_head_sha256"],
-                "source_reference_count": len(source_references),
+                "source_reference_count": 1 + len(source_references),
             },
         }]
         seen_models = set()
@@ -307,11 +315,6 @@ class C2paExportService:
                                 ingredient["mime_type"],
                                 io.BytesIO(ingredient["content"]),
                             )
-                        human_edit_rows = [
-                            row for row in event_rows if row["event_type"] == "human_edit"
-                        ]
-                        if len(human_edit_rows) > MAX_C2PA_HUMAN_ACTIONS:
-                            human_edit_rows = human_edit_rows[-MAX_C2PA_HUMAN_ACTIONS:]
                         for row in human_edit_rows:
                                 details = self._event_payload(row)
                                 summary = details.get("summary")
@@ -415,6 +418,7 @@ class C2paExportService:
                 "internal_manifest_sha256": internal_manifest_hash,
                 "active_manifest": active_label,
                 "unembedded_sources": omitted_sources,
+                "omitted_human_edit_actions": omitted_human_edit_actions,
                 "validation_results": validation_results,
                 "trust_note": (
                     "A valid signature is not necessarily a trusted identity. "
