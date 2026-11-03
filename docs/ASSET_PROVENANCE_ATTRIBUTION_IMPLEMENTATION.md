@@ -79,6 +79,8 @@ Known current-main integration points:
 - `providers/provider_manager.py`: provider/model resolution.
 - `services/units_11_15.py`: decision ledger and routing evidence, where present on the selected base.
 - `api/dependencies.py`: authenticated user and service dependencies.
+- `routes/pages.py`, `templates/`, and `static/js/`: page and frontend integration. **Baseline finding:** main has no artifact-library/detail UI yet; Unit 8 must create a focused Asset Library/Provenance page and link it from the existing navigation rather than pretending an artifact detail screen already exists.
+- `config.MAX_UPLOAD_SIZE_BYTES`: current default upload ceiling is 15 MiB. Initial provenance uploads must respect the configured ceiling; do not silently raise the platform-wide upload limit for video.
 - `tests/base.py`: PostgreSQL-backed test isolation.
 - `tests/test_artifact_service.py`, route tests, provider/chat tests: regression patterns.
 
@@ -304,12 +306,12 @@ Execute these units in order. Do not skip ahead or silently combine units. Updat
 ### Unit 8 — Export, verification, deletion, and UI integration
 1. Add manifest-only and asset-plus-manifest export paths.
 2. Add verification results with clear pass/fail/unverifiable reasons.
-3. Add provenance summary/timeline to the existing artifact detail experience without redesigning unrelated screens.
+3. Create a focused Asset Library/Provenance page because the inspected main branch has no existing artifact-library/detail screen. Include upload, asset list, provenance summary, timeline, and verification/export actions; link it from existing navigation without redesigning unrelated screens.
 4. Integrate permitted provenance records into account export.
 5. Implement documented deletion/retention behavior and tests.
 6. Add accessibility, responsive, loading, empty, and error states for the new UI.
 
-**Acceptance:** users can inspect, export, and verify provenance; deletion/export behavior matches privacy rules; existing artifact workflows remain functional.
+**Acceptance:** users can inspect, export, and verify provenance; deletion/export behavior matches privacy rules; existing artifact and chat workflows remain functional.
 
 ### Unit 9 — Final security and regression verification
 1. Run focused unit and route tests after each unit.
