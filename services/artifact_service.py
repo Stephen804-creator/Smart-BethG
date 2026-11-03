@@ -85,6 +85,22 @@ class ArtifactService:
             raise
         finally:
             conn.close()
+        try:
+            from repositories.provenance_repository import ProvenanceRepository
+            ProvenanceRepository().append_event(
+                user_id, artifact_id, "asset_created", "human",
+                actor_id=str(user_id),
+                payload={
+                    "content_type": "text/plain; charset=utf-8",
+                    "size_bytes": len(encoded),
+                    "checksum_sha256": digest,
+                    "source_filename": name,
+                },
+                idempotency_key=f"asset-create:{idempotency_key}" if idempotency_key else None,
+            )
+        except Exception:
+            self.delete(user_id, artifact_id)
+            raise
         return self.get(user_id, artifact_id)
 
     ALLOWED_BINARY_TYPES = {
