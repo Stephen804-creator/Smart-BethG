@@ -147,3 +147,10 @@ from services.provenance_service import ProvenanceService
 
 def get_provenance_service():
     return ProvenanceService(ProvenanceRepository())
+
+
+from services.provenance_manifest_service import ProvenanceManifestService
+
+
+def get_provenance_manifest_service():
+    return ProvenanceManifestService()
