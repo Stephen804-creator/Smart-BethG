@@ -1,13 +1,16 @@
 """HTTP and integrity tests for the provenance event timeline."""
 from fastapi.testclient import TestClient
 
-from api.dependencies import get_current_user, get_provenance_service
+from api.dependencies import (
+    get_current_user, get_provenance_service, get_provenance_manifest_service,
+)
 from database import get_connection
 from main_fastapi import create_app
 from repositories.provenance_repository import ProvenanceRepository
 from services.artifact_service import ArtifactService
 from services.auth_service import create_user
 from services.provenance_service import ProvenanceService
+from services.provenance_manifest_service import ProvenanceManifestService
 from tests.base import SmartBethGTestCase
 
 
@@ -21,6 +24,7 @@ class TestProvenanceApi(SmartBethGTestCase):
         self.artifact = self.artifacts.create(self.owner["id"], "source.txt", "source bytes")
         self.repository = ProvenanceRepository()
         self.service = ProvenanceService(self.repository, self.artifacts)
+        self.manifest_service = ProvenanceManifestService(self.repository, self.artifacts)
         self.client = self._client_for(self.owner)
         self.other_client = self._client_for(self.other)
 
@@ -28,6 +32,7 @@ class TestProvenanceApi(SmartBethGTestCase):
         app = create_app()
         app.dependency_overrides[get_current_user] = lambda: user
         app.dependency_overrides[get_provenance_service] = lambda: self.service
+        app.dependency_overrides[get_provenance_manifest_service] = lambda: self.manifest_service
         client = TestClient(app)
         client.csrf_token = client.get("/auth/csrf").json()["csrf_token"]
         return client
@@ -146,6 +151,30 @@ class TestProvenanceApi(SmartBethGTestCase):
         self.assertEqual(event["actor_id"], str(self.owner["id"]))
         self.assertEqual(event["actor_label"], self.owner["username"])
         self.assertTrue(event["created_at"])
+
+    def test_manifest_api_generates_and_reports_unsigned_state(self):
+        generated = self.client.post(
+            f"/api/v1/provenance/artifacts/{self.artifact['id']}/manifest",
+            headers={"X-CSRF-Token": self.client.csrf_token},
+        )
+        self.assertEqual(generated.status_code, 200, generated.text)
+        manifest = generated.json()
+        self.assertEqual(manifest["status"], "unsigned")
+        self.assertEqual(manifest["manifest"]["standards"]["c2pa_certified"], False)
+
+        verified = self.client.post(
+            f"/api/v1/provenance/artifacts/{self.artifact['id']}/manifest/verify",
+            headers={"X-CSRF-Token": self.client.csrf_token},
+            json={},
+        )
+        self.assertEqual(verified.status_code, 200, verified.text)
+        self.assertFalse(verified.json()["valid"])
+        self.assertEqual(verified.json()["status"], "unsigned")
+
+        foreign = self.other_client.get(
+            f"/api/v1/provenance/artifacts/{self.artifact['id']}/manifest"
+        )
+        self.assertEqual(foreign.status_code, 404)
 
     def test_event_mutation_requires_csrf(self):
         response = self.client.post(
