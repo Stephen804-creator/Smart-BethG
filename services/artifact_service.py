@@ -90,8 +90,7 @@ class ArtifactService:
         try:
             from repositories.provenance_repository import ProvenanceRepository
             ProvenanceRepository().append_event(
-                user_id, artifact_id, "asset_created", "human",
-                actor_id=str(user_id),
+                user_id, artifact_id, "asset_created", "unknown",
                 payload={
                     "content_type": "text/plain; charset=utf-8",
                     "size_bytes": len(encoded),
