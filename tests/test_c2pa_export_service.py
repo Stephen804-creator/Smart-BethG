@@ -146,6 +146,7 @@ class TestC2paExportService(SmartBethGTestCase):
                     provenance_agent_id="image_generator",
                     provenance_provider="openai",
                     provenance_model="gpt-image-test",
+                    provenance_payload={"source_type": "user_prompt"},
                 )
             else:
                 artifact = self.artifacts.create_binary_from_path(
@@ -198,6 +199,14 @@ class TestC2paExportService(SmartBethGTestCase):
                 active = reader.get_active_manifest()
         manifest_text = json.dumps(active)
         self.assertIn("trainedAlgorithmicMedia", manifest_text)
+        disclosure = next(
+            item for item in active["assertions"]
+            if item["label"] == "c2pa.ai-disclosure"
+        )
+        self.assertEqual(
+            disclosure["data"]["contentProfile"]["humanOversightLevel"],
+            "prompt_guided",
+        )
         ai_history = next(
             item for item in result["internal_manifest"]["manifest"]["history"]
             if item["event_type"] == "ai_contribution"
@@ -216,12 +225,20 @@ class TestC2paExportService(SmartBethGTestCase):
         with self.assertRaisesRegex(RuntimeError, "credentials are not configured"):
             unconfigured.export(self.owner["id"], artifact["id"])
 
-    def test_unsupported_text_asset_is_not_mislabeled_as_c2pa_signed(self):
-        artifact = self.artifacts.create(
-            self.owner["id"], "plain-note.txt", "Text files use the internal JSON manifest."
-        )
-        with self.assertRaisesRegex(ValueError, "not supported"):
-            self.service.export(self.owner["id"], artifact["id"])
+    def test_text_export_follows_the_sdk_supported_format_list(self):
+        import c2pa
+        if "text/plain" in set(c2pa.Builder.get_supported_mime_types()):
+            artifact = self.artifacts.create(
+                self.owner["id"], "plain-note.txt", "C2PA 2.4 text content."
+            )
+            result = self.service.export(self.owner["id"], artifact["id"])
+            self.assertEqual(result["c2pa"]["status"], "signed")
+        else:
+            artifact = self.artifacts.create(
+                self.owner["id"], "plain-note.txt", "Internal JSON provenance remains available."
+            )
+            with self.assertRaisesRegex(ValueError, "not supported"):
+                self.service.export(self.owner["id"], artifact["id"])
 
 
 if __name__ == "__main__":
