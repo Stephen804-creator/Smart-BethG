@@ -154,3 +154,10 @@ from services.provenance_manifest_service import ProvenanceManifestService
 
 def get_provenance_manifest_service():
     return ProvenanceManifestService()
+
+
+from services.c2pa_export_service import C2paExportService
+
+
+def get_c2pa_export_service():
+    return C2paExportService()
