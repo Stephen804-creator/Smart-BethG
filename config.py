@@ -104,6 +104,9 @@ C2PA_TSA_URL = os.getenv("SMART_BETHG_C2PA_TSA_URL", "").strip()
 C2PA_TRUST_ANCHORS_PEM = os.getenv(
     "SMART_BETHG_C2PA_TRUST_ANCHORS_PEM", ""
 ).replace("\\n", "\n").strip()
+C2PA_TRUST_CONFIG = os.getenv(
+    "SMART_BETHG_C2PA_TRUST_CONFIG", "1.3.6.1.4.1.62558.2.1"
+).replace("\\n", "\n").strip()
 
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
