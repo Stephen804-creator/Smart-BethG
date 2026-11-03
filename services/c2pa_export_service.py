@@ -64,7 +64,10 @@ class C2paExportService:
                     "remote_manifest_fetch": False,
                     "ocsp_fetch": False,
                 },
-                "trust": {"user_anchors": self.trust_anchors_pem},
+                "trust": {
+                    "user_anchors": self.trust_anchors_pem,
+                    "trust_config": config.C2PA_TRUST_CONFIG,
+                },
             })
             return c2pa.Context(settings)
         # Keep the SDK's default C2PA trust policy. A missing custom anchor
