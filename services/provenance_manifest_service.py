@@ -215,6 +215,18 @@ class ProvenanceManifestService:
                 and latest_json.get("signing") == signing
             )
             if same_snapshot:
+                if signer and latest.get("status") == "signed":
+                    signatures = self.repository.list_signatures(user_id, latest["id"])
+                    key_id = signer[2]
+                    saved = next((item for item in signatures if item["key_id"] == key_id), None)
+                    expected_public = base64.b64encode(signer[1]).decode("ascii")
+                    if not saved:
+                        raise ValueError("Signed manifest is missing its recorded public-key signature.")
+                    if saved["public_key_base64"] != expected_public:
+                        raise ValueError(
+                            "This key ID is already bound to a different Ed25519 public key. "
+                            "Choose a new key ID when rotating signing keys."
+                        )
                 return latest
 
         manifest = self._build_manifest(artifact, asset_hash, events, integrity, signing)
