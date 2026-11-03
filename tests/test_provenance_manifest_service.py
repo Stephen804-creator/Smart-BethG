@@ -86,11 +86,13 @@ class TestProvenanceManifestService(SmartBethGTestCase):
 
     def test_changed_manifest_json_fails_digest_verification(self):
         signed = self.service.sign_manifest(self.owner["id"], self.artifact["id"])
+        tampered_manifest = dict(signed["manifest"])
+        tampered_manifest["tampered"] = True
         conn = get_connection()
         try:
             conn.execute(
                 "UPDATE provenance_manifests SET manifest_json=? WHERE id=? AND user_id=?",
-                ('{"tampered":true}', signed["id"], self.owner["id"]),
+                (json.dumps(tampered_manifest), signed["id"], self.owner["id"]),
             )
             conn.commit()
         finally:
