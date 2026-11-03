@@ -63,6 +63,64 @@ class TestArtifactService(SmartBethGTestCase):
         finally:
             os.unlink(path)
 
+    def test_supported_asset_media_types_are_accepted(self):
+        cases = [
+            ("text/plain", "plain text".encode(), "text"),
+            ("text/markdown", "# heading".encode(), "text"),
+            ("text/csv", "name,value\\nitem,1".encode(), "text"),
+            ("application/json", b'{"ok":true}', "text"),
+            ("application/pdf", b"%PDF-1.7\\nminimal", "document"),
+            ("image/jpeg", bytes.fromhex("ffd8ff") + b"jpeg-data", "image"),
+            ("image/png", bytes.fromhex("89504e470d0a1a0a") + b"png-data", "image"),
+            ("image/webp", b"RIFF" + (4).to_bytes(4, "little") + b"WEBP", "image"),
+            ("video/mp4", bytes.fromhex("000000186674797069736f6d") + b"mp4-data", "video"),
+            ("video/webm", bytes.fromhex("1a45dfa3") + b"webm-data", "video"),
+        ]
+        for index, (media_type, content, expected_type) in enumerate(cases):
+            with self.subTest(media_type=media_type):
+                path = self._temporary_asset(content)
+                try:
+                    artifact = self.service.create_binary_from_path(
+                        self.owner["id"], f"asset-{index}", path, media_type
+                    )
+                    self.assertEqual(artifact["content_type"], media_type)
+                    self.assertEqual(artifact["artifact_type"], expected_type)
+                    stored, _ = self.service.read_bytes(self.owner["id"], artifact["id"])
+                    self.assertEqual(stored, content)
+                finally:
+                    os.unlink(path)
+
+    def test_binary_asset_detects_storage_tampering(self):
+        from pathlib import Path
+        png = bytes.fromhex("89504e470d0a1a0a") + b"original"
+        path = self._temporary_asset(png)
+        try:
+            artifact = self.service.create_binary_from_path(
+                self.owner["id"], "tamper.png", path, "image/png"
+            )
+            Path(artifact["path"]).write_bytes(png + b"changed")
+            with self.assertRaisesRegex(ValueError, "integrity check"):
+                self.service.read_bytes(self.owner["id"], artifact["id"])
+        finally:
+            os.unlink(path)
+
+    def test_binary_storage_failure_does_not_create_an_artifact(self):
+        class FailingStorage:
+            def put_file(self, namespace, owner_id, object_name, source_path):
+                raise RuntimeError("storage unavailable")
+
+        png = bytes.fromhex("89504e470d0a1a0a") + b"data"
+        path = self._temporary_asset(png)
+        try:
+            service = ArtifactService(storage=FailingStorage())
+            with self.assertRaisesRegex(RuntimeError, "storage unavailable"):
+                service.create_binary_from_path(
+                    self.owner["id"], "failure.png", path, "image/png"
+                )
+            self.assertEqual(service.list_for_user(self.owner["id"]), [])
+        finally:
+            os.unlink(path)
+
     def test_binary_upload_rejects_mismatched_media_signature(self):
         path = self._temporary_asset(b"not a png")
         try:
