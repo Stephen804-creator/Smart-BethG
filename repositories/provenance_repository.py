@@ -108,8 +108,8 @@ class ProvenanceRepository:
         finally:
             conn.close()
 
-    def verify_chain(self, user_id, artifact_id):
-        """Recompute every event digest and sequence link for one owner's artifact."""
+    def verify_chain(self, user_id, artifact_id, expected_head=None):
+        """Recompute the full chain or verify a specific historical chain prefix."""
         rows = self.list_events(user_id, artifact_id)
         previous_digest = None
         expected_sequence = 1
@@ -160,7 +160,17 @@ class ProvenanceRepository:
                     "head_sha256": previous_digest, "reason": reason,
                 }
             previous_digest = event_digest
+            if expected_head and hmac.compare_digest(event_digest, str(expected_head)):
+                return {
+                    "valid": True, "events_checked": expected_sequence,
+                    "head_sha256": previous_digest, "reason": None,
+                }
             expected_sequence += 1
+        if expected_head:
+            return {
+                "valid": False, "events_checked": len(rows),
+                "head_sha256": previous_digest, "reason": "expected_head_not_found",
+            }
         return {
             "valid": True, "events_checked": len(rows),
             "head_sha256": previous_digest, "reason": None,
@@ -176,6 +186,132 @@ class ProvenanceRepository:
             return dict(row) if row else None
         finally:
             conn.close()
+
+    def get_latest_manifest(self, user_id, artifact_id):
+        conn = self._connection()
+        try:
+            row = conn.execute(
+                "SELECT * FROM provenance_manifests WHERE user_id=? AND artifact_id=? "
+                "ORDER BY manifest_version DESC LIMIT 1",
+                (user_id, artifact_id),
+            ).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    def get_manifest(self, user_id, artifact_id, manifest_id):
+        conn = self._connection()
+        try:
+            row = conn.execute(
+                "SELECT * FROM provenance_manifests "
+                "WHERE user_id=? AND artifact_id=? AND id=? LIMIT 1",
+                (user_id, artifact_id, manifest_id),
+            ).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    def list_signatures(self, user_id, manifest_id):
+        conn = self._connection()
+        try:
+            rows = conn.execute(
+                "SELECT * FROM provenance_signatures "
+                "WHERE user_id=? AND manifest_id=? ORDER BY signed_at ASC, id ASC",
+                (user_id, manifest_id),
+            ).fetchall()
+            return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
+    def save_manifest(
+        self, user_id, artifact_id, schema_id, manifest_json, manifest_sha256,
+        event_chain_head_sha256, signature=None,
+    ):
+        """Append a deterministic manifest version and optional signature atomically."""
+        if not isinstance(manifest_json, str) or len(manifest_json.encode("utf-8")) > 256 * 1024:
+            raise ValueError("Provenance manifest exceeds the 256 KiB limit.")
+        conn = self._connection()
+        try:
+            artifact = conn.execute(
+                "SELECT id FROM artifacts WHERE id=? AND user_id=? FOR UPDATE",
+                (artifact_id, user_id),
+            ).fetchone()
+            if not artifact:
+                raise ValueError("Artifact not found for this user.")
+            existing = conn.execute(
+                "SELECT * FROM provenance_manifests WHERE user_id=? AND artifact_id=? "
+                "AND manifest_sha256=? AND event_chain_head_sha256 IS NOT DISTINCT FROM ? "
+                "ORDER BY manifest_version DESC LIMIT 1",
+                (user_id, artifact_id, manifest_sha256, event_chain_head_sha256),
+            ).fetchone()
+            if existing:
+                manifest_id = existing["id"]
+                if signature:
+                    saved = conn.execute(
+                        "SELECT * FROM provenance_signatures WHERE user_id=? AND manifest_id=? AND key_id=? LIMIT 1",
+                        (user_id, manifest_id, signature["key_id"]),
+                    ).fetchone()
+                    if saved:
+                        if (
+                            saved["signature_base64"] != signature["signature_base64"]
+                            or saved["public_key_base64"] != signature["public_key_base64"]
+                            or saved["trust_level"] != signature["trust_level"]
+                        ):
+                            raise ValueError("A different signature already exists for this manifest and key ID.")
+                    else:
+                        conn.execute(
+                            "INSERT INTO provenance_signatures("
+                            "user_id, manifest_id, algorithm, key_id, signature_base64, public_key_base64, trust_level"
+                            ") VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            (
+                                user_id, manifest_id, signature["algorithm"], signature["key_id"],
+                                signature["signature_base64"], signature["public_key_base64"],
+                                signature["trust_level"],
+                            ),
+                        )
+                        conn.execute(
+                            "UPDATE provenance_manifests SET status='signed' WHERE id=? AND user_id=?",
+                            (manifest_id, user_id),
+                        )
+                conn.commit()
+                return self.get_manifest(user_id, artifact_id, manifest_id)
+
+            latest = conn.execute(
+                "SELECT manifest_version FROM provenance_manifests "
+                "WHERE user_id=? AND artifact_id=? ORDER BY manifest_version DESC LIMIT 1",
+                (user_id, artifact_id),
+            ).fetchone()
+            version = (latest["manifest_version"] + 1) if latest else 1
+            status = "signed" if signature else "unsigned"
+            cursor = conn.execute(
+                "INSERT INTO provenance_manifests("
+                "user_id, artifact_id, manifest_version, schema_id, manifest_json, manifest_sha256, "
+                "event_chain_head_sha256, status"
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                (
+                    user_id, artifact_id, version, schema_id, manifest_json,
+                    manifest_sha256, event_chain_head_sha256, status,
+                ),
+            )
+            manifest_id = cursor.fetchone()["id"]
+            if signature:
+                conn.execute(
+                    "INSERT INTO provenance_signatures("
+                    "user_id, manifest_id, algorithm, key_id, signature_base64, public_key_base64, trust_level"
+                    ") VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        user_id, manifest_id, signature["algorithm"], signature["key_id"],
+                        signature["signature_base64"], signature["public_key_base64"],
+                        signature["trust_level"],
+                    ),
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return self.get_manifest(user_id, artifact_id, manifest_id)
 
     @staticmethod
     def _connection():
