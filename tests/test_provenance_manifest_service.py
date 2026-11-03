@@ -131,10 +131,10 @@ class TestProvenanceManifestService(SmartBethGTestCase):
         signed = self.service.sign_manifest(self.owner["id"], self.artifact["id"])
         with self.assertRaises(LookupError):
             self.service.get_latest_manifest(self.other["id"], self.artifact["id"])
-        foreign = self.service.verify_manifest(
-            self.other["id"], self.artifact["id"], manifest_id=signed["id"]
-        )
-        self.assertEqual(foreign["reason"], "manifest_not_found")
+        with self.assertRaises(LookupError):
+            self.service.verify_manifest(
+                self.other["id"], self.artifact["id"], manifest_id=signed["id"]
+            )
 
 
 if __name__ == "__main__":
