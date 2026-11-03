@@ -362,7 +362,7 @@ Required regression coverage includes:
 | Unit | Status | Commit / evidence |
 |---|---|---|
 | 0 — Baseline | Complete | Main baseline `b8b632d`; plan commit `a4edb28`; repository/API/storage/migration map recorded. Focused tests deferred to disposable-PostgreSQL CI. |
-| 1 — Schema and contracts | Pending | |
+| 1 — Schema and contracts | Complete | Migration `0012_asset_provenance.sql`; contracts/repository and DB registration committed. New provenance tests: 9 passed. Compile: passed. PostgreSQL integration: passed. Full suite: 351 passed, 7 unrelated existing failures, 9 skipped (approval legacy routes, consent/CSRF/session fixtures, workspace auth fixtures); see CI run `41677453908`. |
 | 2 — Binary asset support | Pending | |
 | 3 — Event service and API | Pending | |
 | 4 — AI attribution | Pending | |
