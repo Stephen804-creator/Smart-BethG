@@ -32,9 +32,9 @@ def _png_chunk(kind, payload):
     )
 
 
-def _valid_png():
+def _valid_png(red=32):
     header = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
-    pixels = zlib.compress(b"\x00\x20\x80\xe0")
+    pixels = zlib.compress(bytes([0, red, 128, 224]))
     return (
         b"\x89PNG\r\n\x1a\n"
         + _png_chunk(b"IHDR", header)
@@ -130,15 +130,15 @@ class TestC2paExportService(SmartBethGTestCase):
             trust_anchors_pem=root_pem,
         )
 
-    def _create_png_artifact(self, ai_generated=False):
-        png = _valid_png()
+    def _create_png_artifact(self, ai_generated=False, name="uploaded.png", red=32):
+        png = _valid_png(red)
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as handle:
             path = handle.name
             handle.write(png)
         try:
             if ai_generated:
                 artifact = self.artifacts.create_binary_from_path(
-                    self.owner["id"], "ai-generated.png", path, "image/png",
+                    self.owner["id"], name if name != "uploaded.png" else "ai-generated.png", path, "image/png",
                     provenance_event_type="ai_contribution",
                     provenance_actor_type="provider",
                     provenance_actor_id="openai",
@@ -150,7 +150,7 @@ class TestC2paExportService(SmartBethGTestCase):
                 )
             else:
                 artifact = self.artifacts.create_binary_from_path(
-                    self.owner["id"], "uploaded.png", path, "image/png"
+                    self.owner["id"], name, path, "image/png"
                 )
             return artifact, png
         finally:
@@ -186,6 +186,33 @@ class TestC2paExportService(SmartBethGTestCase):
         source_payload = json.loads(events[2]["payload_json"])
         self.assertEqual(source_payload["source_artifact_id"], artifact["id"])
         self.assertEqual(source_payload["source_sha256"], artifact["checksum_sha256"])
+
+    def test_source_asset_is_carried_as_c2pa_ingredient_and_internal_reference(self):
+        source, _ = self._create_png_artifact(name="source.png", red=32)
+        target, _ = self._create_png_artifact(name="composite.png", red=64)
+        self.repository.append_event(
+            self.owner["id"], target["id"], "source_attached", "human",
+            actor_id=str(self.owner["id"]),
+            payload={
+                "source_artifact_id": source["id"],
+                "source_sha256": source["checksum_sha256"],
+                "relationship": "componentOf",
+                "attribution_basis": "user_supplied",
+            },
+        )
+        result = self.service.export(self.owner["id"], target["id"])
+        output = result["artifact"]
+        self.assertTrue(result["c2pa"]["signature_verified"])
+        self.assertIn(
+            source["checksum_sha256"],
+            [item["sha256"] for item in result["internal_manifest"]["manifest"]["sources"]],
+        )
+        import c2pa
+        content, _ = self.artifacts.read_bytes(self.owner["id"], output["id"])
+        with self.service._context(c2pa) as context:
+            with c2pa.Reader("image/png", io.BytesIO(content), context=context) as reader:
+                active = reader.get_active_manifest()
+        self.assertIn("source.png", json.dumps(active))
 
     def test_ai_generated_asset_uses_trained_algorithmic_media_intent(self):
         artifact, _ = self._create_png_artifact(ai_generated=True)
