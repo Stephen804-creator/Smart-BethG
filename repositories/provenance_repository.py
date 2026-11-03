@@ -67,7 +67,7 @@ class ProvenanceRepository:
             ).fetchone()
             sequence = (previous["sequence_number"] + 1) if previous else 1
             previous_digest = previous["event_sha256"] if previous else None
-            payload_json = canonical_json(event_body)
+            payload_json = canonical_json(payload)
             chain_body = {
                 "artifact_id": artifact_id,
                 "sequence_number": sequence,
