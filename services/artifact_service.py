@@ -31,16 +31,18 @@ class ArtifactService:
         if mission_id is not None and not self._owns_mission(user_id, mission_id):
             raise ValueError("Mission not found for this user.")
 
+        digest = hashlib.sha256(encoded).hexdigest()
         if idempotency_key is not None:
             idempotency_key = str(idempotency_key).strip()
             if not idempotency_key or len(idempotency_key) > 200:
                 raise ValueError("Idempotency key must be between 1 and 200 characters.")
             existing = self._get_by_idempotency_key(user_id, idempotency_key)
             if existing:
+                if existing.get("checksum_sha256") != digest:
+                    raise ValueError("Idempotency key was already used for different artifact content.")
                 return existing
 
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)[:120] or "artifact"
-        digest = hashlib.sha256(encoded).hexdigest()
         locator_token = (
             hashlib.sha256(f"{idempotency_key}:{digest}".encode("utf-8")).hexdigest()[:32]
             if idempotency_key else uuid.uuid4().hex
@@ -96,7 +98,10 @@ class ArtifactService:
                     "checksum_sha256": digest,
                     "source_filename": name,
                 },
-                idempotency_key=f"asset-create:{idempotency_key}" if idempotency_key else None,
+                idempotency_key=(
+                    f"asset-create:{hashlib.sha256(idempotency_key.encode('utf-8')).hexdigest()}"
+                    if idempotency_key else None
+                ),
             )
         except Exception:
             self.delete(user_id, artifact_id)
