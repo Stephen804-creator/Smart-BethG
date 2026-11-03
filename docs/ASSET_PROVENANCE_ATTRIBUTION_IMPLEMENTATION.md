@@ -1,6 +1,6 @@
 # Asset Provenance and Attribution — Product, Technical Design, and Execution Plan
 
-**Status:** Approved implementation plan; implementation is to follow this document in order.  
+**Status:** Approved implementation plan; Unit 0 baseline inspection completed. Implementation follows this document in order.  
 **Created:** 2026-11-03  
 **Target repository:** `Stephen804-creator/Smart-BethG`  
 **Working branch:** `feat/asset-provenance-attribution-2026-11-03`  
@@ -65,6 +65,8 @@ These rules are mandatory and apply to every implementation unit.
 ## 4. Current repository integration points
 
 The implementation must inspect and extend the actual base-branch code, not assume paths or interfaces from older branches.
+
+Baseline inspected at main commit `b8b632d9a856ea16528fde39c5355965cfa38e21` (2026-11-01). The feature branch was created from that exact `main` head. The plan itself was committed first as `a4edb28f1e561d7cffd68213429b246789a332ec`. The current migration sequence ends at `0011_workflow_adapter_idempotency.sql`; Unit 1 will add `0012_asset_provenance.sql`. Existing artifact persistence is text-only (1 MiB) and uses `put_bytes`; binary support is therefore a real additive extension, not an existing capability. `cryptography>=50` is already a production dependency, so Ed25519 does not require a new dependency unless runtime compatibility review identifies a reason.
 
 Known current-main integration points:
 
@@ -229,13 +231,13 @@ If a maintained library cannot be installed or safely validated for this reposit
 Execute these units in order. Do not skip ahead or silently combine units. Update the completion checklist in this document after each unit with changed files, tests, commit SHA, and any deviation.
 
 ### Unit 0 — Repository baseline and change contract
-1. Inspect branch status, README, architecture/decision documents, migration sequence, artifact routes/service, storage adapters, chat/provider flow, export/deletion behavior, and CI commands.
-2. Record the exact current baseline commit and any pre-existing work.
-3. Confirm the final module names and route prefix.
-4. Add or update this plan before implementation if repository evidence changes any decision.
-5. Run the existing focused artifact/provider tests or record why the environment cannot run them.
+1. Inspect branch status, README, architecture/decision documents, migration sequence, artifact routes/service, storage adapters, chat/provider flow, export/deletion behavior, and CI commands. **Completed:** inspected README, `database.py`, migrations, artifact service/routes, storage adapters, chat/provider services, API dependencies, app registration, requirements, and PostgreSQL test base.
+2. Record the exact current baseline commit and any pre-existing work. **Completed:** base is `b8b632d9a856ea16528fde39c5355965cfa38e21`; work is isolated on `feat/asset-provenance-attribution-2026-11-03`; no changes were made to `main` or other open PR branches.
+3. Confirm the final module names and route prefix. **Completed:** use `services/provenance_service.py`, `repositories/provenance_repository.py`, and `routes/provenance.py`; mount under `/api/v1/provenance` and retain artifact routes under `/api/v1/artifacts`.
+4. Add or update this plan before implementation if repository evidence changes any decision. **Completed:** current main has a text-only artifact service, storage adapters expose `put_bytes/get_bytes/delete`, the migration sequence ends at `0011`, and `cryptography>=50` is already installed. Unit 2 must extend storage safely for bounded binary uploads.
+5. Run the existing focused artifact/provider tests or record why the environment cannot run them. **Not run locally:** the available GitHub repository interface can inspect and change repository files but does not provide the disposable PostgreSQL test database required by `tests/base.py`. The documented focused and full suites remain mandatory CI verification after implementation.
 
-**Acceptance:** no source code changed; baseline and integration map are documented.
+**Acceptance:** completed by repository inspection; no application source code changed. Plan-only commit: `a4edb28f1e561d7cffd68213429b246789a332ec`.
 
 ### Unit 1 — PostgreSQL schema and domain contracts
 1. Add a new numbered migration for provenance events, manifests, signatures, indexes, constraints, and sequence/hash-chain fields.
@@ -357,7 +359,7 @@ Required regression coverage includes:
 
 | Unit | Status | Commit / evidence |
 |---|---|---|
-| 0 — Baseline | Pending | |
+| 0 — Baseline | Complete | Main baseline `b8b632d`; plan commit `a4edb28`; repository/API/storage/migration map recorded. Focused tests deferred to disposable-PostgreSQL CI. |
 | 1 — Schema and contracts | Pending | |
 | 2 — Binary asset support | Pending | |
 | 3 — Event service and API | Pending | |
