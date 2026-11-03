@@ -180,9 +180,9 @@ class TestC2paExportService(SmartBethGTestCase):
 
         events = self.repository.list_events(self.owner["id"], output["id"])
         self.assertEqual([row["event_type"] for row in events], [
-            "transformation", "source_attached"
+            "transformation", "agent_contribution", "source_attached"
         ])
-        source_payload = json.loads(events[1]["payload_json"])
+        source_payload = json.loads(events[2]["payload_json"])
         self.assertEqual(source_payload["source_artifact_id"], artifact["id"])
         self.assertEqual(source_payload["source_sha256"], artifact["checksum_sha256"])
 
@@ -198,7 +198,11 @@ class TestC2paExportService(SmartBethGTestCase):
                 active = reader.get_active_manifest()
         manifest_text = json.dumps(active)
         self.assertIn("trainedAlgorithmicMedia", manifest_text)
-        self.assertIn("gpt-image-test", result["internal_manifest"]["manifest"]["history"][1]["model"])
+        ai_history = next(
+            item for item in result["internal_manifest"]["manifest"]["history"]
+            if item["event_type"] == "ai_contribution"
+        )
+        self.assertEqual(ai_history["model"], "gpt-image-test")
 
     def test_missing_c2pa_credentials_never_claims_to_sign(self):
         artifact, _ = self._create_png_artifact()
