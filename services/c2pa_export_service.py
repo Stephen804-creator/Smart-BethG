@@ -290,15 +290,6 @@ class C2paExportService:
                                 ingredient["mime_type"],
                                 io.BytesIO(ingredient["content"]),
                             )
-                            builder.add_action({
-                                "action": "c2pa.placed",
-                                "softwareAgent": SOFTWARE_AGENT,
-                                "parameters": {
-                                    "ingredientIds": [ingredient["label"]],
-                                },
-                                "description": "Source asset attached to this Smart BethG artifact.",
-                            })
-
                         for row in event_rows:
                             if row["event_type"] == "human_edit":
                                 details = self._event_payload(row)
