@@ -72,6 +72,17 @@ class TestProvenanceManifestService(SmartBethGTestCase):
         self.assertEqual(newer["manifest_version"], 2)
         self.assertEqual(newer["status"], "unsigned")
 
+    def test_key_id_cannot_be_reused_for_a_different_private_key(self):
+        self.service.sign_manifest(self.owner["id"], self.artifact["id"])
+        rotated_key_same_id = ProvenanceManifestService(
+            self.repository, self.artifacts,
+            private_key_bytes=bytes(reversed(range(32))),
+            key_id="test-ed25519-key",
+            trust_level="development",
+        )
+        with self.assertRaisesRegex(ValueError, "already bound to a different"):
+            rotated_key_same_id.sign_manifest(self.owner["id"], self.artifact["id"])
+
     def test_changed_asset_bytes_fail_verification(self):
         signed = self.service.sign_manifest(self.owner["id"], self.artifact["id"])
         object_name = os.path.basename(self.artifact["path"])
