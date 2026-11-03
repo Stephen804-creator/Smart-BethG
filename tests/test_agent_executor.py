@@ -79,6 +79,7 @@ class TestAgentExecutor(SmartBethGTestCase):
         req = AgentRequest(text="hello", user=self.user, selection="anthropic:claude-opus-5")
         executor.run(req)
         self.assertEqual(calls["selection"], "anthropic:claude-opus-5")
+        self.assertEqual(calls["orchestrator_id"], "agent_executor")
 
     def test_remember_intent_stores_a_real_memory_entry(self):
         req = AgentRequest(text="remember that I prefer concise answers", user=self.user)
