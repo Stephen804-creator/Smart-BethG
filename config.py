@@ -76,6 +76,23 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 DEFAULT_PROVIDER = os.getenv("SMART_BETHG_DEFAULT_PROVIDER", "")
 
+# Optional Ed25519 provenance signing. No key is generated automatically;
+# missing configuration deliberately leaves manifests unsigned.
+PROVENANCE_SIGNING_PRIVATE_KEY_B64 = os.getenv(
+    "SMART_BETHG_PROVENANCE_PRIVATE_KEY_B64", ""
+).strip()
+PROVENANCE_SIGNING_KEY_ID = os.getenv(
+    "SMART_BETHG_PROVENANCE_KEY_ID", ""
+).strip()
+PROVENANCE_SIGNING_TRUST_LEVEL = os.getenv(
+    "SMART_BETHG_PROVENANCE_TRUST_LEVEL",
+    "configured" if IS_PRODUCTION else "development",
+).strip().lower()
+if PROVENANCE_SIGNING_TRUST_LEVEL not in {"development", "configured"}:
+    raise RuntimeError(
+        "SMART_BETHG_PROVENANCE_TRUST_LEVEL must be development or configured."
+    )
+
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
 GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
 GOOGLE_OAUTH_ENABLED = bool(GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)
