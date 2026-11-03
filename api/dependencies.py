@@ -139,3 +139,11 @@ def get_connector_action_service():
 
 def get_job_queue():
     return JobQueue()
+
+
+from repositories.provenance_repository import ProvenanceRepository
+from services.provenance_service import ProvenanceService
+
+
+def get_provenance_service():
+    return ProvenanceService(ProvenanceRepository())
