@@ -141,11 +141,11 @@ class ArtifactService:
 
         signatures = {
             "application/pdf": header.startswith(b"%PDF-"),
-            "image/jpeg": header.startswith(b"\\xff\\xd8\\xff"),
-            "image/png": header.startswith(b"\\x89PNG\\r\\n\\x1a\\n"),
+            "image/jpeg": header.startswith(bytes.fromhex("ffd8ff")),
+            "image/png": header.startswith(bytes.fromhex("89504e470d0a1a0a")),
             "image/webp": len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WEBP",
             "video/mp4": len(header) >= 8 and header[4:8] == b"ftyp",
-            "video/webm": header.startswith(b"\\x1a\\x45\\xdf\\xa3"),
+            "video/webm": header.startswith(bytes.fromhex("1a45dfa3")),
         }
         if media_type in signatures and not signatures[media_type]:
             raise ValueError("Uploaded file signature does not match its declared media type.")
