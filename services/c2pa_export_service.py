@@ -103,10 +103,12 @@ class C2paExportService:
         try:
             c2pa = self._sdk()
             supported = sorted(set(c2pa.Builder.get_supported_mime_types()))
+            readable = sorted(set(c2pa.Reader.get_supported_mime_types()))
             available = True
             error = None
         except Exception as exc:
             supported = []
+            readable = []
             available = False
             error = str(exc)
         return {
@@ -117,6 +119,7 @@ class C2paExportService:
             "timestamp_authority_configured": bool(self.timestamp_url),
             "trust_anchors_configured": bool(self.trust_anchors_pem),
             "supported_mime_types": supported,
+            "readable_mime_types": readable,
             "signing_algorithm": self.signing_algorithm,
             "error": error,
             "trust_note": (
@@ -532,7 +535,7 @@ class C2paExportService:
         if content is None or not record:
             raise ValueError("Asset bytes are unavailable.")
         media_type = (record.get("content_type") or "").split(";", 1)[0].lower()
-        supported = set(c2pa.Builder.get_supported_mime_types())
+        supported = set(c2pa.Reader.get_supported_mime_types())
         if media_type not in supported:
             raise ValueError(f"C2PA validation is not supported for {media_type or 'unknown media type'}.")
         context = self._context(c2pa)
