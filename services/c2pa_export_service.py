@@ -3,6 +3,7 @@ import io
 import json
 import os
 import tempfile
+from urllib.parse import quote
 
 import config
 from repositories.provenance_repository import ProvenanceRepository
@@ -144,8 +145,33 @@ class C2paExportService:
         internal_manifest = self.manifests.generate_manifest(user_id, artifact_id)
         internal_manifest_hash = internal_manifest["manifest_sha256"]
         event_rows = self.repository.list_events(user_id, artifact_id)
-        has_ai_contribution = any(
-            row["event_type"] == "ai_contribution" for row in event_rows
+        ai_rows = [
+            row for row in event_rows if row["event_type"] == "ai_contribution"
+        ]
+        has_ai_contribution = bool(ai_rows)
+        ai_sequences = [row["sequence_number"] for row in ai_rows]
+        first_ai_sequence = min(ai_sequences) if ai_sequences else None
+        human_approval = any(
+            row["event_type"] == "approval"
+            and first_ai_sequence is not None
+            and row["sequence_number"] > first_ai_sequence
+            for row in event_rows
+        )
+        prompt_guided = any(
+            self._event_payload(row).get("source_type") in {
+                "chat_message", "user_prompt", "prompt", "prompt_guided"
+            }
+            for row in ai_rows
+        ) or any(
+            row["event_type"] == "human_edit"
+            and first_ai_sequence is not None
+            and row["sequence_number"] > first_ai_sequence
+            for row in event_rows
+        )
+        oversight_level = (
+            "human_validated" if human_approval
+            else "prompt_guided" if prompt_guided
+            else "fully_autonomous"
         )
         source_rows = [
             row for row in event_rows if row["event_type"] == "source_attached"
@@ -190,18 +216,43 @@ class C2paExportService:
                 "source_id": source_id,
             })
 
+        assertions = [{
+            "label": "io.github.stephen804creator.smartbethg.provenance",
+            "data": {
+                "internal_manifest_sha256": internal_manifest_hash,
+                "event_chain_head_sha256": internal_manifest["event_chain_head_sha256"],
+                "source_reference_count": len(source_references),
+            },
+        }]
+        seen_models = set()
+        for row in ai_rows:
+            provider = row.get("provider")
+            model = row.get("model")
+            key = (provider, model)
+            if key in seen_models:
+                continue
+            seen_models.add(key)
+            disclosure = {
+                "modelType": "c2pa.types.model",
+                "contentProfile": {"humanOversightLevel": oversight_level},
+            }
+            if model:
+                disclosure["modelName"] = str(model)[:240]
+            if provider and model:
+                disclosure["modelIdentifier"] = (
+                    f"urn:smartbethg:model:{quote(str(provider), safe='')}:{quote(str(model), safe='')}"
+                )
+            if provider:
+                disclosure["metadata"] = {"provider": str(provider)[:120]}
+            assertions.append({"label": "c2pa.ai-disclosure", "data": disclosure})
+
         manifest_definition = {
-            "claim_generator_info": [{"name": "Smart BethG", "version": "1.0"}],
+            "claim_generator_info": [{
+                "name": "Smart BethG", "version": "1.0", "specVersion": "2.4"
+            }],
             "title": artifact["name"],
             "format": media_type,
-            "assertions": [{
-                "label": "io.github.stephen804creator.smartbethg.provenance",
-                "data": {
-                    "internal_manifest_sha256": internal_manifest_hash,
-                    "event_chain_head_sha256": internal_manifest["event_chain_head_sha256"],
-                    "source_reference_count": len(source_references),
-                },
-            }],
+            "assertions": assertions,
         }
         context = self._context(c2pa)
         signed_stream = io.BytesIO()
@@ -209,23 +260,22 @@ class C2paExportService:
             with context:
                 with c2pa.Signer.from_info(signer_info) as active_signer:
                     with c2pa.Builder(manifest_definition, context) as builder:
+                        original_label = "smartbethg-original-input"
+                        original_ingredient = {
+                            "title": artifact["name"],
+                            "relationship": "parentOf",
+                            "label": original_label,
+                        }
                         if has_ai_contribution:
-                            builder.set_intent(
-                                c2pa.C2paBuilderIntent.CREATE,
-                                c2pa.C2paDigitalSourceType.TRAINED_ALGORITHMIC_MEDIA,
-                            )
-                        else:
-                            original_label = "smartbethg-original-input"
-                            builder.add_ingredient(
-                                {
-                                    "title": artifact["name"],
-                                    "relationship": "parentOf",
-                                    "label": original_label,
-                                },
-                                media_type,
-                                io.BytesIO(content),
-                            )
-                            builder.set_intent(c2pa.C2paBuilderIntent.EDIT)
+                            original_ingredient["digitalSourceType"] = TRAINED_ALGORITHMIC_MEDIA
+                        builder.add_ingredient(
+                            original_ingredient, media_type, io.BytesIO(content)
+                        )
+                        # C2PA signing happens after the asset already exists.
+                        # Record it as an edit of a parent asset, not as a new
+                        # creation by Smart BethG. AI origin is attached to the
+                        # parent ingredient and c2pa.ai-disclosure assertion.
+                        builder.set_intent(c2pa.C2paBuilderIntent.EDIT)
 
                         for ingredient in source_ingredients:
                             builder.add_ingredient(
@@ -319,7 +369,7 @@ class C2paExportService:
         output_source_references = [{
             "source_id": artifact_id,
             "source_sha256": artifact["checksum_sha256"],
-            "relationship": "pre_signing_version" if has_ai_contribution else "parentOf",
+            "relationship": "parentOf",
         }]
         output_source_references.extend(source_references)
         for source in output_source_references:
