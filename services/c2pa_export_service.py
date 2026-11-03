@@ -261,8 +261,8 @@ class C2paExportService:
                             io.BytesIO(content), signed_stream,
                         )
 
-                signed_stream.seek(0)
-                with c2pa.Reader(media_type, signed_stream, context=context) as reader:
+                signed_bytes = signed_stream.getvalue()
+                with c2pa.Reader(media_type, io.BytesIO(signed_bytes), context=context) as reader:
                     store = json.loads(reader.json())
                     active_label = store.get("active_manifest")
                     active_manifest = (store.get("manifests") or {}).get(active_label)
@@ -275,7 +275,6 @@ class C2paExportService:
         except Exception as exc:
             raise RuntimeError(f"C2PA signing or validation failed: {exc}") from exc
 
-        signed_bytes = signed_stream.getvalue()
         if len(signed_bytes) > config.MAX_ASSET_UPLOAD_BYTES:
             raise ValueError("The signed C2PA asset exceeds the configured artifact size limit.")
 
@@ -386,7 +385,17 @@ class C2paExportService:
         context = self._context(c2pa)
         try:
             with context:
-                with c2pa.Reader(media_type, io.BytesIO(content), context=context) as reader:
+                reader = c2pa.Reader.try_create(
+                    media_type, io.BytesIO(content), context=context
+                )
+                if reader is None:
+                    return {
+                        "has_c2pa_manifest": False,
+                        "valid": False,
+                        "trusted": False,
+                        "status": "no_manifest",
+                    }
+                with reader:
                     store = json.loads(reader.json())
                     active_label = store.get("active_manifest")
                     active_manifest = (store.get("manifests") or {}).get(active_label)
