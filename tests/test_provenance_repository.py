@@ -50,8 +50,10 @@ class TestProvenanceRepository(SmartBethGTestCase):
             self.owner["id"], self.artifact["id"], "ai_contribution", "provider",
             provider="openai", model="example-model",
         )
-        self.assertEqual((first["sequence_number"], second["sequence_number"]), (1, 2))
-        self.assertIsNone(first["previous_event_sha256"])
+        initial = self.repository.list_events(self.owner["id"], self.artifact["id"])[0]
+        self.assertEqual(initial["event_type"], "asset_created")
+        self.assertEqual((first["sequence_number"], second["sequence_number"]), (2, 3))
+        self.assertEqual(first["previous_event_sha256"], initial["event_sha256"])
         self.assertEqual(second["previous_event_sha256"], first["event_sha256"])
         self.assertEqual(len(second["event_sha256"]), 64)
 
@@ -65,7 +67,7 @@ class TestProvenanceRepository(SmartBethGTestCase):
             idempotency_key="upload-once",
         )
         self.assertEqual(first["id"], second["id"])
-        self.assertEqual(len(self.repository.list_events(self.owner["id"], self.artifact["id"])), 1)
+        self.assertEqual(len(self.repository.list_events(self.owner["id"], self.artifact["id"])), 2)
 
     def test_event_lookup_is_owner_scoped(self):
         event = self.repository.append_event(
