@@ -134,7 +134,7 @@ def create_app() -> FastAPI:
         allow_origins=config.ALLOWED_ORIGINS,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "X-CSRF-Token"],
+        allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "Idempotency-Key"],
     )
 
     app.add_middleware(
