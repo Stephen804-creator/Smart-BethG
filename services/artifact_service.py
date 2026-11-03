@@ -117,7 +117,8 @@ class ArtifactService:
         self, user_id, name, source_path, content_type, mission_id=None,
         idempotency_key=None, provenance_event_type="asset_uploaded",
         provenance_actor_type="human", provenance_actor_id=None,
-        provenance_actor_label=None, provenance_agent_id=None, provenance_payload=None,
+        provenance_actor_label=None, provenance_agent_id=None, provenance_provider=None,
+        provenance_model=None, provenance_payload=None,
     ):
         """Persist a bounded binary asset and append its actual creation/transformation event."""
         name = (name or "").strip()
@@ -247,6 +248,8 @@ class ArtifactService:
                 actor_id=provenance_actor_id if provenance_actor_id is not None else str(user_id),
                 actor_label=provenance_actor_label,
                 agent_id=provenance_agent_id,
+                provider=provenance_provider,
+                model=provenance_model,
                 payload=event_payload,
                 idempotency_key=(
                     f"{provenance_event_type}:{idempotency_key}" if idempotency_key else None
