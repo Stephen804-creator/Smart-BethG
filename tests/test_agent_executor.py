@@ -31,6 +31,8 @@ class TestAgentExecutor(SmartBethGTestCase):
         self.assertEqual(outcome["intent"], "chat")
         self.assertEqual(outcome["status"], "no_provider")  # no API key in tests
         self.assertIn("isn't connected", outcome["result"]["reply"])
+        history = self.executor.chat_service.history(self.user["id"], outcome["result"]["conversation_id"])
+        self.assertEqual(history[-1]["orchestrator_id"], "agent_executor")
 
     def test_git_read_intent_requires_a_connector(self):
         outcome = self.executor.run(AgentRequest(text="what's the git status?", user=self.user))
