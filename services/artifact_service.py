@@ -1,5 +1,8 @@
 """Owner-scoped artifact storage using the configured storage adapter."""
+import codecs
+import config
 import hashlib
+import os
 import re
 import uuid
 
@@ -83,6 +86,161 @@ class ArtifactService:
         finally:
             conn.close()
         return self.get(user_id, artifact_id)
+
+    ALLOWED_BINARY_TYPES = {
+        "text/plain", "text/markdown", "text/csv", "application/json",
+        "application/pdf", "image/jpeg", "image/png", "image/webp",
+        "video/mp4", "video/webm",
+    }
+
+    def create_binary_from_path(
+        self, user_id, name, source_path, content_type, mission_id=None,
+        idempotency_key=None,
+    ):
+        """Persist a bounded, signature-checked binary asset and its upload event."""
+        name = (name or "").strip()
+        if not name or len(name) > 160:
+            raise ValueError("Artifact name must be between 1 and 160 characters.")
+        if mission_id is not None and not self._owns_mission(user_id, mission_id):
+            raise ValueError("Mission not found for this user.")
+        media_type = (content_type or "").split(";", 1)[0].strip().lower()
+        if media_type not in self.ALLOWED_BINARY_TYPES:
+            raise ValueError("This asset media type is not supported.")
+        if idempotency_key is not None:
+            idempotency_key = str(idempotency_key).strip()
+            if not idempotency_key or len(idempotency_key) > 180:
+                raise ValueError("Idempotency key must be between 1 and 180 characters.")
+
+        source_path = os.fspath(source_path)
+        digest = hashlib.sha256()
+        size = 0
+        header = b""
+        decoder = codecs.getincrementaldecoder("utf-8-sig")("strict") if media_type in {
+            "text/plain", "text/markdown", "text/csv", "application/json"
+        } else None
+        try:
+            with open(source_path, "rb") as source:
+                while True:
+                    chunk = source.read(64 * 1024)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    if size > config.MAX_ASSET_UPLOAD_BYTES:
+                        raise ValueError("Asset exceeds the configured upload size limit.")
+                    digest.update(chunk)
+                    if len(header) < 32:
+                        header += chunk[:32 - len(header)]
+                    if decoder:
+                        decoder.decode(chunk, final=False)
+                if decoder:
+                    decoder.decode(b"", final=True)
+        except UnicodeDecodeError as exc:
+            raise ValueError("Text assets must contain valid UTF-8.") from exc
+        except OSError as exc:
+            raise ValueError("The uploaded asset could not be read.") from exc
+
+        signatures = {
+            "application/pdf": header.startswith(b"%PDF-"),
+            "image/jpeg": header.startswith(b"\\xff\\xd8\\xff"),
+            "image/png": header.startswith(b"\\x89PNG\\r\\n\\x1a\\n"),
+            "image/webp": len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WEBP",
+            "video/mp4": len(header) >= 8 and header[4:8] == b"ftyp",
+            "video/webm": header.startswith(b"\\x1a\\x45\\xdf\\xa3"),
+        }
+        if media_type in signatures and not signatures[media_type]:
+            raise ValueError("Uploaded file signature does not match its declared media type.")
+        if size == 0 and media_type not in {"text/plain", "text/markdown", "text/csv", "application/json"}:
+            raise ValueError("The uploaded asset is empty or incomplete.")
+
+        checksum = digest.hexdigest()
+        if idempotency_key:
+            existing = self._get_by_idempotency_key(user_id, idempotency_key)
+            if existing:
+                if existing.get("checksum_sha256") != checksum:
+                    raise ValueError("Idempotency key was already used for different asset content.")
+                return existing
+
+        artifact_type = (
+            "image" if media_type.startswith("image/") else
+            "video" if media_type.startswith("video/") else
+            "document" if media_type == "application/pdf" else "text"
+        )
+        safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", name)[:120] or "asset"
+        locator_token = (
+            hashlib.sha256(f"{idempotency_key}:{checksum}".encode("utf-8")).hexdigest()[:32]
+            if idempotency_key else uuid.uuid4().hex
+        )
+        object_name = f"{locator_token}_{safe_name}"
+        if hasattr(self.storage, "put_file"):
+            locator = self.storage.put_file("artifacts", user_id, object_name, source_path)
+        else:
+            with open(source_path, "rb") as source:
+                locator = self.storage.put_bytes("artifacts", user_id, object_name, source.read())
+
+        conn = get_connection()
+        try:
+            cursor = conn.execute(
+                "INSERT INTO artifacts(mission_id, user_id, name, artifact_type, path, content_type, "
+                "size_bytes, checksum_sha256, status, updated_at, idempotency_key) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ready', CURRENT_TIMESTAMP, ?) "
+                "ON CONFLICT(user_id, idempotency_key) WHERE idempotency_key IS NOT NULL "
+                "DO NOTHING RETURNING id",
+                (mission_id, user_id, name, artifact_type, locator, media_type, size, checksum, idempotency_key),
+            )
+            row = cursor.fetchone()
+            if row:
+                artifact_id = row["id"]
+                conn.commit()
+            else:
+                conn.rollback()
+                existing = self._get_by_idempotency_key(user_id, idempotency_key)
+                if not existing or existing.get("checksum_sha256") != checksum:
+                    raise ValueError("Artifact idempotency conflict could not be resolved safely.")
+                artifact_id = existing["id"]
+                if existing.get("path") != locator:
+                    self.storage.delete("artifacts", user_id, locator)
+                return existing
+        except Exception:
+            conn.rollback()
+            try:
+                self.storage.delete("artifacts", user_id, locator)
+            except Exception:
+                pass
+            raise
+        finally:
+            conn.close()
+
+        try:
+            from repositories.provenance_repository import ProvenanceRepository
+            ProvenanceRepository().append_event(
+                user_id, artifact_id, "asset_uploaded", "human",
+                actor_id=str(user_id),
+                payload={
+                    "content_type": media_type,
+                    "size_bytes": size,
+                    "checksum_sha256": checksum,
+                    "source_filename": name,
+                },
+                idempotency_key=f"asset-upload:{idempotency_key}" if idempotency_key else None,
+            )
+        except Exception:
+            self.delete(user_id, artifact_id)
+            raise
+        return self.get(user_id, artifact_id)
+
+    def read_bytes(self, user_id, artifact_id):
+        record = self.get(user_id, artifact_id)
+        if not record:
+            return None, None
+        try:
+            content = self.storage.get_bytes("artifacts", user_id, record["path"])
+        except Exception:
+            return None, record
+        if len(content) > config.MAX_ASSET_UPLOAD_BYTES:
+            raise ValueError("Stored asset exceeds the configured read limit.")
+        if len(content) != record.get("size_bytes") or hashlib.sha256(content).hexdigest() != record.get("checksum_sha256"):
+            raise ValueError("Stored asset failed its SHA-256 integrity check.")
+        return content, record
 
     def _get_by_idempotency_key(self, user_id, idempotency_key):
         conn = get_connection()
