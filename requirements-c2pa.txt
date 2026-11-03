@@ -1,0 +1,3 @@
+# Optional native C2PA SDK for supported media containers. Kept separate so local Windows development can run without native C2PA wheels.
+c2pa-python==0.38.1
+certifi>=2026.10.19
