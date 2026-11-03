@@ -338,6 +338,11 @@ class C2paExportService:
                         raise ValueError("The C2PA SDK did not produce a signed active manifest.")
                     validation_state, signature_verified, trusted = self._validation_state(reader)
                     validation_results = self._validation_results(reader)
+            if not signature_verified:
+                raise RuntimeError(
+                    "C2PA signature did not validate under the configured certificate trust policy; "
+                    "no signed artifact was stored."
+                )
         except ValueError:
             raise
         except Exception as exc:
@@ -530,6 +535,8 @@ class C2paExportService:
                 )
 
     def _signer_info(self, c2pa):
+        if self.signing_algorithm not in SUPPORTED_ALGORITHMS:
+            raise ValueError("Unsupported C2PA signing algorithm.")
         algorithm = getattr(c2pa.C2paSigningAlg, self.signing_algorithm, None)
         if algorithm is None:
             raise ValueError("The installed C2PA SDK does not support the configured signing algorithm.")
