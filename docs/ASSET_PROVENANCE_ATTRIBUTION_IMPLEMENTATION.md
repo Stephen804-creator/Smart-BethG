@@ -363,7 +363,7 @@ Required regression coverage includes:
 |---|---|---|
 | 0 — Baseline | Complete | Main baseline `b8b632d`; plan commit `a4edb28`; repository/API/storage/migration map recorded. Focused tests deferred to disposable-PostgreSQL CI. |
 | 1 — Schema and contracts | Complete | Migration `0012_asset_provenance.sql`; contracts/repository and DB registration committed. New provenance tests: 9 passed. Compile: passed. PostgreSQL integration: passed. Full suite: 342 passed, 7 unrelated existing failures, 9 skipped (approval legacy routes, consent/CSRF/session fixtures, workspace auth fixtures); see CI run `41677453908`. |
-| 2 — Binary asset support | Pending | |
+| 2 — Binary asset support | Complete | Added bounded binary upload/read paths, media-signature validation, SHA-256 integrity checks, idempotency, owner-scoped download, local/S3 file-backed storage, upload rate limiting, CSRF/CORS idempotency-header support, and route tests. CI run `41679554033` at `f39f13d`: 3 new HTTP tests passed; binary artifact/storage tests passed; Python compile, JS syntax, and PostgreSQL integration passed. Full suite: 355 passed, 7 existing unrelated consent/policy test failures, 9 skipped. No new APA test failures. |
 | 3 — Event service and API | Pending | |
 | 4 — AI attribution | Pending | |
 | 5 — Human contribution | Pending | |
