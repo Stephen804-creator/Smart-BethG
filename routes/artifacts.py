@@ -19,6 +19,30 @@ class ArtifactCreate(BaseModel):
     mission_id: int | None = Field(default=None, ge=1)
 
 
+class ArtifactFromChatCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    conversation_id: int = Field(ge=1)
+    message_id: int = Field(ge=1)
+
+
+@router.post("/from-chat", status_code=201)
+def create_artifact_from_chat(
+    payload: ArtifactFromChatCreate,
+    user=Depends(get_current_user),
+    service=Depends(get_artifact_service),
+):
+    try:
+        artifact = service.create_from_chat_message(
+            user["id"], payload.conversation_id, payload.message_id, payload.name
+        )
+        artifact.pop("path", None)
+        return artifact
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Chat message not found.")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
 @router.post("/upload")
 async def upload_binary_artifact(
     file: UploadFile = File(...),
