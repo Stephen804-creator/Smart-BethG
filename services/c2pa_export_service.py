@@ -140,6 +140,7 @@ class C2paExportService:
                 "by the installed SDK. The internal JSON provenance manifest remains available."
             )
 
+        signer_info = self._signer_info(c2pa)
         internal_manifest = self.manifests.generate_manifest(user_id, artifact_id)
         internal_manifest_hash = internal_manifest["manifest_sha256"]
         event_rows = self.repository.list_events(user_id, artifact_id)
@@ -202,7 +203,6 @@ class C2paExportService:
                 },
             }],
         }
-        signer_info = self._signer_info(c2pa)
         context = self._context(c2pa)
         signed_stream = io.BytesIO()
         try:
