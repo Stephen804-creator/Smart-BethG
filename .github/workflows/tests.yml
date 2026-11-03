@@ -50,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -r requirements.txt -r requirements-c2pa.txt -r requirements-dev.txt
       - name: Compile Python files
         run: python -m compileall -q .
       - name: Check workspace dashboard JavaScript syntax
@@ -96,7 +96,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -r requirements.txt -r requirements-c2pa.txt -r requirements-dev.txt
       - name: Compile Python files
         run: python -m compileall -q .
       - name: Run PostgreSQL integration tests
