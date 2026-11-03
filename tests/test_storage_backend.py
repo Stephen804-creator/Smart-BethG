@@ -59,6 +59,29 @@ class TestS3CompatibleStorage(unittest.TestCase):
         with self.assertRaises(StorageError):
             storage.get_bytes("uploads", 10, locator)
 
+    def test_file_backed_upload_uses_owner_scoped_s3_key(self):
+        with tempfile.NamedTemporaryFile(delete=False) as source:
+            source.write(b"s3-file-backed")
+            source_path = source.name
+        try:
+            client = Mock()
+            captured = {}
+            def capture_upload(stream, bucket, key):
+                captured["content"] = stream.read()
+                captured["bucket"] = bucket
+                captured["key"] = key
+            client.upload_fileobj.side_effect = capture_upload
+            storage = S3CompatibleStorage(bucket="unit-test-bucket", prefix="app", client=client)
+            locator = storage.put_file("artifacts", 9, "asset.bin", source_path)
+            self.assertEqual(locator, "s3://unit-test-bucket/app/artifacts/9/asset.bin")
+            self.assertEqual(captured, {
+                "content": b"s3-file-backed",
+                "bucket": "unit-test-bucket",
+                "key": "app/artifacts/9/asset.bin",
+            })
+        finally:
+            os.unlink(source_path)
+
     def test_rejects_foreign_bucket_locator(self):
         storage = S3CompatibleStorage(bucket="unit-test-bucket", client=Mock())
         with self.assertRaises(StorageError):
