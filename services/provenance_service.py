@@ -40,6 +40,10 @@ class ProvenanceService:
             if claimed_hash is not None and claimed_hash != actual_hash:
                 raise ValueError("The supplied source hash does not match the stored source asset.")
             safe_payload["source_sha256"] = actual_hash
+            relationship = safe_payload.get("relationship", "componentOf")
+            if relationship not in {"parentOf", "componentOf"}:
+                raise ValueError("Source relationship must be parentOf or componentOf.")
+            safe_payload["relationship"] = relationship
 
         if event_type == "human_edit":
             summary = safe_payload.get("summary")
