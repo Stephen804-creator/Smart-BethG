@@ -4,7 +4,9 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from api.dependencies import get_current_user, get_provenance_service
+from api.dependencies import (
+    get_current_user, get_provenance_service, get_provenance_manifest_service,
+)
 
 router = APIRouter(prefix="/provenance", tags=["provenance"])
 
@@ -18,6 +20,70 @@ class ProvenanceEventCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event_type: UserEventType
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class ManifestVerifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    manifest_id: int | None = Field(default=None, ge=1)
+
+
+@router.get("/artifacts/{artifact_id}/manifest")
+def get_artifact_manifest(
+    artifact_id: int,
+    user=Depends(get_current_user),
+    service=Depends(get_provenance_manifest_service),
+):
+    try:
+        manifest = service.get_latest_manifest(user["id"], artifact_id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Artifact not found.")
+    if not manifest:
+        raise HTTPException(status_code=404, detail="Provenance manifest not found.")
+    return manifest
+
+
+@router.post("/artifacts/{artifact_id}/manifest")
+def generate_artifact_manifest(
+    artifact_id: int,
+    user=Depends(get_current_user),
+    service=Depends(get_provenance_manifest_service),
+):
+    try:
+        return service.generate_manifest(user["id"], artifact_id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Artifact not found.")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@router.post("/artifacts/{artifact_id}/manifest/sign")
+def sign_artifact_manifest(
+    artifact_id: int,
+    user=Depends(get_current_user),
+    service=Depends(get_provenance_manifest_service),
+):
+    try:
+        return service.sign_manifest(user["id"], artifact_id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Artifact not found.")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@router.post("/artifacts/{artifact_id}/manifest/verify")
+def verify_artifact_manifest(
+    artifact_id: int,
+    payload: ManifestVerifyRequest | None = None,
+    user=Depends(get_current_user),
+    service=Depends(get_provenance_manifest_service),
+):
+    try:
+        return service.verify_manifest(
+            user["id"], artifact_id,
+            manifest_id=payload.manifest_id if payload else None,
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Artifact not found.")
 
 
 @router.get("/artifacts/{artifact_id}/events")
