@@ -60,13 +60,19 @@ class ConversationRepository:
         finally:
             conn.close()
 
-    def add_message(self, conversation_id, role, content, provider=None, model=None, tokens_in=None, tokens_out=None):
+    def add_message(
+        self, conversation_id, role, content, provider=None, model=None,
+        tokens_in=None, tokens_out=None, orchestrator_id=None, fallback_used=False,
+    ):
         conn = get_connection()
         try:
             cur = conn.execute(
-                "INSERT INTO messages(conversation_id, role, content, provider, model, tokens_in, tokens_out) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (conversation_id, role, content, provider, model, tokens_in, tokens_out),
+                "INSERT INTO messages(conversation_id, role, content, provider, model, tokens_in, tokens_out, "
+                "orchestrator_id, fallback_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    conversation_id, role, content, provider, model, tokens_in, tokens_out,
+                    orchestrator_id, bool(fallback_used),
+                ),
             )
             conn.commit()
             return cur.lastrowid
@@ -77,11 +83,26 @@ class ConversationRepository:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, role, content, provider, model, created_at FROM messages "
+                "SELECT id, role, content, provider, model, orchestrator_id, fallback_used, created_at FROM messages "
                 "WHERE conversation_id=? ORDER BY id ASC LIMIT ?",
                 (conversation_id, limit),
             ).fetchall()
             return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def get_message_for_user(self, user_id, conversation_id, message_id):
+        """Return one message only when its parent conversation belongs to the user."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT m.id, m.conversation_id, m.role, m.content, m.provider, m.model, "
+                "m.orchestrator_id, m.fallback_used, m.created_at "
+                "FROM messages m JOIN conversations c ON c.id=m.conversation_id "
+                "WHERE c.user_id=? AND m.conversation_id=? AND m.id=? LIMIT 1",
+                (user_id, conversation_id, message_id),
+            ).fetchone()
+            return dict(row) if row else None
         finally:
             conn.close()
 
