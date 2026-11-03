@@ -149,7 +149,7 @@ class ProvenanceManifestService:
                     sources.append({
                         "ref": f"urn:smartbethg:asset:sha256:{source_hash}",
                         "sha256": source_hash,
-                        "relationship": "source",
+                        "relationship": payload.get("relationship", "source"),
                     })
 
             actor_label = (
