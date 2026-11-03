@@ -90,6 +90,63 @@ class TestProvenanceApi(SmartBethGTestCase):
         self.assertFalse(result["integrity"]["valid"])
         self.assertEqual(result["integrity"]["reason"], "payload_digest_mismatch")
 
+    def test_source_attachment_uses_owner_scoped_server_hash(self):
+        source = self.artifacts.create(self.owner["id"], "source.txt", "original source")
+        event = self.service.append_user_event(
+            self.owner, self.artifact["id"], "source_attached",
+            {"source_artifact_id": source["id"], "summary": "Original source material"},
+        )
+        import json
+        payload = json.loads(event["payload_json"])
+        self.assertEqual(payload["source_artifact_id"], source["id"])
+        self.assertEqual(payload["source_sha256"], source["checksum_sha256"])
+        self.assertEqual(payload["attribution_basis"], "user_supplied")
+
+        foreign_source = self.artifacts.create(self.other["id"], "foreign.txt", "private")
+        with self.assertRaisesRegex(ValueError, "Source artifact not found"):
+            self.service.append_user_event(
+                self.owner, self.artifact["id"], "source_attached",
+                {"source_artifact_id": foreign_source["id"]},
+            )
+
+    def test_human_edit_instruction_text_is_private_unless_explicitly_included(self):
+        import json
+        private_default = self.service.append_user_event(
+            self.owner, self.artifact["id"], "human_edit",
+            {"summary": "Corrected the document structure."},
+        )
+        private_payload = json.loads(private_default["payload_json"])
+        self.assertFalse(private_payload["instruction_text_included"])
+        self.assertNotIn("instruction_text", private_payload)
+
+        with self.assertRaisesRegex(ValueError, "private by default"):
+            self.service.append_user_event(
+                self.owner, self.artifact["id"], "human_edit",
+                {"summary": "Edited text", "instruction_text": "private instructions"},
+            )
+
+        opted_in = self.service.append_user_event(
+            self.owner, self.artifact["id"], "human_edit",
+            {
+                "summary": "Rewrote the introduction.",
+                "include_instruction_text": True,
+                "instruction_text": "Use a shorter introduction.",
+            },
+        )
+        opted_payload = json.loads(opted_in["payload_json"])
+        self.assertTrue(opted_payload["instruction_text_included"])
+        self.assertEqual(opted_payload["instruction_text"], "Use a shorter introduction.")
+
+    def test_approval_is_an_explicit_authenticated_human_event(self):
+        event = self.service.append_user_event(
+            self.owner, self.artifact["id"], "approval",
+            {"summary": "Approved the final version."},
+        )
+        self.assertEqual(event["actor_type"], "human")
+        self.assertEqual(event["actor_id"], str(self.owner["id"]))
+        self.assertEqual(event["actor_label"], self.owner["username"])
+        self.assertTrue(event["created_at"])
+
     def test_event_mutation_requires_csrf(self):
         response = self.client.post(
             f"/api/v1/provenance/artifacts/{self.artifact['id']}/events",
