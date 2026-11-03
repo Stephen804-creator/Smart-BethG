@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from api.dependencies import (
     get_current_user, get_provenance_service, get_provenance_manifest_service,
+    get_c2pa_export_service,
 )
 
 router = APIRouter(prefix="/provenance", tags=["provenance"])
@@ -25,6 +26,48 @@ class ProvenanceEventCreate(BaseModel):
 class ManifestVerifyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     manifest_id: int | None = Field(default=None, ge=1)
+
+
+@router.get("/c2pa/capabilities")
+def c2pa_capabilities(
+    user=Depends(get_current_user),
+    service=Depends(get_c2pa_export_service),
+):
+    return service.capabilities()
+
+
+@router.post("/artifacts/{artifact_id}/c2pa")
+def export_c2pa_artifact(
+    artifact_id: int,
+    user=Depends(get_current_user),
+    service=Depends(get_c2pa_export_service),
+):
+    try:
+        return service.export(user["id"], artifact_id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Artifact not found.")
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except ValueError as exc:
+        message = str(exc)
+        status_code = 415 if "not supported" in message.lower() else 422
+        raise HTTPException(status_code=status_code, detail=message)
+
+
+@router.post("/artifacts/{artifact_id}/c2pa/verify")
+def verify_c2pa_artifact(
+    artifact_id: int,
+    user=Depends(get_current_user),
+    service=Depends(get_c2pa_export_service),
+):
+    try:
+        return service.verify_artifact(user["id"], artifact_id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Artifact not found.")
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=415, detail=str(exc))
 
 
 @router.get("/artifacts/{artifact_id}/manifest")
