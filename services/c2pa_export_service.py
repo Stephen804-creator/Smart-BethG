@@ -54,37 +54,22 @@ class C2paExportService:
             ) from exc
         return c2pa
 
-    def _signer(self, c2pa):
-        if not self.signer_cert_pem or not self.signer_private_key_pem:
-            raise RuntimeError(
-                "C2PA signing credentials are not configured. No C2PA signature was created."
-            )
-        if self.signing_algorithm not in SUPPORTED_ALGORITHMS:
-            raise ValueError("Unsupported C2PA signing algorithm.")
-        algorithm = getattr(c2pa.C2paSigningAlg, self.signing_algorithm, None)
-        if algorithm is None:
-            raise ValueError("The installed C2PA SDK does not support the configured signing algorithm.")
-        signer_info = c2pa.C2paSignerInfo(
-            alg=algorithm,
-            sign_cert=self.signer_cert_pem.encode("utf-8"),
-            private_key=self.signer_private_key_pem.encode("utf-8"),
-            ta_url=self.timestamp_url.encode("utf-8") if self.timestamp_url else None,
-        )
-        return c2pa.Signer.from_info(signer_info)
-
     def _context(self, c2pa):
         if self.trust_anchors_pem:
             settings = c2pa.Settings.from_dict({
-                "verify": {"verify_cert_anchors": True},
-                "trust": {"trust_anchors": self.trust_anchors_pem},
+                "verify": {
+                    "verify_after_reading": True,
+                    "verify_after_sign": True,
+                    "verify_cert_anchors": True,
+                    "remote_manifest_fetch": False,
+                    "ocsp_fetch": False,
+                },
+                "trust": {"user_anchors": self.trust_anchors_pem},
             })
-        else:
-            # Verify the signature cryptographically without pretending an
-            # unconfigured/self-signed certificate is publicly trusted.
-            settings = c2pa.Settings.from_dict({
-                "verify": {"verify_cert_anchors": False},
-            })
-        return c2pa.Context(settings)
+            return c2pa.Context(settings)
+        # Keep the SDK's default C2PA trust policy. A missing custom anchor
+        # must never silently disable certificate-chain verification.
+        return c2pa.Context()
 
     @staticmethod
     def _validation_state(reader):
@@ -138,7 +123,6 @@ class C2paExportService:
 
     def export(self, user_id, artifact_id):
         c2pa = self._sdk()
-        signer = self._signer(c2pa)
         artifact = self.artifacts.get(user_id, artifact_id)
         if not artifact:
             raise LookupError("Artifact not found.")
@@ -164,6 +148,7 @@ class C2paExportService:
         ]
         omitted_sources = []
         source_ingredients = []
+        source_references = []
         for index, row in enumerate(source_rows, start=1):
             payload = self._event_payload(row)
             source_id = payload.get("source_artifact_id")
@@ -180,6 +165,11 @@ class C2paExportService:
             if actual_source_hash != source_hash:
                 raise ValueError("A recorded source asset no longer matches its provenance hash.")
             source_mime = (source_record.get("content_type") or "").split(";", 1)[0].lower()
+            source_references.append({
+                "source_id": source_id,
+                "source_sha256": actual_source_hash,
+                "relationship": "componentOf",
+            })
             if source_mime not in supported:
                 omitted_sources.append({
                     "source_sha256": actual_source_hash,
@@ -193,13 +183,21 @@ class C2paExportService:
                 "mime_type": source_mime,
                 "content": source_bytes,
                 "sha256": actual_source_hash,
+                "source_id": source_id,
             })
 
         manifest_definition = {
             "claim_generator_info": [{"name": "Smart BethG", "version": "1.0"}],
             "title": artifact["name"],
             "format": media_type,
-            "assertions": [],
+            "assertions": [{
+                "label": "io.github.stephen804creator.smartbethg.provenance",
+                "data": {
+                    "internal_manifest_sha256": internal_manifest_hash,
+                    "event_chain_head_sha256": internal_manifest["event_chain_head_sha256"],
+                    "source_reference_count": len(source_references),
+                },
+            }],
         }
         signer_info = self._signer_info(c2pa)
         context = self._context(c2pa)
@@ -209,16 +207,10 @@ class C2paExportService:
                 with c2pa.Signer.from_info(signer_info) as active_signer:
                     with c2pa.Builder(manifest_definition, context) as builder:
                         if has_ai_contribution:
-                            builder.add_action({
-                                "action": "c2pa.created",
-                                "digitalSourceType": TRAINED_ALGORITHMIC_MEDIA,
-                                "softwareAgent": SOFTWARE_AGENT,
-                                "parameters": {
-                                    "io.github.stephen804creator.smartbethg.provenance_manifest_sha256": internal_manifest_hash,
-                                    "io.github.stephen804creator.smartbethg.event_chain_head_sha256": internal_manifest["event_chain_head_sha256"],
-                                },
-                                "description": "AI-assisted asset created through Smart BethG; provider and model details are recorded in its linked internal provenance manifest.",
-                            })
+                            builder.set_intent(
+                                c2pa.C2paBuilderIntent.CREATE,
+                                c2pa.C2paDigitalSourceType.TRAINED_ALGORITHMIC_MEDIA,
+                            )
                         else:
                             original_label = "smartbethg-original-input"
                             builder.add_ingredient(
@@ -230,16 +222,7 @@ class C2paExportService:
                                 media_type,
                                 io.BytesIO(content),
                             )
-                            builder.add_action({
-                                "action": "c2pa.opened",
-                                "softwareAgent": SOFTWARE_AGENT,
-                                "parameters": {
-                                    "ingredientIds": [original_label],
-                                    "io.github.stephen804creator.smartbethg.provenance_manifest_sha256": internal_manifest_hash,
-                                    "io.github.stephen804creator.smartbethg.event_chain_head_sha256": internal_manifest["event_chain_head_sha256"],
-                                },
-                                "description": "Existing asset imported into Smart BethG. This action does not assert who originally created it.",
-                            })
+                            builder.set_intent(c2pa.C2paBuilderIntent.EDIT)
 
                         for ingredient in source_ingredients:
                             builder.add_ingredient(
@@ -328,14 +311,20 @@ class C2paExportService:
                 except OSError:
                     pass
 
-        for source in source_ingredients:
+        output_source_references = [{
+            "source_id": artifact_id,
+            "source_sha256": artifact["checksum_sha256"],
+            "relationship": "parentOf",
+        }] if not has_ai_contribution else []
+        output_source_references.extend(source_references)
+        for source in output_source_references:
             self.repository.append_event(
                 user_id, output_artifact["id"], "source_attached", "smart_bethg",
                 actor_id="smart_bethg", actor_label="Smart BethG C2PA exporter",
                 payload={
-                    "source_artifact_id": source_rows[0]["artifact_id"] if source_rows else artifact_id,
-                    "source_sha256": source["sha256"],
-                    "relationship": "componentOf",
+                    "source_artifact_id": source["source_id"],
+                    "source_sha256": source["source_sha256"],
+                    "relationship": source["relationship"],
                     "attribution_basis": "system_derived",
                 },
             )
