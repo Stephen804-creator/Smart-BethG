@@ -160,13 +160,18 @@ class ProvenanceRepository:
                     "head_sha256": previous_digest, "reason": reason,
                 }
             previous_digest = event_digest
-            if expected_head and hmac.compare_digest(event_digest, str(expected_head)):
+            if expected_head is not None and expected_head != "" and hmac.compare_digest(event_digest, str(expected_head)):
                 return {
                     "valid": True, "events_checked": expected_sequence,
                     "head_sha256": previous_digest, "reason": None,
                 }
             expected_sequence += 1
-        if expected_head:
+        if expected_head is not None:
+            if expected_head == "" and not rows:
+                return {
+                    "valid": True, "events_checked": 0,
+                    "head_sha256": None, "reason": None,
+                }
             return {
                 "valid": False, "events_checked": len(rows),
                 "head_sha256": previous_digest, "reason": "expected_head_not_found",
