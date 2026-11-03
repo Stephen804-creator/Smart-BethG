@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
+from cryptography.x509.oid import NameOID, ObjectIdentifier
 
 from repositories.provenance_repository import ProvenanceRepository
 from services.artifact_service import ArtifactService
@@ -91,7 +91,7 @@ def _development_signing_chain():
         .add_extension(
             x509.ExtendedKeyUsage([
                 ObjectIdentifier("1.3.6.1.4.1.62558.2.1"),
-                ExtendedKeyUsageOID.DOCUMENT_SIGNING,
+                ObjectIdentifier("1.3.6.1.5.5.7.3.36"),
             ]),
             critical=False,
         )
