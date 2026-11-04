@@ -736,12 +736,15 @@ class WorkflowService:
         source = self.get(user_id, workflow_id)
         if not source:
             return None
-        if source.get("definition_error"):
+        if source.get("definition_error") or source.get("graph_error"):
             raise ValueError("Cannot duplicate a malformed workflow until its definition is repaired.")
         duplicate_name = (name or f"Copy of {source['name']}").strip()
+        if source.get("graph") is not None:
+            return self.create(
+                user_id, duplicate_name, source.get("description"), graph=source["graph"]
+            )
         return self.create(
-            user_id, duplicate_name, source.get("description"),
-            source.get("steps") or [], graph=source.get("graph")
+            user_id, duplicate_name, source.get("description"), source.get("steps") or []
         )
 
     def archive(self, user_id, workflow_id):
