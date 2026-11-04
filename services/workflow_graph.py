@@ -64,10 +64,10 @@ class WorkflowGraphValidator:
             if node_id in node_by_id:
                 raise ValueError(f"Duplicate node ID: {node_id}.")
             node_type = node.get("type")
-            if node_type not in _NODE_OUTPUTS:
+            if not isinstance(node_type, str) or node_type not in _NODE_OUTPUTS:
                 raise ValueError(f"Node '{node_id}' has an unsupported type.")
             version = node.get("version")
-            if isinstance(version, bool) or version != 1:
+            if isinstance(version, bool) or not isinstance(version, int) or version != 1:
                 raise ValueError(f"Node '{node_id}' uses an unsupported node version.")
             if not isinstance(node.get("config", {}), dict):
                 raise ValueError(f"Node '{node_id}' config must be an object.")
@@ -75,8 +75,8 @@ class WorkflowGraphValidator:
             outputs = node.get("outputs", _NODE_OUTPUTS[node_type])
             if not isinstance(inputs, dict) or not isinstance(outputs, dict):
                 raise ValueError(f"Node '{node_id}' inputs and outputs must be objects.")
-            if node_type == "end" and outputs:
-                raise ValueError(f"End node '{node_id}' cannot declare outputs.")
+            if outputs != _NODE_OUTPUTS[node_type]:
+                raise ValueError(f"Node '{node_id}' output contract does not match its trusted node type.")
             for output_name, schema in outputs.items():
                 if not isinstance(output_name, str) or not output_name:
                     raise ValueError(f"Node '{node_id}' has an invalid output name.")
@@ -96,7 +96,6 @@ class WorkflowGraphValidator:
 
         edge_ids = set()
         outgoing = {node_id: [] for node_id in node_by_id}
-        incoming = {node_id: [] for node_id in node_by_id}
         adjacency = {node_id: [] for node_id in node_by_id}
         trigger_targets = []
         mapped_inputs = set()
@@ -108,9 +107,9 @@ class WorkflowGraphValidator:
                 raise ValueError(f"Edge {index + 1} has an invalid or duplicate ID.")
             edge_ids.add(edge_id)
             source_id, target_id = edge.get("from_node_id"), edge.get("to_node_id")
-            if source_id != "$trigger" and source_id not in node_by_id:
+            if not isinstance(source_id, str) or (source_id != "$trigger" and source_id not in node_by_id):
                 raise ValueError(f"Edge '{edge_id}' references an unknown source node.")
-            if target_id not in node_by_id:
+            if not isinstance(target_id, str) or target_id not in node_by_id:
                 raise ValueError(f"Edge '{edge_id}' references an unknown target node.")
             if source_id == target_id:
                 raise ValueError(f"Edge '{edge_id}' cannot connect a node to itself.")
@@ -137,7 +136,6 @@ class WorkflowGraphValidator:
             else:
                 outgoing[source_id].append(edge)
                 adjacency[source_id].append(target_id)
-            incoming[target_id].append(edge)
 
         for node_id, node in node_by_id.items():
             for input_name in node.get("inputs", {}):
@@ -236,7 +234,9 @@ class WorkflowGraphValidator:
     def _validate_trigger(trigger):
         if not isinstance(trigger, dict):
             raise ValueError("Workflow graph requires a trigger contract.")
-        if trigger.get("type") != "manual" or trigger.get("version") != 1:
+        version = trigger.get("version")
+        if (trigger.get("type") != "manual" or isinstance(version, bool)
+                or not isinstance(version, int) or version != 1):
             raise ValueError("Unsupported workflow trigger type or version.")
         WorkflowGraphValidator._validate_schema(trigger.get("input_schema"), "Trigger input")
 
