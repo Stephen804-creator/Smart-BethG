@@ -8,20 +8,34 @@ from services.job_queue import JobQueue
 class WorkflowService:
     STEP_TYPES = {"mission", "research", "artifact", "social_content", "condition"}
 
-    def create(self, user_id, name, description=None, steps=None):
+    def create(self, user_id, name, description=None, steps=None, graph=None):
         name = (name or "").strip()
         if not name or len(name) > 120:
             raise ValueError("Workflow name must be between 1 and 120 characters.")
-        steps = self.validate_steps(steps or [], require_nonempty=False)
+        graph_json = None
+        if graph is not None:
+            if steps:
+                raise ValueError("Provide either a graph definition or legacy steps, not both.")
+            from services.workflow_graph import WorkflowGraphValidator
+            graph = WorkflowGraphValidator.validate(graph)
+            try:
+                steps = WorkflowGraphValidator.to_legacy_steps(graph)
+            except ValueError:
+                # Valid graph drafts may contain branches or data mappings.
+                # They remain storable, but the sequential executor cannot run them.
+                steps = []
+            graph_json = json.dumps(graph, ensure_ascii=False, separators=(",", ":"))
+        else:
+            steps = self.validate_steps(steps or [], require_nonempty=False)
         definition_json = json.dumps(steps, ensure_ascii=False)
         if len(definition_json) > 100000:
             raise ValueError("Workflow definition exceeds the 100000-character limit.")
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "INSERT INTO workflows(user_id, name, description, definition_json, version, status) "
-                "VALUES (?, ?, ?, ?, 1, 'draft')",
-                (user_id, name, description, definition_json),
+                "INSERT INTO workflows(user_id, name, description, definition_json, graph_json, version, status) "
+                "VALUES (?, ?, ?, ?, ?, 1, 'draft')",
+                (user_id, name, description, definition_json, graph_json),
             )
             workflow_id = cursor.lastrowid
             conn.commit()
@@ -33,7 +47,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, user_id, name, description, definition_json, version, status, published_version, created_at, updated_at "
+                "SELECT id, user_id, name, description, definition_json, graph_json, version, status, published_version, created_at, updated_at "
                 "FROM workflows WHERE user_id=? ORDER BY updated_at DESC, id DESC",
                 (user_id,),
             ).fetchall()
@@ -45,7 +59,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT id, user_id, name, description, definition_json, version, status, published_version, created_at, updated_at "
+                "SELECT id, user_id, name, description, definition_json, graph_json, version, status, published_version, created_at, updated_at "
                 "FROM workflows WHERE id=? AND user_id=? LIMIT 1",
                 (workflow_id, user_id),
             ).fetchone()
@@ -64,7 +78,22 @@ class WorkflowService:
                 "This legacy workflow definition is malformed. Supply replacement steps explicitly to repair it; "
                 "metadata-only edits are blocked to preserve the original definition."
             )
-        steps = fields.get("steps", current["steps"])
+        if "graph" in fields and "steps" in fields:
+            raise ValueError("Update either the graph definition or legacy steps, not both.")
+        graph_json = current.get("graph_json")
+        if "graph" in fields:
+            from services.workflow_graph import WorkflowGraphValidator
+            graph = WorkflowGraphValidator.validate(fields["graph"])
+            try:
+                steps = WorkflowGraphValidator.to_legacy_steps(graph)
+            except ValueError:
+                steps = []
+            graph_json = json.dumps(graph, ensure_ascii=False, separators=(",", ":"))
+        elif "steps" in fields:
+            steps = fields["steps"]
+            graph_json = None
+        else:
+            steps = current["steps"]
         name = (name or "").strip()
         if not name or len(name) > 120:
             raise ValueError("Workflow name must be between 1 and 120 characters.")
@@ -88,9 +117,9 @@ class WorkflowService:
                     (workflow_id, user_id, original["definition_json"], definition_json, user_id),
                 )
             cursor = conn.execute(
-                "UPDATE workflows SET name=?, description=?, definition_json=?, version=version+1, "
+                "UPDATE workflows SET name=?, description=?, definition_json=?, graph_json=?, version=version+1, "
                 "status='draft', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND version=?",
-                (name, description, definition_json, workflow_id, user_id, current["version"]),
+                (name, description, definition_json, graph_json, workflow_id, user_id, current["version"]),
             )
             if cursor.rowcount != 1:
                 conn.rollback()
@@ -106,7 +135,12 @@ class WorkflowService:
             return None
         if workflow.get("definition_error"):
             raise ValueError("Workflow definition is malformed. Replace its steps to repair it before validation.")
-        steps = self.validate_steps(workflow["steps"], require_nonempty=True)
+        if workflow.get("graph") is not None:
+            from services.workflow_graph import WorkflowGraphValidator
+            graph = WorkflowGraphValidator.validate(workflow["graph"])
+            steps = workflow["steps"]
+        else:
+            steps = self.validate_steps(workflow["steps"], require_nonempty=True)
         conn = get_connection()
         try:
             cursor = conn.execute(
@@ -131,7 +165,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             workflow = conn.execute(
-                "SELECT id,user_id,definition_json,version,status,published_version "
+                "SELECT id,user_id,definition_json,graph_json,version,status,published_version "
                 "FROM workflows WHERE id=? AND user_id=? FOR UPDATE",
                 (workflow_id, user_id),
             ).fetchone()
@@ -147,8 +181,20 @@ class WorkflowService:
                 steps = json.loads(workflow["definition_json"] or "[]")
             except (TypeError, json.JSONDecodeError) as exc:
                 raise ValueError("Workflow definition is malformed and cannot be published.") from exc
-            steps = self.validate_steps(steps, require_nonempty=True)
-            graph = WorkflowGraphValidator.from_legacy_steps(steps)
+            if workflow["graph_json"]:
+                try:
+                    graph = WorkflowGraphValidator.validate(json.loads(workflow["graph_json"]))
+                except (TypeError, json.JSONDecodeError) as exc:
+                    raise ValueError("Workflow graph draft is malformed and cannot be published.") from exc
+                try:
+                    steps = WorkflowGraphValidator.to_legacy_steps(graph)
+                except ValueError:
+                    # Keep a valid but not-yet-executable graph version publishable
+                    # for version history; start_run will reject it until Stage 2.
+                    steps = []
+            else:
+                steps = self.validate_steps(steps, require_nonempty=True)
+                graph = WorkflowGraphValidator.from_legacy_steps(steps)
             steps_json = json.dumps(steps, ensure_ascii=False, separators=(",", ":"))
             graph_json = json.dumps(graph, ensure_ascii=False, separators=(",", ":"))
             if max(len(steps_json.encode("utf-8")), len(graph_json.encode("utf-8"))) > 100000:
@@ -272,6 +318,15 @@ class WorkflowService:
             ).fetchone()
             if not snapshot:
                 raise ValueError("The published workflow version is unavailable.")
+            published_definition = conn.execute(
+                "SELECT definition_json FROM workflow_definition_versions WHERE id=? AND workflow_id=? AND user_id=?",
+                (snapshot["id"], workflow_id, user_id),
+            ).fetchone()
+            if not published_definition or not json.loads(published_definition["definition_json"] or "[]"):
+                raise ValueError(
+                    "This graph is valid but is not compatible with the current sequential executor. "
+                    "Graph execution will be enabled in Stage 2."
+                )
             cursor = conn.execute(
                 "INSERT INTO workflow_runs(workflow_id,user_id,workflow_version,workflow_version_id,status,result_json) "
                 "VALUES (?,?,?,?,'queued','{}')",
@@ -672,7 +727,8 @@ class WorkflowService:
             raise ValueError("Cannot duplicate a malformed workflow until its definition is repaired.")
         duplicate_name = (name or f"Copy of {source['name']}").strip()
         return self.create(
-            user_id, duplicate_name, source.get("description"), source.get("steps") or []
+            user_id, duplicate_name, source.get("description"),
+            source.get("steps") or [], graph=source.get("graph")
         )
 
     def archive(self, user_id, workflow_id):
@@ -740,6 +796,21 @@ class WorkflowService:
     @staticmethod
     def _decode(row):
         item = dict(row)
+        raw_graph = item.pop("graph_json", None)
+        if raw_graph:
+            try:
+                item["graph"] = json.loads(raw_graph)
+                item["graph_valid"] = isinstance(item["graph"], dict)
+                if not item["graph_valid"]:
+                    item["graph_error"] = "Stored workflow graph is not an object."
+                    item["graph"] = None
+            except (TypeError, json.JSONDecodeError):
+                item["graph"] = None
+                item["graph_valid"] = False
+                item["graph_error"] = "Stored workflow graph contains invalid JSON."
+        else:
+            item["graph"] = None
+            item["graph_valid"] = None
         raw_definition = item.pop("definition_json", None)
         try:
             item["steps"] = json.loads(raw_definition or "[]")
