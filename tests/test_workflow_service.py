@@ -252,7 +252,7 @@ class TestWorkflowService(SmartBethGTestCase):
         self.service.publish(self.owner["id"], workflow["id"])
         snapshot = self.service.get_version(self.owner["id"], workflow["id"], 1)
         self.assertEqual(len(snapshot["graph"]["edges"]), 5)
-        with self.assertRaisesRegex(ValueError, "Graph is valid but is not compatible"):
+        with self.assertRaisesRegex(ValueError, "valid but is not compatible with the current sequential executor"):
             self.service.start_run(self.owner["id"], workflow["id"])
 
     def test_graph_draft_update_preserves_graph_on_metadata_change(self):
