@@ -11,6 +11,7 @@ class WorkflowCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=4000)
     steps: list[dict] = Field(default_factory=list, max_length=50)
+    graph: dict | None = None
 
 
 class WorkflowDuplicate(BaseModel):
@@ -21,12 +22,15 @@ class WorkflowUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=4000)
     steps: list[dict] | None = Field(default=None, max_length=50)
+    graph: dict | None = None
 
 
 @router.post("")
 def create_workflow(payload: WorkflowCreate, user=Depends(get_current_user), service=Depends(get_workflow_service)):
     try:
-        return service.create(user["id"], payload.name, payload.description, payload.steps)
+        return service.create(
+            user["id"], payload.name, payload.description, payload.steps, graph=payload.graph
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
