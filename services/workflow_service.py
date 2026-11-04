@@ -73,10 +73,14 @@ class WorkflowService:
             return None
         name = fields.get("name", current["name"])
         description = fields.get("description", current["description"])
-        if current.get("definition_error") and "steps" not in fields:
+        if current.get("definition_error") and "steps" not in fields and "graph" not in fields:
             raise ValueError(
                 "This legacy workflow definition is malformed. Supply replacement steps explicitly to repair it; "
                 "metadata-only edits are blocked to preserve the original definition."
+            )
+        if current.get("graph_error") and "graph" not in fields and "steps" not in fields:
+            raise ValueError(
+                "This workflow graph is malformed. Supply a replacement graph or steps explicitly to repair it."
             )
         if "graph" in fields and "steps" in fields:
             raise ValueError("Update either the graph definition or legacy steps, not both.")
