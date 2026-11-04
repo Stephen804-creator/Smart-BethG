@@ -13,6 +13,10 @@ class WorkflowCreate(BaseModel):
     steps: list[dict] = Field(default_factory=list, max_length=50)
 
 
+class WorkflowDuplicate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+
+
 class WorkflowUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=4000)
@@ -58,6 +62,22 @@ def update_workflow(
         raise HTTPException(status_code=404, detail="Workflow not found.")
     return workflow
 
+
+
+@router.post("/{workflow_id}/duplicate")
+def duplicate_workflow(
+    workflow_id: int,
+    payload: WorkflowDuplicate | None = None,
+    user=Depends(get_current_user),
+    service=Depends(get_workflow_service),
+):
+    try:
+        workflow = service.duplicate(user["id"], workflow_id, payload.name if payload else None)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found.")
+    return workflow
 
 @router.post("/{workflow_id}/validate")
 def validate_workflow(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
