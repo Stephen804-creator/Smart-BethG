@@ -33,7 +33,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, user_id, name, description, definition_json, version, status, created_at, updated_at "
+                "SELECT id, user_id, name, description, definition_json, version, status, published_version, created_at, updated_at "
                 "FROM workflows WHERE user_id=? ORDER BY updated_at DESC, id DESC",
                 (user_id,),
             ).fetchall()
