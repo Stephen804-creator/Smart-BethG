@@ -49,7 +49,7 @@ Malformed legacy JSON is exposed as an invalid definition instead of being silen
 ## Explicit limitations
 
 - The graph representation is persisted in published snapshots, but current execution remains sequential. Graph scheduling, branching, loops, retries and data-port runtime resolution are not implemented here.
-- The current legacy adapter is one-way (ordered steps to linear graph). A graph-to-sequential compatibility adapter is still outstanding.
+- The compatibility boundary supports lossless conversion in both directions for a simple linear workflow. The graph-to-legacy adapter rejects branches, data-port mappings, unsupported triggers and any graph shape that cannot be represented without changing behavior.
 - Detailed per-node configuration schemas and the unified node registry remain later Stage 1/Stage 3 work.
 - The graph contract currently recognizes a bounded set of trusted node types and rejects arbitrary shell/code nodes.
 
