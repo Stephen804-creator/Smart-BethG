@@ -148,6 +148,40 @@ class TestWorkflowGraphValidator(unittest.TestCase):
         self.assertEqual(graph["edges"][0]["from_node_id"], "$trigger")
         self.assertEqual(graph["edges"][-1]["to_node_id"], "workflow-end")
 
+
+    def test_legacy_graph_conversion_round_trips_without_loss(self):
+        steps = [
+            {"id": "research-1", "type": "research", "config": {"topic": "cloud"}},
+            {"id": "artifact-1", "type": "artifact", "config": {"name": "report"}},
+        ]
+        graph = WorkflowGraphValidator.from_legacy_steps(steps)
+        self.assertEqual(WorkflowGraphValidator.to_legacy_steps(graph), steps)
+
+    def test_graph_to_legacy_rejects_data_mappings(self):
+        with self.assertRaisesRegex(ValueError, "data mappings"):
+            WorkflowGraphValidator.to_legacy_steps(valid_graph())
+
+    def test_graph_to_legacy_rejects_branching_graphs(self):
+        graph = WorkflowGraphValidator.from_legacy_steps([
+            {"id": "research-1", "type": "research", "config": {}},
+        ])
+        graph["nodes"].insert(1, {
+            "id": "social",
+            "type": "social_content",
+            "version": 1,
+            "config": {},
+            "inputs": {},
+            "outputs": {"result": {"type": "object"}},
+        })
+        graph["edges"] = [
+            {"id": "start", "from_node_id": "$trigger", "to_node_id": "research-1"},
+            {"id": "research-end", "from_node_id": "research-1", "to_node_id": "workflow-end"},
+            {"id": "research-social", "from_node_id": "research-1", "to_node_id": "social"},
+            {"id": "social-end", "from_node_id": "social", "to_node_id": "workflow-end"},
+        ]
+        with self.assertRaisesRegex(ValueError, "Branching graphs"):
+            WorkflowGraphValidator.to_legacy_steps(graph)
+
     def test_legacy_adapter_preserves_existing_condition_configuration(self):
         config = {
             "source_step_id": "research-1",
