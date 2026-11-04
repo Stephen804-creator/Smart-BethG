@@ -33,7 +33,7 @@ class WorkflowGraphValidator:
         if not isinstance(definition, dict):
             raise ValueError("Workflow graph must be an object.")
         try:
-            encoded = json.dumps(definition, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            encoded = json.dumps(definition, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
         except (TypeError, ValueError) as exc:
             raise ValueError("Workflow graph must contain JSON-compatible values.") from exc
         if len(encoded) > MAX_DEFINITION_BYTES:
