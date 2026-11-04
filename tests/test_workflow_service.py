@@ -205,6 +205,7 @@ class TestWorkflowService(SmartBethGTestCase):
         self.assertEqual(workflow["steps"][0]["id"], "research-node")
         self.assertEqual(workflow["graph"]["format"], "smartbethg.workflow.graph")
         self.assertTrue(workflow["graph_valid"])
+        self.assertEqual(workflow["definition_format"], "graph_v1")
 
         validated = self.service.validate(self.owner["id"], workflow["id"])
         self.assertEqual(validated["status"], "validated")
@@ -272,6 +273,15 @@ class TestWorkflowService(SmartBethGTestCase):
         )
         self.assertEqual(updated["graph"]["nodes"][0]["id"], "node-b")
         self.assertEqual(updated["steps"][0]["id"], "node-b")
+        self.assertEqual(updated["definition_format"], "graph_v1")
+
+        legacy = self.service.update(
+            self.owner["id"], workflow["id"],
+            {"steps": [{"id": "legacy-step", "type": "research", "config": {"query": "legacy"}}]},
+        )
+        self.assertIsNone(legacy["graph"])
+        self.assertEqual(legacy["definition_format"], "legacy_steps")
+        self.assertEqual(legacy["steps"][0]["id"], "legacy-step")
 
     def test_invalid_step_type_is_rejected(self):
         with self.assertRaises(ValueError):
