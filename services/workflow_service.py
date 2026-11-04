@@ -45,7 +45,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT id, user_id, name, description, definition_json, version, status, created_at, updated_at "
+                "SELECT id, user_id, name, description, definition_json, version, status, published_version, created_at, updated_at "
                 "FROM workflows WHERE id=? AND user_id=? LIMIT 1",
                 (workflow_id, user_id),
             ).fetchone()
