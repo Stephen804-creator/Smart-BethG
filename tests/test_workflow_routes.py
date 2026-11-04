@@ -2,7 +2,7 @@
 from fastapi.testclient import TestClient
 
 from main_fastapi import create_app
-from services.auth_service import create_user
+from services.auth_service import create_user, record_policy_acceptance
 from tests.base import SmartBethGTestCase
 
 
@@ -12,8 +12,12 @@ class TestWorkflowRoutes(SmartBethGTestCase):
         suffix = str(self._tmp_dir).replace("/", "").replace("\\", "")[-8:]
         self.username_one = "workflow-http-a-" + suffix
         self.username_two = "workflow-http-b-" + suffix
-        create_user(self.username_one, "workflow-password")
-        create_user(self.username_two, "workflow-password")
+        user_one = create_user(self.username_one, "workflow-password")
+        user_two = create_user(self.username_two, "workflow-password")
+        for user in (user_one, user_two):
+            record_policy_acceptance(
+                user["id"], accepted_terms=True, accepted_privacy=True, age_verified=True
+            )
         self.client_one = TestClient(create_app())
         self.client_two = TestClient(create_app())
         self.csrf_one = self._login(self.client_one, self.username_one)
