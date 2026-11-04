@@ -273,6 +273,21 @@ class WorkflowService:
         finally:
             conn.close()
 
+    def restore_version(self, user_id, workflow_id, version):
+        """Restore prior content into a new draft version; never move history backwards."""
+        snapshot = self.get_version(user_id, workflow_id, version)
+        if not snapshot:
+            return None
+        workflow = self.get(user_id, workflow_id)
+        if not workflow:
+            return None
+        if workflow["status"] == "archived":
+            raise ValueError("An archived workflow must be unarchived before restoring a version.")
+        graph = snapshot.get("graph")
+        if graph is not None:
+            return self.update(user_id, workflow_id, {"graph": graph})
+        return self.update(user_id, workflow_id, {"steps": snapshot.get("steps") or []})
+
     def get_run_definition(self, user_id, run_id):
         """Load the immutable definition pinned to a run, or legacy data for old runs."""
         conn = get_connection()
