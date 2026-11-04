@@ -303,7 +303,7 @@ class WorkflowService:
                 conn.rollback()
                 return self.get_run(user_id, run_id)
             run = conn.execute(
-                "SELECT workflow_id,workflow_version FROM workflow_runs WHERE id=? AND user_id=?",
+                "SELECT workflow_id,workflow_version,workflow_version_id FROM workflow_runs WHERE id=? AND user_id=?",
                 (run_id, user_id),
             ).fetchone()
             if not run:
@@ -315,11 +315,21 @@ class WorkflowService:
                  json.dumps([{"source": "workflow_step_record", "step_id": step["step_id"]}]),
                  ("Workflow step skipped by condition." if status == "skipped" else "Workflow step completed.")),
             )
-            workflow = conn.execute(
-                "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
-                (run["workflow_id"], user_id),
-            ).fetchone()
-            steps = json.loads(workflow["definition_json"] or "[]") if workflow else []
+            workflow = None
+            if run["workflow_version_id"] is not None:
+                workflow = conn.execute(
+                    "SELECT definition_json FROM workflow_definition_versions "
+                    "WHERE id=? AND workflow_id=? AND user_id=?",
+                    (run["workflow_version_id"], run["workflow_id"], user_id),
+                ).fetchone()
+            else:
+                workflow = conn.execute(
+                    "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
+                    (run["workflow_id"], user_id),
+                ).fetchone()
+            if not workflow:
+                raise ValueError("Pinned workflow definition is unavailable.")
+            steps = json.loads(workflow["definition_json"] or "[]")
             rows = conn.execute(
                 "SELECT step_index,step_id,step_type,mission_id,result_json FROM workflow_step_runs "
                 "WHERE user_id=? AND workflow_run_id=? AND status IN ('completed','skipped') ORDER BY step_index",
@@ -491,7 +501,7 @@ class WorkflowService:
                      str(error)[:2000] if error else "Child mission completed."),
                 )
             run = conn.execute(
-                "SELECT workflow_id,result_json,workflow_version FROM workflow_runs WHERE id=? AND user_id=?",
+                "SELECT workflow_id,result_json,workflow_version,workflow_version_id FROM workflow_runs WHERE id=? AND user_id=?",
                 (run_id, user_id),
             ).fetchone()
             if not run:
@@ -505,11 +515,21 @@ class WorkflowService:
                     (str(error or "A child mission failed.")[:4000], run_id, user_id),
                 )
             else:
-                workflow = conn.execute(
-                    "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
-                    (run["workflow_id"], user_id),
-                ).fetchone()
-                steps = json.loads(workflow["definition_json"] or "[]") if workflow else []
+                workflow = None
+                if run["workflow_version_id"] is not None:
+                    workflow = conn.execute(
+                        "SELECT definition_json FROM workflow_definition_versions "
+                        "WHERE id=? AND workflow_id=? AND user_id=?",
+                        (run["workflow_version_id"], run["workflow_id"], user_id),
+                    ).fetchone()
+                else:
+                    workflow = conn.execute(
+                        "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
+                        (run["workflow_id"], user_id),
+                    ).fetchone()
+                if not workflow:
+                    raise ValueError("Pinned workflow definition is unavailable.")
+                steps = json.loads(workflow["definition_json"] or "[]")
                 completed_steps = conn.execute(
                     "SELECT step_index,step_id,step_type,mission_id,result_json FROM workflow_step_runs "
                     "WHERE user_id=? AND workflow_run_id=? AND status IN ('completed','skipped') ORDER BY step_index",
