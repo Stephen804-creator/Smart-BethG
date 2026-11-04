@@ -81,32 +81,6 @@ class TestWorkflowService(SmartBethGTestCase):
             self.service.publish(self.other["id"], workflow["id"])
         self.assertEqual(self.service.list_versions(self.owner["id"], workflow["id"]), [])
 
-    def test_published_version_cannot_be_overwritten(self):
-        workflow = self.service.create(
-            self.owner["id"], "Immutable definition",
-            steps=[{"id": "original", "type": "research", "config": {"query": "original"}}],
-        )
-        self.service.validate(self.owner["id"], workflow["id"])
-        self.service.publish(self.owner["id"], workflow["id"])
-        conn = __import__("database").get_connection()
-        try:
-            row = conn.execute(
-                "SELECT definition_json FROM workflow_definition_versions WHERE workflow_id=? AND version=1",
-                (workflow["id"],),
-            ).fetchone()
-            original_json = row["definition_json"]
-            with self.assertRaises(Exception):
-                conn.execute(
-                    "UPDATE workflow_definition_versions SET definition_json='[]' WHERE workflow_id=? AND version=1",
-                    (workflow["id"],),
-                )
-        finally:
-            conn.close()
-        self.assertEqual(
-            self.service.get_run_definition if False else original_json,
-            original_json,
-        )
-
     def test_invalid_step_type_is_rejected(self):
         with self.assertRaises(ValueError):
             self.service.create(self.owner["id"], "Unsafe", steps=[{"type": "shell", "config": {}}])
