@@ -233,6 +233,62 @@ class WorkflowGraphValidator:
         }
         return cls.validate(graph)
 
+    @classmethod
+    def to_legacy_steps(cls, definition):
+        """Convert only a lossless linear graph into the legacy sequential format.
+
+        Branches, data mappings, non-manual triggers and nodes without a legacy
+        handler are rejected rather than being flattened with changed meaning.
+        """
+        graph = cls.validate(definition)
+        if graph["trigger"]["type"] != "manual":
+            raise ValueError("Only manual-trigger graphs can be converted to legacy steps.")
+        nodes = {node["id"]: node for node in graph["nodes"]}
+        incoming = {node_id: 0 for node_id in nodes}
+        outgoing = {node_id: [] for node_id in nodes}
+        starts = []
+        for edge in graph["edges"]:
+            if edge.get("from_output") is not None or edge.get("to_input") is not None:
+                raise ValueError("Graphs with data mappings cannot be represented by legacy sequential steps.")
+            target = edge["to_node_id"]
+            incoming[target] += 1
+            if edge["from_node_id"] == "$trigger":
+                starts.append(target)
+            else:
+                outgoing[edge["from_node_id"]].append(target)
+        if len(starts) != 1:
+            raise ValueError("Only a single-path linear graph can be converted to legacy steps.")
+        for node_id, node in nodes.items():
+            if node["type"] == "end":
+                if outgoing[node_id]:
+                    raise ValueError("Legacy conversion requires terminal end nodes.")
+            elif len(outgoing[node_id]) != 1:
+                raise ValueError("Branching graphs cannot be converted to legacy sequential steps.")
+            if node_id != starts[0] and incoming[node_id] != 1:
+                raise ValueError("Legacy conversion requires exactly one incoming edge per node.")
+
+        result = []
+        visited = set()
+        current = starts[0]
+        while nodes[current]["type"] != "end":
+            if current in visited:
+                raise ValueError("Cyclic graphs cannot be converted to legacy sequential steps.")
+            visited.add(current)
+            node = nodes[current]
+            if node["type"] not in {"mission", "research", "artifact", "social_content", "condition"}:
+                raise ValueError(f"Node type '{node['type']}' has no legacy sequential handler.")
+            if node.get("inputs"):
+                raise ValueError("Node input mappings cannot be represented by legacy sequential steps.")
+            result.append({
+                "id": node["id"],
+                "type": node["type"],
+                "config": copy.deepcopy(node.get("config") or {}),
+            })
+            current = outgoing[current][0]
+        if len(visited) != len(nodes) - 1:
+            raise ValueError("Graph contains nodes outside the single linear execution path.")
+        return result
+
     @staticmethod
     def _validate_trigger(trigger):
         if not isinstance(trigger, dict):
