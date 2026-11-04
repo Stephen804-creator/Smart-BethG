@@ -82,6 +82,49 @@ class TestWorkflowRoutes(SmartBethGTestCase):
         self.assertEqual(snapshot.status_code, 200)
         self.assertEqual(snapshot.json()["graph"]["nodes"][0]["id"], "research-node")
 
+
+    def test_restore_version_route_creates_a_new_draft_version(self):
+        created = self._mutate(
+            self.client_one, self.csrf_one, "POST", "/api/v1/workflows",
+            json={"name": "Restore route", "steps": [
+                {"id": "version-one", "type": "research", "config": {"query": "one"}}
+            ]},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        workflow_id = created.json()["id"]
+
+        for expected_version in (1, 2):
+            if expected_version == 2:
+                edited = self._mutate(
+                    self.client_one, self.csrf_one, "PATCH",
+                    f"/api/v1/workflows/{workflow_id}",
+                    json={"steps": [
+                        {"id": "version-two", "type": "research", "config": {"query": "two"}}
+                    ]},
+                )
+                self.assertEqual(edited.status_code, 200, edited.text)
+            validated = self._mutate(
+                self.client_one, self.csrf_one, "POST",
+                f"/api/v1/workflows/{workflow_id}/validate",
+            )
+            self.assertEqual(validated.status_code, 200, validated.text)
+            published = self._mutate(
+                self.client_one, self.csrf_one, "POST",
+                f"/api/v1/workflows/{workflow_id}/publish",
+            )
+            self.assertEqual(published.status_code, 200, published.text)
+            self.assertEqual(published.json()["published_version"], expected_version)
+
+        restored = self._mutate(
+            self.client_one, self.csrf_one, "POST",
+            f"/api/v1/workflows/{workflow_id}/versions/1/restore",
+        )
+        self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertEqual(restored.json()["version"], 3)
+        self.assertEqual(restored.json()["status"], "draft")
+        self.assertEqual(restored.json()["steps"][0]["id"], "version-one")
+        self.assertEqual(restored.json()["published_version"], 2)
+
     def test_publish_version_history_duplicate_and_run_pin_are_owner_scoped(self):
         created = self._mutate(
             self.client_one, self.csrf_one, "POST", "/api/v1/workflows",
