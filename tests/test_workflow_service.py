@@ -162,6 +162,37 @@ class TestWorkflowService(SmartBethGTestCase):
         finally:
             conn.close()
 
+
+    def test_validation_rejects_a_concurrently_changed_draft(self):
+        workflow = self.service.create(
+            self.owner["id"], "Concurrent validation",
+            steps=[{"id": "stable", "type": "research", "config": {"query": "original"}}],
+        )
+        original_get = self.service.get
+
+        def get_then_simulate_concurrent_edit(user_id, workflow_id):
+            snapshot = original_get(user_id, workflow_id)
+            from database import get_connection
+            conn = get_connection()
+            try:
+                conn.execute(
+                    "UPDATE workflows SET version=version+1 WHERE id=? AND user_id=?",
+                    (workflow_id, user_id),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+            return snapshot
+
+        from unittest.mock import patch
+        with patch.object(self.service, "get", side_effect=get_then_simulate_concurrent_edit):
+            with self.assertRaisesRegex(ValueError, "changed while validation was running"):
+                self.service.validate(self.owner["id"], workflow["id"])
+
+        current = original_get(self.owner["id"], workflow["id"])
+        self.assertEqual(current["status"], "draft")
+        self.assertEqual(current["version"], workflow["version"] + 1)
+
     def test_invalid_step_type_is_rejected(self):
         with self.assertRaises(ValueError):
             self.service.create(self.owner["id"], "Unsafe", steps=[{"type": "shell", "config": {}}])
