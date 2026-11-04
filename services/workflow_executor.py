@@ -25,12 +25,31 @@ class WorkflowExecutor:
             return {"status": "stale_or_missing"}
         if expected_step != int(run.get("current_step") or 0):
             return {"status": "stale_step_job"}
-        if workflow["version"] != expected_version or run["workflow_version"] != workflow["version"]:
+        if run["workflow_version"] != expected_version:
             self.workflows.update_run(user_id, run_id, "failed",
-                error="Workflow version changed after enqueue.", terminal=True)
+                error="Workflow run version does not match its queued job.", terminal=True)
             return {"status": "failed", "reason": "version_mismatch"}
 
-        steps = workflow.get("steps") or []
+        try:
+            definition = self.workflows.get_run_definition(user_id, run_id)
+        except (TypeError, ValueError):
+            definition = None
+        if not definition:
+            self.workflows.update_run(user_id, run_id, "failed",
+                error="The workflow definition pinned to this run is unavailable.", terminal=True)
+            return {"status": "failed", "reason": "definition_unavailable"}
+        expected_version_id = payload.get("workflow_version_id")
+        if (expected_version_id is not None
+                and str(expected_version_id) != str(definition.get("workflow_version_id"))):
+            self.workflows.update_run(user_id, run_id, "failed",
+                error="Workflow definition snapshot does not match its queued job.", terminal=True)
+            return {"status": "failed", "reason": "snapshot_mismatch"}
+        if not definition.get("immutable") and workflow["version"] != expected_version:
+            self.workflows.update_run(user_id, run_id, "failed",
+                error="Historical workflow version changed after enqueue.", terminal=True)
+            return {"status": "failed", "reason": "legacy_version_mismatch"}
+
+        steps = definition.get("steps") or []
         outputs = (run.get("result") or {}).get("outputs", [])
         if not isinstance(outputs, list):
             outputs = []
