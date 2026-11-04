@@ -59,6 +59,11 @@ class WorkflowService:
             return None
         name = fields.get("name", current["name"])
         description = fields.get("description", current["description"])
+        if current.get("definition_error") and "steps" not in fields:
+            raise ValueError(
+                "This legacy workflow definition is malformed. Supply replacement steps explicitly to repair it; "
+                "metadata-only edits are blocked to preserve the original definition."
+            )
         steps = fields.get("steps", current["steps"])
         name = (name or "").strip()
         if not name or len(name) > 120:
@@ -69,6 +74,19 @@ class WorkflowService:
             raise ValueError("Workflow definition exceeds the 100000-character limit.")
         conn = get_connection()
         try:
+            if current.get("definition_error"):
+                original = conn.execute(
+                    "SELECT definition_json FROM workflows WHERE id=? AND user_id=? AND version=?",
+                    (workflow_id, user_id, current["version"]),
+                ).fetchone()
+                if not original:
+                    raise ValueError("Workflow changed concurrently. Refresh and try again.")
+                conn.execute(
+                    "INSERT INTO workflow_definition_recovery "
+                    "(workflow_id,user_id,invalid_definition_json,repaired_definition_json,repaired_by) "
+                    "VALUES (?,?,?,?,?)",
+                    (workflow_id, user_id, original["definition_json"], definition_json, user_id),
+                )
             cursor = conn.execute(
                 "UPDATE workflows SET name=?, description=?, definition_json=?, version=version+1, "
                 "status='draft', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND version=?",
@@ -86,6 +104,8 @@ class WorkflowService:
         workflow = self.get(user_id, workflow_id)
         if not workflow:
             return None
+        if workflow.get("definition_error"):
+            raise ValueError("Workflow definition is malformed. Replace its steps to repair it before validation.")
         steps = self.validate_steps(workflow["steps"], require_nonempty=True)
         conn = get_connection()
         try:
@@ -684,9 +704,15 @@ class WorkflowService:
     @staticmethod
     def _decode(row):
         item = dict(row)
+        raw_definition = item.pop("definition_json", None)
         try:
-            item["steps"] = json.loads(item.pop("definition_json") or "[]")
+            item["steps"] = json.loads(raw_definition or "[]")
+            item["definition_valid"] = isinstance(item["steps"], list)
+            if not item["definition_valid"]:
+                item["definition_error"] = "Stored workflow definition is not a JSON array."
+                item["steps"] = []
         except (TypeError, json.JSONDecodeError):
             item["steps"] = []
-            item.pop("definition_json", None)
+            item["definition_valid"] = False
+            item["definition_error"] = "Stored workflow definition contains invalid JSON."
         return item
