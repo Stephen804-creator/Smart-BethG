@@ -65,7 +65,7 @@ class TestWorkflowGraphValidator(unittest.TestCase):
              "config": {"topic": "cloud", "source_urls": ["https://example.com"]}},
         ])
         graph["nodes"][0]["config"]["source_urls"].append(42)
-        with self.assertRaisesRegex(ValueError, "source_urls must be array"):
+        with self.assertRaisesRegex(ValueError, "source_urls.*array containing only strings"):
             WorkflowGraphValidator.validate(graph)
 
     def test_rejects_unsupported_condition_operator_in_node_config(self):
