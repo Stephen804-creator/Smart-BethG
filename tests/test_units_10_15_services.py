@@ -286,6 +286,34 @@ class TestUnits10To15(SmartBethGTestCase):
         self.assertEqual(final_run["status"], "completed")
         self.assertEqual(final_run["result"]["completion_semantics"], "all_steps_completed")
 
+
+    def test_executor_uses_pinned_snapshot_after_workflow_is_republished(self):
+        service = WorkflowService()
+        workflow = service.create(self.owner["id"], "Snapshot execution", steps=[
+            {"id": "original", "type": "mission", "config": {"objective": "Run the original published objective"}}
+        ])
+        service.validate(self.owner["id"], workflow["id"])
+        run = service.start_run(self.owner["id"], workflow["id"])
+
+        service.update(self.owner["id"], workflow["id"], {"steps": [
+            {"id": "replacement", "type": "mission", "config": {"objective": "Run the newer draft objective"}}
+        ]})
+        service.validate(self.owner["id"], workflow["id"])
+        service.publish(self.owner["id"], workflow["id"])
+
+        result = WorkflowExecutor().execute({"user_id": self.owner["id"], "payload": {
+            "workflow_id": workflow["id"],
+            "run_id": run["id"],
+            "workflow_version": run["workflow_version"],
+            "workflow_version_id": run["workflow_version_id"],
+            "step_index": 0,
+        }})
+        self.assertEqual(result["status"], "waiting_for_child_mission")
+        step = service.get_step_run(self.owner["id"], run["id"], 0)
+        mission = MissionService().get(self.owner["id"], step["mission_id"])
+        self.assertEqual(mission["objective"], "Run the original published objective")
+        self.assertEqual(step["step_id"], "original")
+
     def test_workflow_step_replay_reuses_the_same_child_mission(self):
         service = WorkflowService()
         workflow = service.create(self.owner["id"], "Replay test", steps=[
