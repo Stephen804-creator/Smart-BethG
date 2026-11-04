@@ -15,6 +15,18 @@ MAX_EDGES = 100
 MAX_DEFINITION_BYTES = 100_000
 _NODE_ID = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,79}$")
 _SCHEMA_TYPES = {"object", "array", "string", "number", "integer", "boolean", "null"}
+_NODE_CONFIG_FIELDS = {
+    "mission": {"objective": "string", "priority": "string"},
+    "research": {"query": "string", "topic": "string", "summary": "string",
+                 "source_urls": "array", "mission_id": "integer"},
+    "artifact": {"name": "string", "content": "string", "artifact_type": "string",
+                 "mission_id": "integer"},
+    "social_content": {"platform": "string", "title": "string", "content": "string",
+                       "hashtags": "array"},
+    "condition": {"source_step_id": "string", "path": "string", "operator": "string"},
+    "end": {},
+}
+_CONDITION_OPERATORS = {"equals", "not_equals", "contains", "exists", "gt", "gte", "lt", "lte"}
 _NODE_OUTPUTS = {
     "mission": {"result": {"type": "object"}},
     "research": {"result": {"type": "object"}},
@@ -69,8 +81,10 @@ class WorkflowGraphValidator:
             version = node.get("version")
             if isinstance(version, bool) or not isinstance(version, int) or version != 1:
                 raise ValueError(f"Node '{node_id}' uses an unsupported node version.")
-            if not isinstance(node.get("config", {}), dict):
+            config = node.get("config", {})
+            if not isinstance(config, dict):
                 raise ValueError(f"Node '{node_id}' config must be an object.")
+            cls._validate_node_config(node_id, node_type, config)
             inputs = node.get("inputs", {})
             outputs = node.get("outputs", _NODE_OUTPUTS[node_type])
             if not isinstance(inputs, dict) or not isinstance(outputs, dict):
@@ -288,6 +302,30 @@ class WorkflowGraphValidator:
         if len(visited) != len(nodes) - 1:
             raise ValueError("Graph contains nodes outside the single linear execution path.")
         return result
+
+    @staticmethod
+    def _validate_node_config(node_id, node_type, config):
+        """Validate known config fields while allowing forward-compatible extras."""
+        for field, expected_type in _NODE_CONFIG_FIELDS[node_type].items():
+            if field not in config:
+                continue
+            value = config[field]
+            valid = (
+                isinstance(value, str) if expected_type == "string"
+                else isinstance(value, list) and all(isinstance(item, str) for item in value)
+                if expected_type == "array"
+                else isinstance(value, int) and not isinstance(value, bool)
+                if expected_type == "integer"
+                else False
+            )
+            if not valid:
+                raise ValueError(
+                    f"Node '{node_id}' config field '{field}' must be {expected_type}"
+                    + (" containing only strings." if expected_type == "array" else ".")
+                )
+        if node_type == "condition" and "operator" in config:
+            if config["operator"] not in _CONDITION_OPERATORS:
+                raise ValueError(f"Node '{node_id}' uses an unsupported condition operator.")
 
     @staticmethod
     def _validate_trigger(trigger):
