@@ -815,6 +815,7 @@ class WorkflowService:
             item["graph"] = None
             item["graph_valid"] = None
         raw_definition = item.pop("definition_json", None)
+        raw_graph = item.pop("graph_json", None)
         try:
             item["steps"] = json.loads(raw_definition or "[]")
             item["definition_valid"] = isinstance(item["steps"], list)
