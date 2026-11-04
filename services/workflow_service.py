@@ -60,7 +60,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT id, user_id, name, description, definition_json, graph_json, version, status, published_version, created_at, updated_at "
+                "SELECT id, user_id, name, description, definition_json, graph_json, definition_format, version, status, published_version, created_at, updated_at "
                 "FROM workflows WHERE id=? AND user_id=? LIMIT 1",
                 (workflow_id, user_id),
             ).fetchone()
@@ -812,15 +812,13 @@ class WorkflowService:
         raw_graph = item.pop("graph_json", None)
         if raw_graph:
             try:
-                item["graph"] = json.loads(raw_graph)
-                item["graph_valid"] = isinstance(item["graph"], dict)
-                if not item["graph_valid"]:
-                    item["graph_error"] = "Stored workflow graph is not an object."
-                    item["graph"] = None
-            except (TypeError, json.JSONDecodeError):
+                from services.workflow_graph import WorkflowGraphValidator
+                item["graph"] = WorkflowGraphValidator.validate(json.loads(raw_graph))
+                item["graph_valid"] = True
+            except (TypeError, ValueError, json.JSONDecodeError):
                 item["graph"] = None
                 item["graph_valid"] = False
-                item["graph_error"] = "Stored workflow graph contains invalid JSON."
+                item["graph_error"] = "Stored workflow graph is malformed or invalid."
         else:
             item["graph"] = None
             item["graph_valid"] = None
