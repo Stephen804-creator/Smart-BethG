@@ -24,6 +24,19 @@ A node contains `id`, `type`, `version`, `config`, `inputs` and `outputs`. Input
 
 The initial built-in contract recognizes the existing trusted types: mission, research, artifact, social_content and condition, plus the terminal end node. This is a definition allowlist, not a claim that every node has a new graph executor. Arbitrary shell/code node types are not allowed.
 
+### Node configuration fields
+
+The validator checks known configuration fields by trusted node type while allowing forward-compatible additional fields:
+
+- `mission`: objective and priority are strings.
+- `research`: query, topic and summary are strings; source_urls is an array of strings; mission_id is an integer.
+- `artifact`: name, content and artifact_type are strings; mission_id is an integer.
+- `social_content`: platform, title and content are strings; hashtags is an array of strings.
+- `condition`: source_step_id, path and operator are strings; operator, when supplied, must be one of the supported comparison operators.
+- `end`: no node-specific configuration fields are defined.
+
+These are initial type contracts, not a complete UI form schema or runtime validation of provider outputs. Unknown additional config keys are retained for forward compatibility; a later node registry will own richer per-node schemas, defaults, required fields, permissions and resource limits.
+
 ## Edges and graph rules
 
 A control-flow edge has an ID, source node ID and target node ID. The special source ID `$trigger` represents the workflow trigger. A data-flow edge additionally names a source output and target input; it must agree with the target node's typed input mapping.
