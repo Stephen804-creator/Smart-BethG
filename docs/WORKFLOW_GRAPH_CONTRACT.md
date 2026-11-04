@@ -34,20 +34,25 @@ Validation rejects unknown endpoints, duplicate IDs, missing data edges, incompa
 
 The first supported trigger is `manual`, version 1, with an object-shaped input schema. The trigger's declared properties are the available outputs from `$trigger`. Schedules, webhooks and polling are later stages and must not be advertised as available by this contract.
 
-## Legacy sequential compatibility
+## Legacy sequential compatibility and publication
 
-`WorkflowGraphValidator.from_legacy_steps` converts the existing ordered step array into a linear graph, preserving each step's ID, type and configuration. It adds a manual trigger and an end node. It is a compatibility conversion/validation helper only; it does not change existing database storage or route execution.
+`WorkflowGraphValidator.from_legacy_steps` converts the existing ordered step array into a linear graph, preserving each step's ID, type and configuration. It adds a manual trigger and an end node.
 
-Legacy definitions continue to be handled by the existing workflow service and sequential executor until the later persistence/publication and graph-execution work is completed. A failed conversion must be surfaced for repair; callers must not silently discard the original definition.
+When a workflow is published, the service stores both the exact legacy step definition used by the current sequential executor and its validated graph representation in an immutable version snapshot. The published version is append-only for UPDATE operations. Editing a workflow creates a new draft version and does not mutate earlier snapshots.
+
+New runs store the exact published snapshot ID. The workflow executor and continuation callbacks load the run's pinned step definition, not the mutable workflow row. Existing clients that call validate and then run remain compatible: the first run after validation publishes that validated draft before enqueueing it. A dedicated publish endpoint is also available.
+
+Historical runs created before snapshot support retain a NULL snapshot reference. The system does not fabricate historical snapshots; those runs use the legacy version check and may be unrecoverable if the workflow was subsequently edited.
+
+Malformed legacy JSON is exposed as an invalid definition instead of being silently treated as an empty workflow. Metadata-only edits are blocked until the owner explicitly supplies replacement steps. The original malformed JSON and replacement are recorded in the recovery table.
 
 ## Explicit limitations
 
-- This contract does not yet persist graph documents as the canonical workflow record.
-- It does not yet create immutable published workflow versions.
-- Workflow runs are not yet pinned to immutable published snapshots.
-- It does not implement branch scheduling, loops, retries or graph execution.
-- Detailed per-node configuration schemas and the unified registry belong to later Stage 1/Stage 3 work; the current validator checks the shared envelope and declared data types.
+- The graph representation is persisted in published snapshots, but current execution remains sequential. Graph scheduling, branching, loops, retries and data-port runtime resolution are not implemented here.
+- The current legacy adapter is one-way (ordered steps to linear graph). A graph-to-sequential compatibility adapter is still outstanding.
+- Detailed per-node configuration schemas and the unified node registry remain later Stage 1/Stage 3 work.
+- The graph contract currently recognizes a bounded set of trusted node types and rejects arbitrary shell/code nodes.
 
 ## Verification
 
-The focused unit tests are in `tests/test_workflow_graph.py`. They cover valid typed graphs, non-mutation, stable/unique IDs, unknown types/endpoints, data type mismatches, unmapped inputs, cycles, reachability, terminal paths, schema versions and conversion from legacy sequential definitions.
+The focused graph tests are in `tests/test_workflow_graph.py`. Workflow publication, immutable snapshots, run pinning, version reads, append-only behavior, duplication, ownership and malformed-legacy recovery are covered in `tests/test_workflow_service.py`. PostgreSQL integration exercises the additive migration path.
