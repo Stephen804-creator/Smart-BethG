@@ -145,6 +145,7 @@ class WorkflowGraphValidator:
                 if (node_id, input_name) not in mapped_inputs:
                     raise ValueError(f"Node '{node_id}' input '{input_name}' has no matching graph edge.")
 
+        cls._assert_acyclic(node_by_id, adjacency)
         end_ids = {node_id for node_id, node in node_by_id.items() if node["type"] == "end"}
         if not end_ids:
             raise ValueError("Workflow graph must contain at least one end node.")
@@ -154,7 +155,6 @@ class WorkflowGraphValidator:
             if node["type"] != "end" and not outgoing[node_id]:
                 raise ValueError(f"Node '{node_id}' has no path to a downstream node.")
 
-        cls._assert_acyclic(node_by_id, adjacency)
         reachable = set()
         stack = list(dict.fromkeys(trigger_targets))
         while stack:
