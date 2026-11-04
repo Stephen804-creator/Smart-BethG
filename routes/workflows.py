@@ -23,7 +23,6 @@ class WorkflowUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=4000)
     steps: list[dict] | None = Field(default=None, max_length=50)
     graph: dict | None = None
-    graph: dict | None = None
 
 
 @router.post("")
