@@ -639,6 +639,18 @@ class WorkflowService:
             item.pop("result_json", None)
         return item
 
+    def duplicate(self, user_id, workflow_id, name=None):
+        """Create an owner-scoped draft copy without copying execution history."""
+        source = self.get(user_id, workflow_id)
+        if not source:
+            return None
+        if source.get("definition_error"):
+            raise ValueError("Cannot duplicate a malformed workflow until its definition is repaired.")
+        duplicate_name = (name or f"Copy of {source['name']}").strip()
+        return self.create(
+            user_id, duplicate_name, source.get("description"), source.get("steps") or []
+        )
+
     def archive(self, user_id, workflow_id):
         workflow = self.get(user_id, workflow_id)
         if not workflow:
