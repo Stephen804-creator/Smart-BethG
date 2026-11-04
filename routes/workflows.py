@@ -70,6 +70,24 @@ def validate_workflow(workflow_id: int, user=Depends(get_current_user), service=
     return workflow
 
 
+
+@router.post("/{workflow_id}/publish")
+def publish_workflow(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
+    try:
+        workflow = service.publish(user["id"], workflow_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found.")
+    return workflow
+
+
+@router.get("/{workflow_id}/versions")
+def list_workflow_versions(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
+    if not service.get(user["id"], workflow_id):
+        raise HTTPException(status_code=404, detail="Workflow not found.")
+    return {"versions": service.list_versions(user["id"], workflow_id)}
+
 @router.post("/{workflow_id}/runs")
 def start_workflow_run(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
     try:
