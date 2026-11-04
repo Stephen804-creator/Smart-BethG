@@ -283,6 +283,23 @@ class TestWorkflowService(SmartBethGTestCase):
         self.assertEqual(legacy["definition_format"], "legacy_steps")
         self.assertEqual(legacy["steps"][0]["id"], "legacy-step")
 
+
+    def test_duplicate_preserves_graph_native_definition_without_history(self):
+        from services.workflow_graph import WorkflowGraphValidator
+        graph = WorkflowGraphValidator.from_legacy_steps([
+            {"id": "graph-node", "type": "research", "config": {"query": "duplicate"}}
+        ])
+        source = self.service.create(self.owner["id"], "Graph source", graph=graph)
+        self.service.validate(self.owner["id"], source["id"])
+        self.service.publish(self.owner["id"], source["id"])
+
+        duplicate = self.service.duplicate(self.owner["id"], source["id"], "Graph copy")
+        self.assertEqual(duplicate["definition_format"], "graph_v1")
+        self.assertEqual(duplicate["graph"]["nodes"][0]["id"], "graph-node")
+        self.assertEqual(duplicate["status"], "draft")
+        self.assertIsNone(duplicate["published_version"])
+        self.assertEqual(self.service.list_versions(self.owner["id"], duplicate["id"]), [])
+
     def test_invalid_step_type_is_rejected(self):
         with self.assertRaises(ValueError):
             self.service.create(self.owner["id"], "Unsafe", steps=[{"type": "shell", "config": {}}])
