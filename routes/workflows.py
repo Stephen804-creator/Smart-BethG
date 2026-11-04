@@ -12,6 +12,7 @@ class WorkflowCreate(BaseModel):
     description: str | None = Field(default=None, max_length=4000)
     steps: list[dict] = Field(default_factory=list, max_length=50)
     graph: dict | None = None
+    graph: dict | None = None
 
 
 class WorkflowDuplicate(BaseModel):
@@ -22,6 +23,7 @@ class WorkflowUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=4000)
     steps: list[dict] | None = Field(default=None, max_length=50)
+    graph: dict | None = None
     graph: dict | None = None
 
 
