@@ -55,4 +55,4 @@ Malformed legacy JSON is exposed as an invalid definition instead of being silen
 
 ## Verification
 
-The focused graph tests are in `tests/test_workflow_graph.py`. Workflow publication, immutable snapshots, run pinning, version reads, append-only behavior, duplication, ownership and malformed-legacy recovery are covered in `tests/test_workflow_service.py`. PostgreSQL integration exercises the additive migration path.
+The focused graph tests are in `tests/test_workflow_graph.py`, using reusable valid and invalid documents from `tests/fixtures/workflow_graphs/`. Workflow publication, immutable snapshots, run pinning, version reads, append-only behavior, duplication, ownership and malformed-legacy recovery are covered in `tests/test_workflow_service.py` and `tests/test_units_10_15_services.py`. PostgreSQL integration exercises the additive migration path.
