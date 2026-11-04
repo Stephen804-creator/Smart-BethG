@@ -193,6 +193,86 @@ class TestWorkflowService(SmartBethGTestCase):
         self.assertEqual(current["status"], "draft")
         self.assertEqual(current["version"], workflow["version"] + 1)
 
+
+    def test_canonical_linear_graph_draft_round_trips_and_runs_through_adapter(self):
+        from services.workflow_graph import WorkflowGraphValidator
+        graph = WorkflowGraphValidator.from_legacy_steps([
+            {"id": "research-node", "type": "research", "config": {"query": "graph draft"}}
+        ])
+        workflow = self.service.create(
+            self.owner["id"], "Graph-native workflow", graph=graph
+        )
+        self.assertEqual(workflow["steps"][0]["id"], "research-node")
+        self.assertEqual(workflow["graph"]["format"], "smartbethg.workflow.graph")
+        self.assertTrue(workflow["graph_valid"])
+
+        validated = self.service.validate(self.owner["id"], workflow["id"])
+        self.assertEqual(validated["status"], "validated")
+        published = self.service.publish(self.owner["id"], workflow["id"])
+        self.assertEqual(published["status"], "published")
+        snapshot = self.service.get_version(self.owner["id"], workflow["id"], 1)
+        self.assertEqual(snapshot["graph"]["format"], "smartbethg.workflow.graph")
+        run = self.service.start_run(self.owner["id"], workflow["id"])
+        self.assertIsNotNone(run["workflow_version_id"])
+
+    def test_valid_branching_graph_can_be_saved_but_not_run_by_sequential_executor(self):
+        graph = {
+            "format": "smartbethg.workflow.graph",
+            "schema_version": "1.0",
+            "trigger": {"type": "manual", "version": 1,
+                        "input_schema": {"type": "object", "properties": {}}},
+            "nodes": [
+                {"id": "start", "type": "mission", "version": 1,
+                 "config": {"objective": "Start"}, "inputs": {},
+                 "outputs": {"result": {"type": "object"}}},
+                {"id": "left", "type": "research", "version": 1,
+                 "config": {"query": "Left path"}, "inputs": {},
+                 "outputs": {"result": {"type": "object"}}},
+                {"id": "right", "type": "artifact", "version": 1,
+                 "config": {"name": "Right path", "content": "Draft"}, "inputs": {},
+                 "outputs": {"result": {"type": "object"}}},
+                {"id": "end", "type": "end", "version": 1,
+                 "config": {}, "inputs": {}, "outputs": {}},
+            ],
+            "edges": [
+                {"id": "trigger-start", "from_node_id": "$trigger", "to_node_id": "start"},
+                {"id": "start-left", "from_node_id": "start", "to_node_id": "left"},
+                {"id": "start-right", "from_node_id": "start", "to_node_id": "right"},
+                {"id": "left-end", "from_node_id": "left", "to_node_id": "end"},
+                {"id": "right-end", "from_node_id": "right", "to_node_id": "end"},
+            ],
+        }
+        workflow = self.service.create(
+            self.owner["id"], "Branching graph draft", graph=graph
+        )
+        self.assertEqual(workflow["steps"], [])
+        self.assertEqual(len(workflow["graph"]["nodes"]), 4)
+        self.service.validate(self.owner["id"], workflow["id"])
+        self.service.publish(self.owner["id"], workflow["id"])
+        snapshot = self.service.get_version(self.owner["id"], workflow["id"], 1)
+        self.assertEqual(len(snapshot["graph"]["edges"]), 5)
+        with self.assertRaisesRegex(ValueError, "Graph is valid but is not compatible"):
+            self.service.start_run(self.owner["id"], workflow["id"])
+
+    def test_graph_draft_update_preserves_graph_on_metadata_change(self):
+        from services.workflow_graph import WorkflowGraphValidator
+        graph = WorkflowGraphValidator.from_legacy_steps([
+            {"id": "node-a", "type": "research", "config": {"query": "before"}}
+        ])
+        workflow = self.service.create(self.owner["id"], "Graph update", graph=graph)
+        updated = self.service.update(
+            self.owner["id"], workflow["id"], {"name": "Graph update renamed"}
+        )
+        self.assertEqual(updated["graph"]["nodes"][0]["id"], "node-a")
+        replacement = WorkflowGraphValidator.from_legacy_steps([
+            {"id": "node-b", "type": "research", "config": {"query": "after"}}
+        ])
+        updated = self.service.update(
+            self.owner["id"], workflow["id"], {"graph": replacement}
+        )
+        self.assertEqual(updated["graph"]["nodes"][0]["id"], "node-b")
+        self.assertEqual(updated["steps"][0]["id"], "node-b")
+
     def test_invalid_step_type_is_rejected(self):
         with self.assertRaises(ValueError):
             self.service.create(self.owner["id"], "Unsafe", steps=[{"type": "shell", "config": {}}])
