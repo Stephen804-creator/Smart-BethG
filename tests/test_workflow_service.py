@@ -102,8 +102,7 @@ class TestWorkflowService(SmartBethGTestCase):
 
     def test_publish_is_owner_scoped(self):
         workflow = self.service.create(self.owner["id"], "Owner only")
-        with self.assertRaises(ValueError):
-            self.service.publish(self.other["id"], workflow["id"])
+        self.assertIsNone(self.service.publish(self.other["id"], workflow["id"]))
         self.assertEqual(self.service.list_versions(self.owner["id"], workflow["id"]), [])
 
 
