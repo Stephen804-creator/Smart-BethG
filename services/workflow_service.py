@@ -80,7 +80,10 @@ class WorkflowService:
             )
         if "graph" in fields and "steps" in fields:
             raise ValueError("Update either the graph definition or legacy steps, not both.")
-        graph_json = current.get("graph_json")
+        graph_json = (
+            json.dumps(current["graph"], ensure_ascii=False, separators=(",", ":"))
+            if current.get("graph") is not None else None
+        )
         if "graph" in fields:
             from services.workflow_graph import WorkflowGraphValidator
             graph = WorkflowGraphValidator.validate(fields["graph"])
