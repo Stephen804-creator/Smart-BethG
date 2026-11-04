@@ -50,6 +50,32 @@ class TestWorkflowGraphValidator(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Duplicate node ID"):
             WorkflowGraphValidator.validate(graph)
 
+
+    def test_rejects_node_config_field_with_wrong_type(self):
+        graph = WorkflowGraphValidator.from_legacy_steps([
+            {"id": "research-node", "type": "research", "config": {"query": ["not", "text"]}},
+        ])
+        with self.assertRaisesRegex(ValueError, "config field 'query' must be string"):
+            WorkflowGraphValidator.validate(graph)
+
+    def test_rejects_non_string_items_in_node_config_array(self):
+        graph = WorkflowGraphValidator.from_legacy_steps([
+            {"id": "research-node", "type": "research",
+             "config": {"topic": "cloud", "source_urls": ["https://example.com", 42]}},
+        ])
+        with self.assertRaisesRegex(ValueError, "source_urls must be array"):
+            WorkflowGraphValidator.validate(graph)
+
+    def test_rejects_unsupported_condition_operator_in_node_config(self):
+        graph = WorkflowGraphValidator.from_legacy_steps([
+            {"id": "research-node", "type": "research", "config": {"topic": "cloud"}},
+            {"id": "condition-node", "type": "condition",
+             "config": {"source_step_id": "research-node", "path": "result.score",
+                        "operator": "execute_anything"}},
+        ])
+        with self.assertRaisesRegex(ValueError, "unsupported condition operator"):
+            WorkflowGraphValidator.validate(graph)
+
     def test_rejects_unknown_node_type(self):
         graph = valid_graph()
         graph["nodes"][0]["type"] = "shell"
