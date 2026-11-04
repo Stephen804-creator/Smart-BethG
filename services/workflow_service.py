@@ -33,9 +33,10 @@ class WorkflowService:
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "INSERT INTO workflows(user_id, name, description, definition_json, graph_json, version, status) "
-                "VALUES (?, ?, ?, ?, ?, 1, 'draft')",
-                (user_id, name, description, definition_json, graph_json),
+                "INSERT INTO workflows(user_id, name, description, definition_json, graph_json, definition_format, version, status) "
+                "VALUES (?, ?, ?, ?, ?, ?, 1, 'draft')",
+                (user_id, name, description, definition_json, graph_json,
+                 "graph_v1" if graph_json is not None else "legacy_steps"),
             )
             workflow_id = cursor.lastrowid
             conn.commit()
@@ -47,7 +48,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, user_id, name, description, definition_json, graph_json, version, status, published_version, created_at, updated_at "
+                "SELECT id, user_id, name, description, definition_json, graph_json, definition_format, version, status, published_version, created_at, updated_at "
                 "FROM workflows WHERE user_id=? ORDER BY updated_at DESC, id DESC",
                 (user_id,),
             ).fetchall()
@@ -124,9 +125,12 @@ class WorkflowService:
                     (workflow_id, user_id, original["definition_json"], definition_json, user_id),
                 )
             cursor = conn.execute(
-                "UPDATE workflows SET name=?, description=?, definition_json=?, graph_json=?, version=version+1, "
-                "status='draft', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND version=?",
-                (name, description, definition_json, graph_json, workflow_id, user_id, current["version"]),
+                "UPDATE workflows SET name=?, description=?, definition_json=?, graph_json=?, definition_format=?, "
+                "version=version+1, status='draft', updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=? AND user_id=? AND version=?",
+                (name, description, definition_json, graph_json,
+                 "graph_v1" if graph_json is not None else "legacy_steps",
+                 workflow_id, user_id, current["version"]),
             )
             if cursor.rowcount != 1:
                 conn.rollback()
@@ -142,6 +146,8 @@ class WorkflowService:
             return None
         if workflow.get("definition_error"):
             raise ValueError("Workflow definition is malformed. Replace its steps to repair it before validation.")
+        if workflow.get("graph_error"):
+            raise ValueError("Workflow graph is malformed. Replace the graph before validation.")
         if workflow.get("graph") is not None:
             from services.workflow_graph import WorkflowGraphValidator
             graph = WorkflowGraphValidator.validate(workflow["graph"])
@@ -819,7 +825,6 @@ class WorkflowService:
             item["graph"] = None
             item["graph_valid"] = None
         raw_definition = item.pop("definition_json", None)
-        raw_graph = item.pop("graph_json", None)
         try:
             item["steps"] = json.loads(raw_definition or "[]")
             item["definition_valid"] = isinstance(item["steps"], list)
