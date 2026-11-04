@@ -579,7 +579,7 @@ class WorkflowService:
     def get_run(self, user_id, run_id):
         conn = get_connection()
         try:
-            row = conn.execute("SELECT id,workflow_id,user_id,workflow_version,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE id=? AND user_id=? LIMIT 1",
+            row = conn.execute("SELECT id,workflow_id,user_id,workflow_version,workflow_version_id,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE id=? AND user_id=? LIMIT 1",
                                (run_id, user_id)).fetchone()
             return self._decode_run(row) if row else None
         finally:
@@ -588,7 +588,7 @@ class WorkflowService:
     def list_runs(self, user_id, workflow_id, limit=30):
         conn = get_connection()
         try:
-            rows = conn.execute("SELECT id,workflow_id,user_id,workflow_version,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE workflow_id=? AND user_id=? ORDER BY id DESC LIMIT ?",
+            rows = conn.execute("SELECT id,workflow_id,user_id,workflow_version,workflow_version_id,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE workflow_id=? AND user_id=? ORDER BY id DESC LIMIT ?",
                                 (workflow_id, user_id, max(1, min(100, int(limit))))).fetchall()
             return [self._decode_run(row) for row in rows]
         finally:
