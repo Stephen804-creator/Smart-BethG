@@ -108,6 +108,19 @@ def list_workflow_versions(workflow_id: int, user=Depends(get_current_user), ser
         raise HTTPException(status_code=404, detail="Workflow not found.")
     return {"versions": service.list_versions(user["id"], workflow_id)}
 
+
+@router.get("/{workflow_id}/versions/{version}")
+def get_workflow_version(
+    workflow_id: int,
+    version: int,
+    user=Depends(get_current_user),
+    service=Depends(get_workflow_service),
+):
+    snapshot = service.get_version(user["id"], workflow_id, version)
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Workflow version not found.")
+    return snapshot
+
 @router.post("/{workflow_id}/runs")
 def start_workflow_run(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
     try:
