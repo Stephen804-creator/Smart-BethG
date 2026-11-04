@@ -34,6 +34,50 @@ class TestWorkflowRoutes(SmartBethGTestCase):
     def _mutate(self, client, csrf, method, path, **kwargs):
         return client.request(method, path, headers={"X-CSRF-Token": csrf}, **kwargs)
 
+
+    def test_graph_definition_can_be_created_validated_and_published_via_api(self):
+        graph = {
+            "format": "smartbethg.workflow.graph",
+            "schema_version": "1.0",
+            "trigger": {"type": "manual", "version": 1,
+                        "input_schema": {"type": "object", "properties": {}}},
+            "nodes": [
+                {"id": "research-node", "type": "research", "version": 1,
+                 "config": {"query": "API graph"}, "inputs": {},
+                 "outputs": {"result": {"type": "object"}}},
+                {"id": "end-node", "type": "end", "version": 1,
+                 "config": {}, "inputs": {}, "outputs": {}},
+            ],
+            "edges": [
+                {"id": "start-edge", "from_node_id": "$trigger", "to_node_id": "research-node"},
+                {"id": "finish-edge", "from_node_id": "research-node", "to_node_id": "end-node"},
+            ],
+        }
+        created = self._mutate(
+            self.client_one, self.csrf_one, "POST", "/api/v1/workflows",
+            json={"name": "Graph API workflow", "graph": graph},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        workflow_id = created.json()["id"]
+        self.assertEqual(created.json()["graph"]["format"], "smartbethg.workflow.graph")
+
+        validated = self._mutate(
+            self.client_one, self.csrf_one, "POST",
+            f"/api/v1/workflows/{workflow_id}/validate",
+        )
+        self.assertEqual(validated.status_code, 200, validated.text)
+
+        published = self._mutate(
+            self.client_one, self.csrf_one, "POST",
+            f"/api/v1/workflows/{workflow_id}/publish",
+        )
+        self.assertEqual(published.status_code, 200, published.text)
+        snapshot = self.client_one.get(
+            f"/api/v1/workflows/{workflow_id}/versions/1"
+        )
+        self.assertEqual(snapshot.status_code, 200)
+        self.assertEqual(snapshot.json()["graph"]["nodes"][0]["id"], "research-node")
+
     def test_publish_version_history_duplicate_and_run_pin_are_owner_scoped(self):
         created = self._mutate(
             self.client_one, self.csrf_one, "POST", "/api/v1/workflows",
