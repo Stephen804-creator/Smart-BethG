@@ -178,7 +178,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             workflow = conn.execute(
-                "SELECT id,user_id,definition_json,graph_json,version,status,published_version "
+                "SELECT id,user_id,definition_json,graph_json,definition_format,version,status,published_version "
                 "FROM workflows WHERE id=? AND user_id=? FOR UPDATE",
                 (workflow_id, user_id),
             ).fetchone()
@@ -194,7 +194,9 @@ class WorkflowService:
                 steps = json.loads(workflow["definition_json"] or "[]")
             except (TypeError, json.JSONDecodeError) as exc:
                 raise ValueError("Workflow definition is malformed and cannot be published.") from exc
-            if workflow["graph_json"]:
+            if workflow["definition_format"] == "graph_v1":
+                if not workflow["graph_json"]:
+                    raise ValueError("Workflow graph draft is missing its stored graph document.")
                 try:
                     graph = WorkflowGraphValidator.validate(json.loads(workflow["graph_json"]))
                 except (TypeError, json.JSONDecodeError) as exc:
@@ -813,7 +815,11 @@ class WorkflowService:
     def _decode(row):
         item = dict(row)
         raw_graph = item.pop("graph_json", None)
-        if raw_graph:
+        if item.get("definition_format") == "graph_v1" and not raw_graph:
+            item["graph"] = None
+            item["graph_valid"] = False
+            item["graph_error"] = "Graph-format workflow is missing its stored graph document."
+        elif raw_graph:
             try:
                 from services.workflow_graph import WorkflowGraphValidator
                 item["graph"] = WorkflowGraphValidator.validate(json.loads(raw_graph))
