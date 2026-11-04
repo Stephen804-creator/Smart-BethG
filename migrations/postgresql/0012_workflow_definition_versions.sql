@@ -46,3 +46,15 @@ CREATE INDEX IF NOT EXISTS idx_workflow_runs_definition_version
 CREATE RULE workflow_definition_versions_no_update
 AS ON UPDATE TO workflow_definition_versions
 DO INSTEAD NOTHING;
+
+CREATE TABLE IF NOT EXISTS workflow_definition_recovery (
+    id BIGSERIAL PRIMARY KEY,
+    workflow_id INTEGER NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invalid_definition_json TEXT NOT NULL,
+    repaired_definition_json TEXT NOT NULL,
+    repaired_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
+);
+CREATE INDEX IF NOT EXISTS idx_workflow_definition_recovery_owner
+    ON workflow_definition_recovery(user_id, workflow_id, created_at DESC);
