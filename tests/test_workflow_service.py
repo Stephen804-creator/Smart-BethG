@@ -75,6 +75,31 @@ class TestWorkflowService(SmartBethGTestCase):
         self.assertEqual(first_run["workflow_version"], 1)
         self.assertEqual(second_run["workflow_version"], 2)
 
+
+    def test_published_snapshot_is_append_only_in_postgresql(self):
+        workflow = self.service.create(
+            self.owner["id"], "Append-only",
+            steps=[{"id": "stable", "type": "research", "config": {"query": "original"}}],
+        )
+        self.service.validate(self.owner["id"], workflow["id"])
+        self.service.publish(self.owner["id"], workflow["id"])
+        from database import get_connection
+        conn = get_connection()
+        try:
+            result = conn.execute(
+                "UPDATE workflow_definition_versions SET definition_json='[]' "
+                "WHERE workflow_id=? AND version=1",
+                (workflow["id"],),
+            )
+            self.assertEqual(result.rowcount, 0)
+            row = conn.execute(
+                "SELECT definition_json FROM workflow_definition_versions WHERE workflow_id=? AND version=1",
+                (workflow["id"],),
+            ).fetchone()
+            self.assertIn("stable", row["definition_json"])
+        finally:
+            conn.close()
+
     def test_publish_is_owner_scoped(self):
         workflow = self.service.create(self.owner["id"], "Owner only")
         with self.assertRaises(ValueError):
