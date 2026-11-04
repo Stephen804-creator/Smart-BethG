@@ -125,6 +125,22 @@ def get_workflow_version(
         raise HTTPException(status_code=404, detail="Workflow version not found.")
     return snapshot
 
+@router.post("/{workflow_id}/versions/{version}/restore")
+def restore_workflow_version(
+    workflow_id: int,
+    version: int,
+    user=Depends(get_current_user),
+    service=Depends(get_workflow_service),
+):
+    try:
+        workflow = service.restore_version(user["id"], workflow_id, version)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow version not found.")
+    return workflow
+
+
 @router.post("/{workflow_id}/runs")
 def start_workflow_run(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
     try:
