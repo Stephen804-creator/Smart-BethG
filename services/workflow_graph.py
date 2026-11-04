@@ -89,7 +89,8 @@ class WorkflowGraphValidator:
                 source = mapping["source"]
                 if not isinstance(source.get("node_id"), str) or not isinstance(source.get("output"), str):
                     raise ValueError(f"Node '{node_id}' input '{input_name}' requires a source node and output.")
-                if mapping.get("type") not in _SCHEMA_TYPES:
+                input_type = mapping.get("type")
+                if not isinstance(input_type, str) or input_type not in _SCHEMA_TYPES:
                     raise ValueError(f"Node '{node_id}' input '{input_name}' requires a supported type.")
             node_by_id[node_id] = node
             output_types[node_id] = {name: schema.get("type") for name, schema in outputs.items()}
@@ -118,6 +119,8 @@ class WorkflowGraphValidator:
             if (source_output is None) != (target_input is None):
                 raise ValueError(f"Edge '{edge_id}' must define both data ports or neither.")
             if source_output is not None:
+                if not isinstance(source_output, str) or not isinstance(target_input, str):
+                    raise ValueError(f"Edge '{edge_id}' data ports must be strings.")
                 source_outputs = output_types[source_id]
                 if source_output not in source_outputs:
                     raise ValueError(f"Edge '{edge_id}' references an undeclared source output.")
@@ -238,17 +241,23 @@ class WorkflowGraphValidator:
         if (trigger.get("type") != "manual" or isinstance(version, bool)
                 or not isinstance(version, int) or version != 1):
             raise ValueError("Unsupported workflow trigger type or version.")
-        WorkflowGraphValidator._validate_schema(trigger.get("input_schema"), "Trigger input")
+        input_schema = trigger.get("input_schema")
+        WorkflowGraphValidator._validate_schema(input_schema, "Trigger input")
+        if input_schema["type"] != "object":
+            raise ValueError("Manual trigger input schema must be an object.")
 
     @staticmethod
     def _validate_schema(schema, label):
-        if not isinstance(schema, dict) or schema.get("type") not in _SCHEMA_TYPES:
+        schema_type = schema.get("type") if isinstance(schema, dict) else None
+        if not isinstance(schema_type, str) or schema_type not in _SCHEMA_TYPES:
             raise ValueError(f"{label} must declare a supported JSON data type.")
-        if schema["type"] == "object":
+        if schema_type == "object":
             properties = schema.get("properties", {})
             if not isinstance(properties, dict):
                 raise ValueError(f"{label} object properties must be an object.")
             for name, child in properties.items():
+                if not isinstance(name, str) or not name:
+                    raise ValueError(f"{label} has an invalid property name.")
                 WorkflowGraphValidator._validate_schema(child, f"{label}.{name}")
 
     @staticmethod
