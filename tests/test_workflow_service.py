@@ -163,6 +163,23 @@ class TestWorkflowService(SmartBethGTestCase):
             conn.close()
 
 
+
+    def test_concurrent_publish_requests_create_only_one_snapshot(self):
+        from concurrent.futures import ThreadPoolExecutor
+        workflow = self.service.create(
+            self.owner["id"], "Concurrent publish",
+            steps=[{"id": "stable", "type": "research", "config": {"query": "publish once"}}],
+        )
+        self.service.validate(self.owner["id"], workflow["id"])
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(
+                lambda _index: self.service.publish(self.owner["id"], workflow["id"]),
+                range(2),
+            ))
+        self.assertTrue(all(item["status"] == "published" for item in results))
+        self.assertEqual(results[0]["published_version"], results[1]["published_version"])
+        self.assertEqual(len(self.service.list_versions(self.owner["id"], workflow["id"])), 1)
+
     def test_validation_rejects_a_concurrently_changed_draft(self):
         workflow = self.service.create(
             self.owner["id"], "Concurrent validation",
