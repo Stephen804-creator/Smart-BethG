@@ -100,20 +100,146 @@ class WorkflowService:
         workflow["status"] = "validated"
         return workflow
 
+    def publish(self, user_id, workflow_id):
+        """Create or reuse an immutable snapshot for the currently validated draft."""
+        from services.workflow_graph import WorkflowGraphValidator
+
+        conn = get_connection()
+        try:
+            workflow = conn.execute(
+                "SELECT id,user_id,definition_json,version,status,published_version "
+                "FROM workflows WHERE id=? AND user_id=? FOR UPDATE",
+                (workflow_id, user_id),
+            ).fetchone()
+            if not workflow:
+                return None
+            if workflow["status"] not in {"validated", "published"}:
+                raise ValueError("Validate the current workflow draft before publishing it.")
+            if workflow["status"] == "published" and workflow["published_version"] == workflow["version"]:
+                conn.commit()
+                return self.get(user_id, workflow_id)
+
+            try:
+                steps = json.loads(workflow["definition_json"] or "[]")
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise ValueError("Workflow definition is malformed and cannot be published.") from exc
+            steps = self.validate_steps(steps, require_nonempty=True)
+            graph = WorkflowGraphValidator.from_legacy_steps(steps)
+            steps_json = json.dumps(steps, ensure_ascii=False, separators=(",", ":"))
+            graph_json = json.dumps(graph, ensure_ascii=False, separators=(",", ":"))
+            if max(len(steps_json.encode("utf-8")), len(graph_json.encode("utf-8"))) > 100000:
+                raise ValueError("Workflow definition exceeds the 100000-byte publication limit.")
+
+            existing = conn.execute(
+                "SELECT id FROM workflow_definition_versions WHERE workflow_id=? AND version=?",
+                (workflow_id, workflow["version"]),
+            ).fetchone()
+            if existing:
+                version_id = existing["id"]
+            else:
+                cursor = conn.execute(
+                    "INSERT INTO workflow_definition_versions "
+                    "(workflow_id,user_id,version,definition_format,definition_json,graph_json,created_by) "
+                    "VALUES (?,?,?,'graph_v1',?,?,?)",
+                    (workflow_id, user_id, workflow["version"], steps_json, graph_json, user_id),
+                )
+                version_id = cursor.lastrowid
+            conn.execute(
+                "UPDATE workflows SET published_version=?,status='published',updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=? AND user_id=?",
+                (workflow["version"], workflow_id, user_id),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return self.get(user_id, workflow_id)
+
+    def list_versions(self, user_id, workflow_id):
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT id,workflow_id,user_id,version,definition_format,created_at,created_by "
+                "FROM workflow_definition_versions WHERE workflow_id=? AND user_id=? "
+                "ORDER BY version DESC",
+                (workflow_id, user_id),
+            ).fetchall()
+            return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
+    def get_run_definition(self, user_id, run_id):
+        """Load the immutable definition pinned to a run, or legacy data for old runs."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT r.workflow_id,r.workflow_version,r.workflow_version_id,v.definition_json "
+                "FROM workflow_runs r LEFT JOIN workflow_definition_versions v "
+                "ON v.id=r.workflow_version_id AND v.workflow_id=r.workflow_id AND v.user_id=r.user_id "
+                "WHERE r.id=? AND r.user_id=? LIMIT 1",
+                (run_id, user_id),
+            ).fetchone()
+            if not row:
+                return None
+            if row["workflow_version_id"] is not None:
+                if not row["definition_json"]:
+                    raise ValueError("The immutable workflow version pinned to this run is unavailable.")
+                return {
+                    "workflow_id": row["workflow_id"],
+                    "version": row["workflow_version"],
+                    "workflow_version_id": row["workflow_version_id"],
+                    "steps": json.loads(row["definition_json"]),
+                    "immutable": True,
+                }
+            # Historical pre-migration runs did not record a snapshot. Preserve
+            # their existing version check rather than guessing an old definition.
+            legacy = conn.execute(
+                "SELECT definition_json,version FROM workflows WHERE id=? AND user_id=?",
+                (row["workflow_id"], user_id),
+            ).fetchone()
+            if not legacy or legacy["version"] != row["workflow_version"]:
+                raise ValueError("Historical workflow definition is no longer available for this run.")
+            return {
+                "workflow_id": row["workflow_id"],
+                "version": row["workflow_version"],
+                "workflow_version_id": None,
+                "steps": json.loads(legacy["definition_json"] or "[]"),
+                "immutable": False,
+            }
+        finally:
+            conn.close()
+
     def start_run(self, user_id, workflow_id, priority=0):
         workflow = self.get(user_id, workflow_id)
         if not workflow:
             return None
-        if workflow["status"] != "validated":
-            raise ValueError("Validate the workflow before executing it.")
-        steps = self.validate_steps(workflow["steps"], require_nonempty=True)
+        if workflow["status"] == "validated":
+            # Backwards-compatible bridge for existing clients that call
+            # validate -> run. The first run publishes an immutable snapshot.
+            workflow = self.publish(user_id, workflow_id)
+        if not workflow or workflow["status"] != "published":
+            raise ValueError("Validate and publish the workflow before executing it.")
         conn = get_connection()
         try:
-            cursor = conn.execute("INSERT INTO workflow_runs(workflow_id,user_id,workflow_version,status,result_json) VALUES (?,?,?,'queued','{}')",
-                                  (workflow_id, user_id, workflow["version"]))
+            snapshot = conn.execute(
+                "SELECT id,version FROM workflow_definition_versions "
+                "WHERE workflow_id=? AND user_id=? AND version=?",
+                (workflow_id, user_id, workflow["published_version"]),
+            ).fetchone()
+            if not snapshot:
+                raise ValueError("The published workflow version is unavailable.")
+            cursor = conn.execute(
+                "INSERT INTO workflow_runs(workflow_id,user_id,workflow_version,workflow_version_id,status,result_json) "
+                "VALUES (?,?,?,?,'queued','{}')",
+                (workflow_id, user_id, snapshot["version"], snapshot["id"]),
+            )
             run_id = cursor.lastrowid
             JobQueue().enqueue_in_transaction(conn, user_id, "workflow.execute",
-                {"workflow_id": workflow_id, "run_id": run_id, "workflow_version": workflow["version"], "step_index": 0},
+                {"workflow_id": workflow_id, "run_id": run_id,
+                 "workflow_version": snapshot["version"], "workflow_version_id": snapshot["id"],
+                 "step_index": 0},
                 idempotency_key=f"workflow-run:{run_id}", priority=priority)
             conn.commit()
         except Exception:
