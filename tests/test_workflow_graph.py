@@ -53,16 +53,18 @@ class TestWorkflowGraphValidator(unittest.TestCase):
 
     def test_rejects_node_config_field_with_wrong_type(self):
         graph = WorkflowGraphValidator.from_legacy_steps([
-            {"id": "research-node", "type": "research", "config": {"query": ["not", "text"]}},
+            {"id": "research-node", "type": "research", "config": {"query": "valid"}},
         ])
+        graph["nodes"][0]["config"]["query"] = ["not", "text"]
         with self.assertRaisesRegex(ValueError, "config field 'query' must be string"):
             WorkflowGraphValidator.validate(graph)
 
     def test_rejects_non_string_items_in_node_config_array(self):
         graph = WorkflowGraphValidator.from_legacy_steps([
             {"id": "research-node", "type": "research",
-             "config": {"topic": "cloud", "source_urls": ["https://example.com", 42]}},
+             "config": {"topic": "cloud", "source_urls": ["https://example.com"]}},
         ])
+        graph["nodes"][0]["config"]["source_urls"].append(42)
         with self.assertRaisesRegex(ValueError, "source_urls must be array"):
             WorkflowGraphValidator.validate(graph)
 
@@ -71,8 +73,9 @@ class TestWorkflowGraphValidator(unittest.TestCase):
             {"id": "research-node", "type": "research", "config": {"topic": "cloud"}},
             {"id": "condition-node", "type": "condition",
              "config": {"source_step_id": "research-node", "path": "result.score",
-                        "operator": "execute_anything"}},
+                        "operator": "equals"}},
         ])
+        next(node for node in graph["nodes"] if node["id"] == "condition-node")["config"]["operator"] = "execute_anything"
         with self.assertRaisesRegex(ValueError, "unsupported condition operator"):
             WorkflowGraphValidator.validate(graph)
 
