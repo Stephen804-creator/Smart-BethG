@@ -135,6 +135,31 @@ class TestWorkflowGraphValidator(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "schema version"):
             WorkflowGraphValidator.validate(graph)
 
+
+    def test_rejects_non_object_manual_trigger_schema(self):
+        graph = valid_graph()
+        graph["trigger"]["input_schema"] = {"type": "string"}
+        with self.assertRaisesRegex(ValueError, "must be an object"):
+            WorkflowGraphValidator.validate(graph)
+
+    def test_rejects_invalid_schema_type_without_crashing(self):
+        graph = valid_graph()
+        graph["nodes"][0]["outputs"] = {"result": {"type": ["object"]}}
+        with self.assertRaisesRegex(ValueError, "output contract"):
+            WorkflowGraphValidator.validate(graph)
+
+    def test_rejects_non_string_edge_endpoint_without_crashing(self):
+        graph = valid_graph()
+        graph["edges"][0]["to_node_id"] = {"invalid": "node"}
+        with self.assertRaisesRegex(ValueError, "unknown target"):
+            WorkflowGraphValidator.validate(graph)
+
+    def test_rejects_node_version_not_integer(self):
+        graph = valid_graph()
+        graph["nodes"][0]["version"] = 1.0
+        with self.assertRaisesRegex(ValueError, "unsupported node version"):
+            WorkflowGraphValidator.validate(graph)
+
     def test_converts_legacy_sequential_steps(self):
         graph = WorkflowGraphValidator.from_legacy_steps([
             {"id": "research-1", "type": "research", "config": {"topic": "cloud"}},
