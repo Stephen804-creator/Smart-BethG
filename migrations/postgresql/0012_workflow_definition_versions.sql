@@ -40,3 +40,9 @@ CREATE INDEX IF NOT EXISTS idx_workflow_definition_versions_owner
 CREATE INDEX IF NOT EXISTS idx_workflow_runs_definition_version
     ON workflow_runs(workflow_version_id)
     WHERE workflow_version_id IS NOT NULL;
+
+-- Published snapshots are append-only. GDPR/account deletion can still cascade
+-- delete them; ordinary UPDATE statements are converted to no-ops.
+CREATE RULE workflow_definition_versions_no_update
+AS ON UPDATE TO workflow_definition_versions
+DO INSTEAD NOTHING;
