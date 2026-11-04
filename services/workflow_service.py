@@ -109,10 +109,14 @@ class WorkflowService:
         steps = self.validate_steps(workflow["steps"], require_nonempty=True)
         conn = get_connection()
         try:
-            conn.execute(
-                "UPDATE workflows SET status='validated', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
-                (workflow_id, user_id),
+            cursor = conn.execute(
+                "UPDATE workflows SET status='validated', updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=? AND user_id=? AND version=?",
+                (workflow_id, user_id, workflow["version"]),
             )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                raise ValueError("Workflow changed while validation was running. Refresh and validate again.")
             conn.commit()
         finally:
             conn.close()
