@@ -180,6 +180,49 @@ class TestWorkflowService(SmartBethGTestCase):
         self.assertEqual(results[0]["published_version"], results[1]["published_version"])
         self.assertEqual(len(self.service.list_versions(self.owner["id"], workflow["id"])), 1)
 
+
+    def test_restoring_prior_version_creates_a_new_publication_not_history_rewrite(self):
+        workflow = self.service.create(
+            self.owner["id"], "Rollback workflow",
+            steps=[{"id": "research-v1", "type": "research", "config": {"query": "version one"}}],
+        )
+        self.service.validate(self.owner["id"], workflow["id"])
+        self.service.publish(self.owner["id"], workflow["id"])
+
+        self.service.update(self.owner["id"], workflow["id"], {
+            "steps": [{"id": "research-v2", "type": "research", "config": {"query": "version two"}}]
+        })
+        self.service.validate(self.owner["id"], workflow["id"])
+        self.service.publish(self.owner["id"], workflow["id"])
+
+        restored = self.service.restore_version(self.owner["id"], workflow["id"], 1)
+        self.assertEqual(restored["version"], 3)
+        self.assertEqual(restored["status"], "draft")
+        self.assertEqual(restored["published_version"], 2)
+        self.assertEqual(restored["steps"][0]["id"], "research-v1")
+
+        self.service.validate(self.owner["id"], workflow["id"])
+        republished = self.service.publish(self.owner["id"], workflow["id"])
+        self.assertEqual(republished["published_version"], 3)
+        self.assertEqual(len(self.service.list_versions(self.owner["id"], workflow["id"])), 3)
+        self.assertEqual(
+            self.service.get_version(self.owner["id"], workflow["id"], 2)["steps"][0]["id"],
+            "research-v2",
+        )
+        self.assertEqual(
+            self.service.get_version(self.owner["id"], workflow["id"], 3)["steps"][0]["id"],
+            "research-v1",
+        )
+
+    def test_restore_version_is_owner_scoped(self):
+        workflow = self.service.create(
+            self.owner["id"], "Private version",
+            steps=[{"id": "private", "type": "research", "config": {"query": "private"}}],
+        )
+        self.service.validate(self.owner["id"], workflow["id"])
+        self.service.publish(self.owner["id"], workflow["id"])
+        self.assertIsNone(self.service.restore_version(self.other["id"], workflow["id"], 1))
+
     def test_validation_rejects_a_concurrently_changed_draft(self):
         workflow = self.service.create(
             self.owner["id"], "Concurrent validation",
