@@ -1,62 +1,32 @@
 import copy
+import json
 import unittest
+from pathlib import Path
 
 from services.workflow_graph import WorkflowGraphValidator
 
 
-def valid_graph():
-    return {
-        "format": "smartbethg.workflow.graph",
-        "schema_version": "1.0",
-        "trigger": {
-            "type": "manual",
-            "version": 1,
-            "input_schema": {
-                "type": "object",
-                "properties": {"topic": {"type": "string"}},
-            },
-        },
-        "nodes": [
-            {
-                "id": "research-topic",
-                "type": "research",
-                "version": 1,
-                "config": {},
-                "inputs": {
-                    "topic": {
-                        "source": {"node_id": "$trigger", "output": "topic"},
-                        "type": "string",
-                    }
-                },
-                "outputs": {"result": {"type": "object"}},
-            },
-            {
-                "id": "finish",
-                "type": "end",
-                "version": 1,
-                "config": {},
-                "inputs": {},
-                "outputs": {},
-            },
-        ],
-        "edges": [
-            {
-                "id": "start-research",
-                "from_node_id": "$trigger",
-                "from_output": "topic",
-                "to_node_id": "research-topic",
-                "to_input": "topic",
-            },
-            {
-                "id": "research-finish",
-                "from_node_id": "research-topic",
-                "to_node_id": "finish",
-            },
-        ],
-    }
+def load_fixture(name):
+    fixture_path = Path(__file__).parent / "fixtures" / "workflow_graphs" / name
+    return json.loads(fixture_path.read_text(encoding="utf-8"))
 
+
+def valid_graph():
+    return load_fixture("valid_linear.json")
 
 class TestWorkflowGraphValidator(unittest.TestCase):
+
+    def test_reusable_invalid_fixtures_are_rejected(self):
+        invalid_fixtures = {
+            "invalid_cycle.json": "contains a cycle",
+            "invalid_unreachable.json": "Unreachable",
+            "invalid_type_mismatch.json": "incompatible",
+        }
+        for fixture_name, message in invalid_fixtures.items():
+            with self.subTest(fixture=fixture_name):
+                with self.assertRaisesRegex(ValueError, message):
+                    WorkflowGraphValidator.validate(load_fixture(fixture_name))
+
     def test_accepts_valid_typed_graph(self):
         graph = valid_graph()
         self.assertEqual(WorkflowGraphValidator.validate(graph), graph)
