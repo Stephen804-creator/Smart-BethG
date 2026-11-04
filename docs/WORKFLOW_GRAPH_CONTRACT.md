@@ -51,7 +51,7 @@ The first supported trigger is `manual`, version 1, with an object-shaped input 
 
 `WorkflowGraphValidator.from_legacy_steps` converts the existing ordered step array into a linear graph, preserving each step's ID, type and configuration. It adds a manual trigger and an end node.
 
-When a workflow is published, the service stores both the exact legacy step definition used by the current sequential executor and its validated graph representation in an immutable version snapshot. The published version is append-only for UPDATE operations. Editing a workflow creates a new draft version and does not mutate earlier snapshots.
+When a workflow is published, the service stores both the exact legacy step definition used by the current sequential executor and its validated graph representation in an immutable version snapshot. The published version is append-only for UPDATE operations. Editing a workflow creates a new draft version and does not mutate earlier snapshots. Restoring an older published version copies its content into a new draft version; the user validates and publishes it as a new, monotonically increasing version. Historical snapshots and run references are never rewound or overwritten.
 
 New runs store the exact published snapshot ID. The workflow executor and continuation callbacks load the run's pinned step definition, not the mutable workflow row. Existing clients that call validate and then run remain compatible: the first run after validation publishes that validated draft before enqueueing it. A dedicated publish endpoint is also available.
 
