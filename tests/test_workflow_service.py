@@ -41,6 +41,11 @@ class TestWorkflowService(SmartBethGTestCase):
         versions = self.service.list_versions(self.owner["id"], workflow["id"])
         self.assertEqual(len(versions), 1)
         self.assertEqual(versions[0]["version"], 1)
+        snapshot = self.service.get_version(self.owner["id"], workflow["id"], 1)
+        self.assertEqual(snapshot["definition_format"], "graph_v1")
+        self.assertEqual(snapshot["graph"]["format"], "smartbethg.workflow.graph")
+        self.assertEqual(snapshot["steps"][0]["id"], "research-v1")
+        self.assertIsNone(self.service.get_version(self.other["id"], workflow["id"], 1))
 
         # Publishing the same unchanged version is idempotent.
         self.service.publish(self.owner["id"], workflow["id"])
