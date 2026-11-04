@@ -31,6 +31,13 @@ class TestWorkflowGraphValidator(unittest.TestCase):
         graph = valid_graph()
         self.assertEqual(WorkflowGraphValidator.validate(graph), graph)
 
+
+    def test_rejects_non_standard_nan_values(self):
+        graph = valid_graph()
+        graph["nodes"][0]["config"] = {"threshold": float("nan")}
+        with self.assertRaisesRegex(ValueError, "JSON-compatible"):
+            WorkflowGraphValidator.validate(graph)
+
     def test_does_not_mutate_input(self):
         graph = valid_graph()
         original = copy.deepcopy(graph)
