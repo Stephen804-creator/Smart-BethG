@@ -1,0 +1,68 @@
+{
+  "format": "smartbethg.workflow.graph",
+  "schema_version": "1.0",
+  "trigger": {
+    "type": "manual",
+    "version": 1,
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "topic": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": "research-topic",
+      "type": "research",
+      "version": 1,
+      "config": {},
+      "inputs": {
+        "topic": {
+          "source": {
+            "node_id": "$trigger",
+            "output": "topic"
+          },
+          "type": "string"
+        }
+      },
+      "outputs": {
+        "result": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "id": "finish",
+      "type": "end",
+      "version": 1,
+      "config": {},
+      "inputs": {},
+      "outputs": {}
+    },
+    {
+      "id": "orphan",
+      "type": "end",
+      "version": 1,
+      "config": {},
+      "inputs": {},
+      "outputs": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-research",
+      "from_node_id": "$trigger",
+      "from_output": "topic",
+      "to_node_id": "research-topic",
+      "to_input": "topic"
+    },
+    {
+      "id": "research-finish",
+      "from_node_id": "research-topic",
+      "to_node_id": "finish"
+    }
+  ]
+}

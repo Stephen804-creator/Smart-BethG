@@ -11,18 +11,26 @@ class WorkflowCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=4000)
     steps: list[dict] = Field(default_factory=list, max_length=50)
+    graph: dict | None = None
+
+
+class WorkflowDuplicate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
 
 
 class WorkflowUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=4000)
     steps: list[dict] | None = Field(default=None, max_length=50)
+    graph: dict | None = None
 
 
 @router.post("")
 def create_workflow(payload: WorkflowCreate, user=Depends(get_current_user), service=Depends(get_workflow_service)):
     try:
-        return service.create(user["id"], payload.name, payload.description, payload.steps)
+        return service.create(
+            user["id"], payload.name, payload.description, payload.steps, graph=payload.graph
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
@@ -59,6 +67,22 @@ def update_workflow(
     return workflow
 
 
+
+@router.post("/{workflow_id}/duplicate")
+def duplicate_workflow(
+    workflow_id: int,
+    payload: WorkflowDuplicate | None = None,
+    user=Depends(get_current_user),
+    service=Depends(get_workflow_service),
+):
+    try:
+        workflow = service.duplicate(user["id"], workflow_id, payload.name if payload else None)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found.")
+    return workflow
+
 @router.post("/{workflow_id}/validate")
 def validate_workflow(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
     try:
@@ -67,6 +91,53 @@ def validate_workflow(workflow_id: int, user=Depends(get_current_user), service=
         raise HTTPException(status_code=422, detail=str(exc))
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found.")
+    return workflow
+
+
+
+@router.post("/{workflow_id}/publish")
+def publish_workflow(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
+    try:
+        workflow = service.publish(user["id"], workflow_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found.")
+    return workflow
+
+
+@router.get("/{workflow_id}/versions")
+def list_workflow_versions(workflow_id: int, user=Depends(get_current_user), service=Depends(get_workflow_service)):
+    if not service.get(user["id"], workflow_id):
+        raise HTTPException(status_code=404, detail="Workflow not found.")
+    return {"versions": service.list_versions(user["id"], workflow_id)}
+
+
+@router.get("/{workflow_id}/versions/{version}")
+def get_workflow_version(
+    workflow_id: int,
+    version: int,
+    user=Depends(get_current_user),
+    service=Depends(get_workflow_service),
+):
+    snapshot = service.get_version(user["id"], workflow_id, version)
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Workflow version not found.")
+    return snapshot
+
+@router.post("/{workflow_id}/versions/{version}/restore")
+def restore_workflow_version(
+    workflow_id: int,
+    version: int,
+    user=Depends(get_current_user),
+    service=Depends(get_workflow_service),
+):
+    try:
+        workflow = service.restore_version(user["id"], workflow_id, version)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow version not found.")
     return workflow
 
 

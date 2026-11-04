@@ -8,20 +8,35 @@ from services.job_queue import JobQueue
 class WorkflowService:
     STEP_TYPES = {"mission", "research", "artifact", "social_content", "condition"}
 
-    def create(self, user_id, name, description=None, steps=None):
+    def create(self, user_id, name, description=None, steps=None, graph=None):
         name = (name or "").strip()
         if not name or len(name) > 120:
             raise ValueError("Workflow name must be between 1 and 120 characters.")
-        steps = self.validate_steps(steps or [], require_nonempty=False)
+        graph_json = None
+        if graph is not None:
+            if steps:
+                raise ValueError("Provide either a graph definition or legacy steps, not both.")
+            from services.workflow_graph import WorkflowGraphValidator
+            graph = WorkflowGraphValidator.validate(graph)
+            try:
+                steps = WorkflowGraphValidator.to_legacy_steps(graph)
+            except ValueError:
+                # Valid graph drafts may contain branches or data mappings.
+                # They remain storable, but the sequential executor cannot run them.
+                steps = []
+            graph_json = json.dumps(graph, ensure_ascii=False, separators=(",", ":"))
+        else:
+            steps = self.validate_steps(steps or [], require_nonempty=False)
         definition_json = json.dumps(steps, ensure_ascii=False)
         if len(definition_json) > 100000:
             raise ValueError("Workflow definition exceeds the 100000-character limit.")
         conn = get_connection()
         try:
             cursor = conn.execute(
-                "INSERT INTO workflows(user_id, name, description, definition_json, version, status) "
-                "VALUES (?, ?, ?, ?, 1, 'draft')",
-                (user_id, name, description, definition_json),
+                "INSERT INTO workflows(user_id, name, description, definition_json, graph_json, definition_format, version, status) "
+                "VALUES (?, ?, ?, ?, ?, ?, 1, 'draft')",
+                (user_id, name, description, definition_json, graph_json,
+                 "graph_v1" if graph_json is not None else "legacy_steps"),
             )
             workflow_id = cursor.lastrowid
             conn.commit()
@@ -33,7 +48,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             rows = conn.execute(
-                "SELECT id, user_id, name, description, definition_json, version, status, created_at, updated_at "
+                "SELECT id, user_id, name, description, definition_json, graph_json, definition_format, version, status, published_version, created_at, updated_at "
                 "FROM workflows WHERE user_id=? ORDER BY updated_at DESC, id DESC",
                 (user_id,),
             ).fetchall()
@@ -45,7 +60,7 @@ class WorkflowService:
         conn = get_connection()
         try:
             row = conn.execute(
-                "SELECT id, user_id, name, description, definition_json, version, status, created_at, updated_at "
+                "SELECT id, user_id, name, description, definition_json, graph_json, definition_format, version, status, published_version, created_at, updated_at "
                 "FROM workflows WHERE id=? AND user_id=? LIMIT 1",
                 (workflow_id, user_id),
             ).fetchone()
@@ -59,7 +74,34 @@ class WorkflowService:
             return None
         name = fields.get("name", current["name"])
         description = fields.get("description", current["description"])
-        steps = fields.get("steps", current["steps"])
+        if current.get("definition_error") and "steps" not in fields and "graph" not in fields:
+            raise ValueError(
+                "This legacy workflow definition is malformed. Supply replacement steps explicitly to repair it; "
+                "metadata-only edits are blocked to preserve the original definition."
+            )
+        if current.get("graph_error") and "graph" not in fields and "steps" not in fields:
+            raise ValueError(
+                "This workflow graph is malformed. Supply a replacement graph or steps explicitly to repair it."
+            )
+        if "graph" in fields and "steps" in fields:
+            raise ValueError("Update either the graph definition or legacy steps, not both.")
+        graph_json = (
+            json.dumps(current["graph"], ensure_ascii=False, separators=(",", ":"))
+            if current.get("graph") is not None else None
+        )
+        if "graph" in fields:
+            from services.workflow_graph import WorkflowGraphValidator
+            graph = WorkflowGraphValidator.validate(fields["graph"])
+            try:
+                steps = WorkflowGraphValidator.to_legacy_steps(graph)
+            except ValueError:
+                steps = []
+            graph_json = json.dumps(graph, ensure_ascii=False, separators=(",", ":"))
+        elif "steps" in fields:
+            steps = fields["steps"]
+            graph_json = None
+        else:
+            steps = current["steps"]
         name = (name or "").strip()
         if not name or len(name) > 120:
             raise ValueError("Workflow name must be between 1 and 120 characters.")
@@ -69,10 +111,26 @@ class WorkflowService:
             raise ValueError("Workflow definition exceeds the 100000-character limit.")
         conn = get_connection()
         try:
+            if current.get("definition_error"):
+                original = conn.execute(
+                    "SELECT definition_json FROM workflows WHERE id=? AND user_id=? AND version=?",
+                    (workflow_id, user_id, current["version"]),
+                ).fetchone()
+                if not original:
+                    raise ValueError("Workflow changed concurrently. Refresh and try again.")
+                conn.execute(
+                    "INSERT INTO workflow_definition_recovery "
+                    "(workflow_id,user_id,invalid_definition_json,repaired_definition_json,repaired_by) "
+                    "VALUES (?,?,?,?,?)",
+                    (workflow_id, user_id, original["definition_json"], definition_json, user_id),
+                )
             cursor = conn.execute(
-                "UPDATE workflows SET name=?, description=?, definition_json=?, version=version+1, "
-                "status='draft', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=? AND version=?",
-                (name, description, definition_json, workflow_id, user_id, current["version"]),
+                "UPDATE workflows SET name=?, description=?, definition_json=?, graph_json=?, definition_format=?, "
+                "version=version+1, status='draft', updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=? AND user_id=? AND version=?",
+                (name, description, definition_json, graph_json,
+                 "graph_v1" if graph_json is not None else "legacy_steps",
+                 workflow_id, user_id, current["version"]),
             )
             if cursor.rowcount != 1:
                 conn.rollback()
@@ -86,13 +144,26 @@ class WorkflowService:
         workflow = self.get(user_id, workflow_id)
         if not workflow:
             return None
-        steps = self.validate_steps(workflow["steps"], require_nonempty=True)
+        if workflow.get("definition_error"):
+            raise ValueError("Workflow definition is malformed. Replace its steps to repair it before validation.")
+        if workflow.get("graph_error"):
+            raise ValueError("Workflow graph is malformed. Replace the graph before validation.")
+        if workflow.get("graph") is not None:
+            from services.workflow_graph import WorkflowGraphValidator
+            graph = WorkflowGraphValidator.validate(workflow["graph"])
+            steps = workflow["steps"]
+        else:
+            steps = self.validate_steps(workflow["steps"], require_nonempty=True)
         conn = get_connection()
         try:
-            conn.execute(
-                "UPDATE workflows SET status='validated', updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?",
-                (workflow_id, user_id),
+            cursor = conn.execute(
+                "UPDATE workflows SET status='validated', updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=? AND user_id=? AND version=?",
+                (workflow_id, user_id, workflow["version"]),
             )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                raise ValueError("Workflow changed while validation was running. Refresh and validate again.")
             conn.commit()
         finally:
             conn.close()
@@ -100,20 +171,202 @@ class WorkflowService:
         workflow["status"] = "validated"
         return workflow
 
+    def publish(self, user_id, workflow_id):
+        """Create or reuse an immutable snapshot for the currently validated draft."""
+        from services.workflow_graph import WorkflowGraphValidator
+
+        conn = get_connection()
+        try:
+            workflow = conn.execute(
+                "SELECT id,user_id,definition_json,graph_json,definition_format,version,status,published_version "
+                "FROM workflows WHERE id=? AND user_id=? FOR UPDATE",
+                (workflow_id, user_id),
+            ).fetchone()
+            if not workflow:
+                return None
+            if workflow["status"] not in {"validated", "published"}:
+                raise ValueError("Validate the current workflow draft before publishing it.")
+            if workflow["status"] == "published" and workflow["published_version"] == workflow["version"]:
+                conn.commit()
+                return self.get(user_id, workflow_id)
+
+            try:
+                steps = json.loads(workflow["definition_json"] or "[]")
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise ValueError("Workflow definition is malformed and cannot be published.") from exc
+            if workflow["definition_format"] == "graph_v1":
+                if not workflow["graph_json"]:
+                    raise ValueError("Workflow graph draft is missing its stored graph document.")
+                try:
+                    graph = WorkflowGraphValidator.validate(json.loads(workflow["graph_json"]))
+                except (TypeError, json.JSONDecodeError) as exc:
+                    raise ValueError("Workflow graph draft is malformed and cannot be published.") from exc
+                try:
+                    steps = WorkflowGraphValidator.to_legacy_steps(graph)
+                except ValueError:
+                    # Keep a valid but not-yet-executable graph version publishable
+                    # for version history; start_run will reject it until Stage 2.
+                    steps = []
+            else:
+                steps = self.validate_steps(steps, require_nonempty=True)
+                graph = WorkflowGraphValidator.from_legacy_steps(steps)
+            steps_json = json.dumps(steps, ensure_ascii=False, separators=(",", ":"))
+            graph_json = json.dumps(graph, ensure_ascii=False, separators=(",", ":"))
+            if max(len(steps_json.encode("utf-8")), len(graph_json.encode("utf-8"))) > 100000:
+                raise ValueError("Workflow definition exceeds the 100000-byte publication limit.")
+
+            existing = conn.execute(
+                "SELECT id FROM workflow_definition_versions WHERE workflow_id=? AND version=?",
+                (workflow_id, workflow["version"]),
+            ).fetchone()
+            if existing:
+                version_id = existing["id"]
+            else:
+                cursor = conn.execute(
+                    "INSERT INTO workflow_definition_versions "
+                    "(workflow_id,user_id,version,definition_format,definition_json,graph_json,created_by) "
+                    "VALUES (?,?,?,'graph_v1',?,?,?)",
+                    (workflow_id, user_id, workflow["version"], steps_json, graph_json, user_id),
+                )
+                version_id = cursor.lastrowid
+            conn.execute(
+                "UPDATE workflows SET published_version=?,status='published',updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=? AND user_id=?",
+                (workflow["version"], workflow_id, user_id),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return self.get(user_id, workflow_id)
+
+    def list_versions(self, user_id, workflow_id):
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT id,workflow_id,user_id,version,definition_format,created_at,created_by "
+                "FROM workflow_definition_versions WHERE workflow_id=? AND user_id=? "
+                "ORDER BY version DESC",
+                (workflow_id, user_id),
+            ).fetchall()
+            return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
+    def get_version(self, user_id, workflow_id, version):
+        """Return one immutable published definition, scoped to its owner."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT id,workflow_id,user_id,version,definition_format,definition_json,graph_json,created_at,created_by "
+                "FROM workflow_definition_versions WHERE workflow_id=? AND user_id=? AND version=? LIMIT 1",
+                (workflow_id, user_id, version),
+            ).fetchone()
+            if not row:
+                return None
+            item = dict(row)
+            item["steps"] = json.loads(item.pop("definition_json"))
+            item["graph"] = json.loads(item.pop("graph_json"))
+            return item
+        finally:
+            conn.close()
+
+    def restore_version(self, user_id, workflow_id, version):
+        """Restore prior content into a new draft version; never move history backwards."""
+        snapshot = self.get_version(user_id, workflow_id, version)
+        if not snapshot:
+            return None
+        workflow = self.get(user_id, workflow_id)
+        if not workflow:
+            return None
+        if workflow["status"] == "archived":
+            raise ValueError("An archived workflow must be unarchived before restoring a version.")
+        graph = snapshot.get("graph")
+        if graph is not None:
+            return self.update(user_id, workflow_id, {"graph": graph})
+        return self.update(user_id, workflow_id, {"steps": snapshot.get("steps") or []})
+
+    def get_run_definition(self, user_id, run_id):
+        """Load the immutable definition pinned to a run, or legacy data for old runs."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT r.workflow_id,r.workflow_version,r.workflow_version_id,v.definition_json "
+                "FROM workflow_runs r LEFT JOIN workflow_definition_versions v "
+                "ON v.id=r.workflow_version_id AND v.workflow_id=r.workflow_id AND v.user_id=r.user_id "
+                "WHERE r.id=? AND r.user_id=? LIMIT 1",
+                (run_id, user_id),
+            ).fetchone()
+            if not row:
+                return None
+            if row["workflow_version_id"] is not None:
+                if not row["definition_json"]:
+                    raise ValueError("The immutable workflow version pinned to this run is unavailable.")
+                return {
+                    "workflow_id": row["workflow_id"],
+                    "version": row["workflow_version"],
+                    "workflow_version_id": row["workflow_version_id"],
+                    "steps": json.loads(row["definition_json"]),
+                    "immutable": True,
+                }
+            # Historical pre-migration runs did not record a snapshot. Preserve
+            # their existing version check rather than guessing an old definition.
+            legacy = conn.execute(
+                "SELECT definition_json,version FROM workflows WHERE id=? AND user_id=?",
+                (row["workflow_id"], user_id),
+            ).fetchone()
+            if not legacy or legacy["version"] != row["workflow_version"]:
+                raise ValueError("Historical workflow definition is no longer available for this run.")
+            return {
+                "workflow_id": row["workflow_id"],
+                "version": row["workflow_version"],
+                "workflow_version_id": None,
+                "steps": json.loads(legacy["definition_json"] or "[]"),
+                "immutable": False,
+            }
+        finally:
+            conn.close()
+
     def start_run(self, user_id, workflow_id, priority=0):
         workflow = self.get(user_id, workflow_id)
         if not workflow:
             return None
-        if workflow["status"] != "validated":
-            raise ValueError("Validate the workflow before executing it.")
-        steps = self.validate_steps(workflow["steps"], require_nonempty=True)
+        if workflow["status"] == "validated":
+            # Backwards-compatible bridge for existing clients that call
+            # validate -> run. The first run publishes an immutable snapshot.
+            workflow = self.publish(user_id, workflow_id)
+        if not workflow or workflow["status"] != "published":
+            raise ValueError("Validate and publish the workflow before executing it.")
         conn = get_connection()
         try:
-            cursor = conn.execute("INSERT INTO workflow_runs(workflow_id,user_id,workflow_version,status,result_json) VALUES (?,?,?,'queued','{}')",
-                                  (workflow_id, user_id, workflow["version"]))
+            snapshot = conn.execute(
+                "SELECT id,version FROM workflow_definition_versions "
+                "WHERE workflow_id=? AND user_id=? AND version=?",
+                (workflow_id, user_id, workflow["published_version"]),
+            ).fetchone()
+            if not snapshot:
+                raise ValueError("The published workflow version is unavailable.")
+            published_definition = conn.execute(
+                "SELECT definition_json FROM workflow_definition_versions WHERE id=? AND workflow_id=? AND user_id=?",
+                (snapshot["id"], workflow_id, user_id),
+            ).fetchone()
+            if not published_definition or not json.loads(published_definition["definition_json"] or "[]"):
+                raise ValueError(
+                    "This graph is valid but is not compatible with the current sequential executor. "
+                    "Graph execution will be enabled in Stage 2."
+                )
+            cursor = conn.execute(
+                "INSERT INTO workflow_runs(workflow_id,user_id,workflow_version,workflow_version_id,status,result_json) "
+                "VALUES (?,?,?,?,'queued','{}')",
+                (workflow_id, user_id, snapshot["version"], snapshot["id"]),
+            )
             run_id = cursor.lastrowid
             JobQueue().enqueue_in_transaction(conn, user_id, "workflow.execute",
-                {"workflow_id": workflow_id, "run_id": run_id, "workflow_version": workflow["version"], "step_index": 0},
+                {"workflow_id": workflow_id, "run_id": run_id,
+                 "workflow_version": snapshot["version"], "workflow_version_id": snapshot["id"],
+                 "step_index": 0},
                 idempotency_key=f"workflow-run:{run_id}", priority=priority)
             conn.commit()
         except Exception:
@@ -177,7 +430,7 @@ class WorkflowService:
                 conn.rollback()
                 return self.get_run(user_id, run_id)
             run = conn.execute(
-                "SELECT workflow_id,workflow_version FROM workflow_runs WHERE id=? AND user_id=?",
+                "SELECT workflow_id,workflow_version,workflow_version_id FROM workflow_runs WHERE id=? AND user_id=?",
                 (run_id, user_id),
             ).fetchone()
             if not run:
@@ -189,11 +442,21 @@ class WorkflowService:
                  json.dumps([{"source": "workflow_step_record", "step_id": step["step_id"]}]),
                  ("Workflow step skipped by condition." if status == "skipped" else "Workflow step completed.")),
             )
-            workflow = conn.execute(
-                "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
-                (run["workflow_id"], user_id),
-            ).fetchone()
-            steps = json.loads(workflow["definition_json"] or "[]") if workflow else []
+            workflow = None
+            if run["workflow_version_id"] is not None:
+                workflow = conn.execute(
+                    "SELECT definition_json FROM workflow_definition_versions "
+                    "WHERE id=? AND workflow_id=? AND user_id=?",
+                    (run["workflow_version_id"], run["workflow_id"], user_id),
+                ).fetchone()
+            else:
+                workflow = conn.execute(
+                    "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
+                    (run["workflow_id"], user_id),
+                ).fetchone()
+            if not workflow:
+                raise ValueError("Pinned workflow definition is unavailable.")
+            steps = json.loads(workflow["definition_json"] or "[]")
             rows = conn.execute(
                 "SELECT step_index,step_id,step_type,mission_id,result_json FROM workflow_step_runs "
                 "WHERE user_id=? AND workflow_run_id=? AND status IN ('completed','skipped') ORDER BY step_index",
@@ -226,7 +489,8 @@ class WorkflowService:
                 JobQueue().enqueue_in_transaction(
                     conn, user_id, "workflow.execute",
                     {"workflow_id": run["workflow_id"], "run_id": run_id,
-                     "workflow_version": run["workflow_version"], "step_index": next_index},
+                     "workflow_version": run["workflow_version"],
+                     "workflow_version_id": run["workflow_version_id"], "step_index": next_index},
                     idempotency_key=f"workflow-run:{run_id}:step:{next_index}",
                 )
             conn.commit()
@@ -365,7 +629,7 @@ class WorkflowService:
                      str(error)[:2000] if error else "Child mission completed."),
                 )
             run = conn.execute(
-                "SELECT workflow_id,result_json,workflow_version FROM workflow_runs WHERE id=? AND user_id=?",
+                "SELECT workflow_id,result_json,workflow_version,workflow_version_id FROM workflow_runs WHERE id=? AND user_id=?",
                 (run_id, user_id),
             ).fetchone()
             if not run:
@@ -379,11 +643,21 @@ class WorkflowService:
                     (str(error or "A child mission failed.")[:4000], run_id, user_id),
                 )
             else:
-                workflow = conn.execute(
-                    "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
-                    (run["workflow_id"], user_id),
-                ).fetchone()
-                steps = json.loads(workflow["definition_json"] or "[]") if workflow else []
+                workflow = None
+                if run["workflow_version_id"] is not None:
+                    workflow = conn.execute(
+                        "SELECT definition_json FROM workflow_definition_versions "
+                        "WHERE id=? AND workflow_id=? AND user_id=?",
+                        (run["workflow_version_id"], run["workflow_id"], user_id),
+                    ).fetchone()
+                else:
+                    workflow = conn.execute(
+                        "SELECT definition_json FROM workflows WHERE id=? AND user_id=?",
+                        (run["workflow_id"], user_id),
+                    ).fetchone()
+                if not workflow:
+                    raise ValueError("Pinned workflow definition is unavailable.")
+                steps = json.loads(workflow["definition_json"] or "[]")
                 completed_steps = conn.execute(
                     "SELECT step_index,step_id,step_type,mission_id,result_json FROM workflow_step_runs "
                     "WHERE user_id=? AND workflow_run_id=? AND status IN ('completed','skipped') ORDER BY step_index",
@@ -416,7 +690,8 @@ class WorkflowService:
                     JobQueue().enqueue_in_transaction(
                         conn, user_id, "workflow.execute",
                         {"workflow_id": run["workflow_id"], "run_id": run_id,
-                         "workflow_version": run["workflow_version"], "step_index": next_index},
+                         "workflow_version": run["workflow_version"],
+                         "workflow_version_id": run["workflow_version_id"], "step_index": next_index},
                         idempotency_key=f"workflow-run:{run_id}:step:{next_index}",
                     )
             if own_connection:
@@ -433,7 +708,7 @@ class WorkflowService:
     def get_run(self, user_id, run_id):
         conn = get_connection()
         try:
-            row = conn.execute("SELECT id,workflow_id,user_id,workflow_version,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE id=? AND user_id=? LIMIT 1",
+            row = conn.execute("SELECT id,workflow_id,user_id,workflow_version,workflow_version_id,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE id=? AND user_id=? LIMIT 1",
                                (run_id, user_id)).fetchone()
             return self._decode_run(row) if row else None
         finally:
@@ -442,7 +717,7 @@ class WorkflowService:
     def list_runs(self, user_id, workflow_id, limit=30):
         conn = get_connection()
         try:
-            rows = conn.execute("SELECT id,workflow_id,user_id,workflow_version,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE workflow_id=? AND user_id=? ORDER BY id DESC LIMIT ?",
+            rows = conn.execute("SELECT id,workflow_id,user_id,workflow_version,workflow_version_id,status,current_step,result_json,error,started_at,completed_at,created_at,updated_at FROM workflow_runs WHERE workflow_id=? AND user_id=? ORDER BY id DESC LIMIT ?",
                                 (workflow_id, user_id, max(1, min(100, int(limit))))).fetchall()
             return [self._decode_run(row) for row in rows]
         finally:
@@ -472,6 +747,22 @@ class WorkflowService:
             item["result"] = {}
             item.pop("result_json", None)
         return item
+
+    def duplicate(self, user_id, workflow_id, name=None):
+        """Create an owner-scoped draft copy without copying execution history."""
+        source = self.get(user_id, workflow_id)
+        if not source:
+            return None
+        if source.get("definition_error") or source.get("graph_error"):
+            raise ValueError("Cannot duplicate a malformed workflow until its definition is repaired.")
+        duplicate_name = (name or f"Copy of {source['name']}").strip()
+        if source.get("graph") is not None:
+            return self.create(
+                user_id, duplicate_name, source.get("description"), graph=source["graph"]
+            )
+        return self.create(
+            user_id, duplicate_name, source.get("description"), source.get("steps") or []
+        )
 
     def archive(self, user_id, workflow_id):
         workflow = self.get(user_id, workflow_id)
@@ -538,9 +829,32 @@ class WorkflowService:
     @staticmethod
     def _decode(row):
         item = dict(row)
+        raw_graph = item.pop("graph_json", None)
+        if item.get("definition_format") == "graph_v1" and not raw_graph:
+            item["graph"] = None
+            item["graph_valid"] = False
+            item["graph_error"] = "Graph-format workflow is missing its stored graph document."
+        elif raw_graph:
+            try:
+                from services.workflow_graph import WorkflowGraphValidator
+                item["graph"] = WorkflowGraphValidator.validate(json.loads(raw_graph))
+                item["graph_valid"] = True
+            except (TypeError, ValueError, json.JSONDecodeError):
+                item["graph"] = None
+                item["graph_valid"] = False
+                item["graph_error"] = "Stored workflow graph is malformed or invalid."
+        else:
+            item["graph"] = None
+            item["graph_valid"] = None
+        raw_definition = item.pop("definition_json", None)
         try:
-            item["steps"] = json.loads(item.pop("definition_json") or "[]")
+            item["steps"] = json.loads(raw_definition or "[]")
+            item["definition_valid"] = isinstance(item["steps"], list)
+            if not item["definition_valid"]:
+                item["definition_error"] = "Stored workflow definition is not a JSON array."
+                item["steps"] = []
         except (TypeError, json.JSONDecodeError):
             item["steps"] = []
-            item.pop("definition_json", None)
+            item["definition_valid"] = False
+            item["definition_error"] = "Stored workflow definition contains invalid JSON."
         return item
