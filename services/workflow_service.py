@@ -190,6 +190,24 @@ class WorkflowService:
         finally:
             conn.close()
 
+    def get_version(self, user_id, workflow_id, version):
+        """Return one immutable published definition, scoped to its owner."""
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT id,workflow_id,user_id,version,definition_format,definition_json,graph_json,created_at,created_by "
+                "FROM workflow_definition_versions WHERE workflow_id=? AND user_id=? AND version=? LIMIT 1",
+                (workflow_id, user_id, version),
+            ).fetchone()
+            if not row:
+                return None
+            item = dict(row)
+            item["steps"] = json.loads(item.pop("definition_json"))
+            item["graph"] = json.loads(item.pop("graph_json"))
+            return item
+        finally:
+            conn.close()
+
     def get_run_definition(self, user_id, run_id):
         """Load the immutable definition pinned to a run, or legacy data for old runs."""
         conn = get_connection()
